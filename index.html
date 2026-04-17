@@ -1,0 +1,2410 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#2563eb" />
+  <link rel="manifest" href="manifest.json" />
+  <title>GymControl</title>
+  <style>
+    :root {
+      --bg: #f3f4f6;
+      --card: #ffffff;
+      --text: #111827;
+      --muted: #6b7280;
+      --border: #d1d5db;
+      --primary: #2563eb;
+      --success: #15803d;
+      --danger: #dc2626;
+      --warning: #d97706;
+      --dark: #111827;
+      --teal: #0f766e;
+      --shadow: 0 4px 14px rgba(0,0,0,0.08);
+      --radius: 16px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: var(--bg);
+      margin: 0;
+      color: var(--text);
+      padding-bottom: 90px;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 14px;
+    }
+
+    h1, h2, h3 {
+      margin: 0 0 12px 0;
+    }
+
+    .screen {
+      display: none;
+    }
+
+    .screen.active {
+      display: block;
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 14px;
+      box-shadow: var(--shadow);
+    }
+
+    .muted {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .empty {
+      color: var(--muted);
+      font-style: italic;
+    }
+
+    .section-title {
+      margin-bottom: 12px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    input, select, button, textarea {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      font-size: 16px;
+      font-family: inherit;
+      background: white;
+    }
+
+    textarea {
+      min-height: 92px;
+      resize: vertical;
+    }
+
+    button {
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-secondary { background: #e5e7eb; color: var(--text); }
+    .btn-success { background: var(--success); color: white; }
+    .btn-danger { background: var(--danger); color: white; }
+    .btn-warning { background: var(--warning); color: white; }
+    .btn-dark { background: var(--dark); color: white; }
+    .btn-teal { background: var(--teal); color: white; }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+
+    .actions > button,
+    .actions > label {
+      width: auto;
+      min-width: 140px;
+    }
+
+    .actions.full > button {
+      flex: 1 1 180px;
+      width: auto;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: bold;
+      background: #dbeafe;
+      color: #1d4ed8;
+    }
+
+    .badge-green {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .hint-box {
+      background: #ecfeff;
+      border: 1px solid #a5f3fc;
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 12px;
+      font-size: 14px;
+    }
+
+    .summary-box {
+      background: #eef2ff;
+      border: 1px solid #c7d2fe;
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 12px;
+      font-weight: bold;
+    }
+
+    .list-item {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 10px;
+    }
+
+    .list-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .inline-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+
+    .inline-actions button {
+      width: auto;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 8px 10px;
+      border-radius: 999px;
+      background: #e0f2fe;
+      color: #075985;
+      font-size: 14px;
+      margin: 4px 6px 0 0;
+      cursor: pointer;
+    }
+
+    .chip.active {
+      background: #dbeafe;
+      color: #1d4ed8;
+      font-weight: bold;
+    }
+
+    .chip.done {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .help-list, .warmup-list, .cooldown-list {
+      margin: 0;
+      padding-left: 18px;
+      line-height: 1.6;
+    }
+
+    .big-center {
+      text-align: center;
+    }
+
+    .timer-display {
+      font-size: 54px;
+      font-weight: bold;
+      margin: 12px 0;
+    }
+
+    .bottom-nav {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: white;
+      border-top: 1px solid #d1d5db;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      z-index: 100;
+    }
+
+    .nav-btn {
+      background: white;
+      color: #374151;
+      border-radius: 0;
+      padding: 12px 6px;
+      border: none;
+      font-size: 13px;
+      font-weight: bold;
+    }
+
+    .nav-btn.active {
+      color: var(--primary);
+      background: #eff6ff;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .file-input {
+      display: none;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 10px;
+    }
+
+    .chart-wrap {
+      overflow-x: auto;
+    }
+
+    .chart-box {
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 10px;
+    }
+
+    .chart-controls {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .install-box {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+
+    .feedback-box {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 12px;
+    }
+
+    .gym-panel {
+      background: #111827;
+      color: white;
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 14px;
+    }
+
+    .gym-panel .muted {
+      color: #d1d5db;
+    }
+
+    .gym-exercise-title {
+      font-size: 28px;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+
+    .quick-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .quick-grid button {
+      padding: 12px;
+    }
+
+    .overlay-toast {
+      position: fixed;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #111827;
+      color: white;
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-weight: bold;
+      box-shadow: var(--shadow);
+      z-index: 200;
+      display: none;
+    }
+
+    .overlay-toast.show {
+      display: block;
+    }
+
+    @media (max-width: 700px) {
+      .container {
+        padding: 10px;
+      }
+
+      input, select, button, textarea {
+        font-size: 16px;
+      }
+
+      .timer-display {
+        font-size: 46px;
+      }
+
+      .gym-exercise-title {
+        font-size: 24px;
+      }
+
+      .actions > button,
+      .actions > label {
+        flex: 1 1 140px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="toast" class="overlay-toast"></div>
+
+  <div class="container">
+    <div id="installBox" class="install-box hidden">
+      <strong>Можно установить на телефон</strong>
+      <div class="muted" style="margin-top:6px;">
+        На iPhone открой приложение в Safari и добавь на экран Домой.
+      </div>
+      <div class="actions">
+        <button id="installBtn" class="btn-primary">Установить</button>
+      </div>
+    </div>
+
+    <!-- ТРЕНИРОВКА -->
+    <section id="screen-training" class="screen active">
+      <div class="card">
+        <h1>🏋️ GymControl</h1>
+        <div class="muted">
+          Дневник тренировок для зала: фиксация подходов, планы, шаблоны и статистика.
+        </div>
+      </div>
+
+      <div id="disclaimerCard" class="card hidden">
+        <h2 class="section-title">Важно</h2>
+        <div class="muted">
+          Приложение служит для фиксации выполненных упражнений и не является медицинской или тренерской рекомендацией.
+          Перед началом занятий желательно получить рекомендации специалистов.
+          Приложение не несет ответственности за возможные травмы.
+        </div>
+        <div class="actions">
+          <button class="btn-primary" onclick="acceptDisclaimer()">Понятно</button>
+        </div>
+      </div>
+
+      <div id="trainingStartView">
+        <div class="card">
+          <h2 class="section-title">Начало</h2>
+          <div class="actions full">
+            <button class="btn-primary" onclick="openTrainingSetup()">Начать тренировку</button>
+            <button class="btn-success" onclick="openPlanPicker()">Запустить план</button>
+            <button class="btn-warning" onclick="startFromLastWorkout()">Повторить прошлую</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2 class="section-title">Помощь</h2>
+          <div class="muted">
+            Выбери тренировку или план, вводи вес и повторы, сохраняй подходы и отдыхай по таймеру.
+          </div>
+          <div class="actions">
+            <button class="btn-secondary" onclick="showHelpInline()">? Как пользоваться</button>
+          </div>
+          <div id="helpInlineBox" class="hint-box hidden">
+            <ol class="help-list">
+              <li>Начни тренировку или запусти план.</li>
+              <li>Сделай разминку.</li>
+              <li>Вводи вес и повторы и нажимай «Готово».</li>
+              <li>После подхода запустится таймер отдыха.</li>
+              <li>Прогресс смотри во вкладке «Статистика».</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+
+      <div id="trainingSetupView" class="hidden">
+        <div class="card">
+          <h2 class="section-title">Параметры тренировки</h2>
+          <div class="form-grid">
+            <input id="setupDate" type="date" />
+            <select id="setupSplit">
+              <option value="Full Body">Full Body</option>
+              <option value="Грудь + Трицепс">Грудь + Трицепс</option>
+              <option value="Спина + Бицепс">Спина + Бицепс</option>
+              <option value="Плечи + Ноги">Плечи + Ноги</option>
+              <option value="Грудь + Бицепс">Грудь + Бицепс</option>
+              <option value="Спина + Трицепс">Спина + Трицепс</option>
+              <option value="Ноги">Ноги</option>
+              <option value="Плечи">Плечи</option>
+              <option value="Руки">Руки</option>
+              <option value="Верх тела">Верх тела</option>
+              <option value="Низ тела">Низ тела</option>
+              <option value="Push">Push</option>
+              <option value="Pull">Pull</option>
+              <option value="Legs">Legs</option>
+            </select>
+          </div>
+          <div class="actions">
+            <button class="btn-primary" onclick="continueToWarmup()">Продолжить</button>
+            <button class="btn-secondary" onclick="closeTrainingSetup()">Назад</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="planPickerView" class="hidden">
+        <div class="card">
+          <h2 class="section-title">Выбери план</h2>
+          <div id="planPickerList"></div>
+          <div class="actions">
+            <button class="btn-secondary" onclick="closePlanPicker()">Назад</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="warmupView" class="hidden">
+        <div class="card">
+          <h2 class="section-title">Разминка</h2>
+          <div class="muted" style="margin-bottom:10px;">
+            Сделай 3–5 минут суставной разминки перед рабочей частью.
+          </div>
+          <ul class="warmup-list">
+            <li>Шея</li>
+            <li>Плечи</li>
+            <li>Локти</li>
+            <li>Кисти</li>
+            <li>Корпус</li>
+            <li>Таз</li>
+            <li>Колени</li>
+            <li>Голеностоп</li>
+          </ul>
+          <div class="actions">
+            <button class="btn-success" onclick="finishWarmup()">Разминка выполнена</button>
+            <button class="btn-secondary" onclick="finishWarmup()">Пропустить</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="gymWorkoutView" class="hidden">
+        <div class="gym-panel">
+          <div id="gymHeaderInfo" class="muted"></div>
+          <div id="gymExerciseTitle" class="gym-exercise-title">Упражнение</div>
+          <div id="gymExerciseMeta" class="muted" style="margin-bottom:10px;"></div>
+          <div id="gymExerciseStats" class="muted"></div>
+
+          <div class="form-grid" style="margin-top:14px;">
+            <select id="gymExerciseSelect" onchange="changeManualExercise()"></select>
+            <select id="gymLoadType">
+              <option value="barbell">Штанга / общий вес</option>
+              <option value="machine">Тренажер / общий вес</option>
+              <option value="dumbbell_one">1 гантель</option>
+              <option value="dumbbell_two">2 гантели</option>
+              <option value="bodyweight">Собственный вес</option>
+            </select>
+            <input id="gymWeight" type="number" min="0" step="0.1" placeholder="Вес" />
+            <input id="gymReps" type="number" min="1" step="1" placeholder="Повторы" />
+          </div>
+
+          <div class="quick-grid">
+            <button class="btn-secondary" onclick="adjustGymWeight(2.5)">+2.5</button>
+            <button class="btn-secondary" onclick="adjustGymWeight(-2.5)">-2.5</button>
+            <button class="btn-secondary" onclick="adjustGymReps(1)">+1 повтор</button>
+            <button class="btn-secondary" onclick="fillLikeLastTime()">Как в прошлый раз</button>
+          </div>
+
+          <div class="actions full" style="margin-top:14px;">
+            <button class="btn-primary" onclick="saveGymSet()">Готово</button>
+            <button class="btn-warning" onclick="nextExercise()">Следующее упражнение</button>
+            <button class="btn-danger" onclick="openCooldown()">Завершить тренировку</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2 class="section-title">Текущие подходы</h2>
+          <div id="currentWorkoutMiniList"></div>
+        </div>
+      </div>
+
+      <div id="timerView" class="hidden">
+        <div class="card big-center">
+          <h2 class="section-title">Отдых</h2>
+          <div id="timerDisplay" class="timer-display">01:30</div>
+          <div class="actions full" style="justify-content:center;">
+            <button class="btn-secondary" onclick="addRestTime(15)">+15 сек</button>
+            <button class="btn-secondary" onclick="addRestTime(30)">+30 сек</button>
+            <button class="btn-danger" onclick="finishRestEarly()">Завершить отдых</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="cooldownView" class="hidden">
+        <div class="card">
+          <h2 class="section-title">Заминка</h2>
+          <div class="muted" style="margin-bottom:10px;">
+            Сделай 2–5 минут легкой заминки и растяжки.
+          </div>
+          <ul id="cooldownList" class="cooldown-list"></ul>
+          <div class="actions">
+            <button class="btn-success" onclick="finishWorkoutFinal()">Тренировка завершена</button>
+            <button class="btn-secondary" onclick="finishWorkoutFinal()">Пропустить</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="workoutSummaryView" class="hidden">
+        <div class="card">
+          <h2 class="section-title">Итог тренировки</h2>
+          <div id="workoutSummaryBox"></div>
+          <div class="actions">
+            <button class="btn-primary" onclick="openStatsAfterWorkout()">Перейти в статистику</button>
+            <button class="btn-secondary" onclick="resetTrainingHome()">Готово</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ПЛАНЫ -->
+    <section id="screen-plans" class="screen">
+      <div class="card">
+        <h2 class="section-title">Планы тренировок</h2>
+        <div class="actions full">
+          <button class="btn-primary" onclick="showPlanBuilder()">Создать план вручную</button>
+          <button class="btn-success" onclick="showTemplateToPlanPicker()">Создать из шаблона</button>
+          <button class="btn-warning" onclick="createPlanFromLastWorkout()">Повторить прошлую тренировку</button>
+        </div>
+      </div>
+
+      <div id="planBuilderCard" class="card hidden">
+        <h2 class="section-title">Конструктор плана</h2>
+        <div class="form-grid">
+          <input id="planDate" type="date" />
+          <select id="planSplit" onchange="updatePlanExerciseOptions()">
+            <option value="Full Body">Full Body</option>
+            <option value="Грудь + Трицепс">Грудь + Трицепс</option>
+            <option value="Спина + Бицепс">Спина + Бицепс</option>
+            <option value="Плечи + Ноги">Плечи + Ноги</option>
+            <option value="Грудь + Бицепс">Грудь + Бицепс</option>
+            <option value="Спина + Трицепс">Спина + Трицепс</option>
+            <option value="Ноги">Ноги</option>
+            <option value="Плечи">Плечи</option>
+            <option value="Руки">Руки</option>
+            <option value="Верх тела">Верх тела</option>
+            <option value="Низ тела">Низ тела</option>
+            <option value="Push">Push</option>
+            <option value="Pull">Pull</option>
+            <option value="Legs">Legs</option>
+          </select>
+          <select id="planExerciseSelect"></select>
+          <input id="planCustomExercise" type="text" placeholder="Или свое упражнение" />
+          <input id="planTargetSets" type="number" min="1" step="1" placeholder="Подходы" />
+          <input id="planTargetReps" type="number" min="1" step="1" placeholder="Повторы" />
+        </div>
+        <div class="actions">
+          <button class="btn-primary" onclick="addExerciseToPlanBuilder()">Добавить упражнение</button>
+          <button class="btn-secondary" onclick="clearPlanBuilder()">Очистить конструктор</button>
+          <button class="btn-success" onclick="savePlannedWorkout()">Сохранить план</button>
+        </div>
+        <div style="margin-top:12px;">
+          <div class="muted" style="margin-bottom:8px;">Упражнения плана:</div>
+          <div id="planBuilderList"></div>
+        </div>
+      </div>
+
+      <div id="templateToPlanCard" class="card hidden">
+        <h2 class="section-title">Выбери шаблон</h2>
+        <div id="templateToPlanList"></div>
+        <div class="actions">
+          <button class="btn-secondary" onclick="hideTemplateToPlanPicker()">Закрыть</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 class="section-title">Запланированные тренировки</h2>
+        <div id="plannedWorkoutsList"></div>
+      </div>
+    </section>
+
+    <!-- СТАТИСТИКА -->
+    <section id="screen-stats" class="screen">
+      <div class="card">
+        <h2 class="section-title">Статистика</h2>
+        <div class="chart-controls">
+          <select id="progressExerciseSelect" onchange="renderProgressChart()"></select>
+          <select id="progressMetric" onchange="renderProgressChart()">
+            <option value="best_weight">Лучший расчетный вес</option>
+            <option value="volume">Тоннаж</option>
+            <option value="reps">Лучшие повторы</option>
+            <option value="sets">Количество подходов</option>
+          </select>
+        </div>
+        <div class="chart-wrap">
+          <div class="chart-box">
+            <canvas id="progressChart" width="900" height="320"></canvas>
+          </div>
+        </div>
+        <div id="progressChartHint" class="muted" style="margin-top:10px;"></div>
+      </div>
+
+      <div class="card">
+        <h2 class="section-title">Сводка по упражнениям</h2>
+        <div id="statsList" class="stats-grid"></div>
+      </div>
+
+      <div class="card">
+        <h2 class="section-title">История тренировок</h2>
+        <div id="historyList"></div>
+      </div>
+    </section>
+
+    <!-- ЕЩЕ -->
+    <section id="screen-more" class="screen">
+      <div class="card">
+        <h2 class="section-title">Шаблоны</h2>
+        <div class="form-grid">
+          <input id="templateName" type="text" placeholder="Название шаблона" />
+          <select id="templateSplit" onchange="updateTemplateExerciseOptions()">
+            <option value="Full Body">Full Body</option>
+            <option value="Грудь + Трицепс">Грудь + Трицепс</option>
+            <option value="Спина + Бицепс">Спина + Бицепс</option>
+            <option value="Плечи + Ноги">Плечи + Ноги</option>
+            <option value="Грудь + Бицепс">Грудь + Бицепс</option>
+            <option value="Спина + Трицепс">Спина + Трицепс</option>
+            <option value="Ноги">Ноги</option>
+            <option value="Плечи">Плечи</option>
+            <option value="Руки">Руки</option>
+            <option value="Верх тела">Верх тела</option>
+            <option value="Низ тела">Низ тела</option>
+            <option value="Push">Push</option>
+            <option value="Pull">Pull</option>
+            <option value="Legs">Legs</option>
+          </select>
+          <select id="templateExerciseSelect"></select>
+          <input id="templateCustomExercise" type="text" placeholder="Или свое упражнение" />
+          <input id="templateTargetSets" type="number" min="1" step="1" placeholder="Подходы" />
+          <input id="templateTargetReps" type="number" min="1" step="1" placeholder="Повторы" />
+        </div>
+        <div class="actions">
+          <button class="btn-primary" onclick="addExerciseToTemplateBuilder()">Добавить в шаблон</button>
+          <button class="btn-secondary" onclick="clearTemplateBuilder()">Очистить</button>
+          <button class="btn-success" onclick="saveTemplate()">Сохранить шаблон</button>
+        </div>
+        <div style="margin-top:12px;">
+          <div class="muted" style="margin-bottom:8px;">Конструктор шаблона:</div>
+          <div id="templateBuilderList"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 class="section-title">Мои шаблоны</h2>
+        <div id="templatesList"></div>
+      </div>
+
+      <div class="card">
+        <h2 class="section-title">Готовые программы для новичков</h2>
+        <div id="starterProgramsList"></div>
+      </div>
+
+      <div class="card">
+        <h2 class="section-title">Резервная копия</h2>
+        <div class="actions">
+          <button class="btn-primary" onclick="exportData()">Экспорт JSON</button>
+          <button class="btn-secondary" onclick="document.getElementById('importFile').click()">Импорт JSON</button>
+        </div>
+        <input id="importFile" class="file-input" type="file" accept=".json,application/json" onchange="importData(event)" />
+      </div>
+
+      <div class="card">
+        <h2 class="section-title">Обратная связь</h2>
+        <div class="feedback-box">
+          <div class="muted" style="margin-bottom:8px;">
+            Для тестирования можно добавить свои ссылки.
+          </div>
+          <div class="actions full">
+            <button class="btn-secondary" onclick="openTelegramFeedback()">Оставить отзыв</button>
+            <button class="btn-secondary" onclick="openTelegramFeedback()">Сообщить о проблеме</button>
+            <button class="btn-secondary" onclick="openTelegramFeedback()">Предложить идею</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 class="section-title">Помощь</h2>
+        <ol class="help-list">
+          <li>Выбери тренировку или запусти план.</li>
+          <li>Сделай разминку.</li>
+          <li>Вводи вес и повторы и нажимай «Готово».</li>
+          <li>После подхода отдыхай по таймеру.</li>
+          <li>Прогресс смотри во вкладке «Статистика».</li>
+        </ol>
+      </div>
+
+      <div class="card">
+        <h2 class="section-title">Дисклеймер</h2>
+        <div class="muted">
+          Приложение предназначено для фиксации выполненных упражнений и не заменяет рекомендации врача,
+          тренера или иных специалистов. Перед началом занятий рекомендуется получить рекомендации специалистов.
+          Пользователь выполняет упражнения под свою ответственность. Приложение не несет ответственности за возможные травмы.
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <nav class="bottom-nav">
+    <button id="nav-training" class="nav-btn active" onclick="switchScreen('training')">Тренировка</button>
+    <button id="nav-plans" class="nav-btn" onclick="switchScreen('plans')">Планы</button>
+    <button id="nav-stats" class="nav-btn" onclick="switchScreen('stats')">Статистика</button>
+    <button id="nav-more" class="nav-btn" onclick="switchScreen('more')">Еще</button>
+  </nav>
+
+  <script>
+    // ========= ДАННЫЕ =========
+    let workoutHistory = [];
+    let customExercisesBySplit = {};
+    let plannedWorkouts = [];
+    let templates = [];
+    let workoutSettings = {
+      disclaimerAccepted: false
+    };
+
+    let currentSession = {
+      active: false,
+      date: "",
+      split: "",
+      fromPlanId: null,
+      planExercises: [],
+      currentExerciseIndex: 0,
+      sets: [],
+      state: "idle", // idle | setup | warmup | workout | timer | cooldown | summary | plan-picker
+      pendingSummary: null
+    };
+
+    let planBuilderExercises = [];
+    let templateBuilderExercises = [];
+
+    let restTimerInterval = null;
+    let restTimeLeft = 90;
+    let deferredPrompt = null;
+
+    const FEEDBACK_TELEGRAM = "https://t.me/";
+    const STARTER_PROGRAMS = [
+      {
+        id: "starter-fullbody-a",
+        title: "Новичок Full Body A",
+        split: "Full Body",
+        exercises: [
+          { exercise: "Присед", targetSets: 3, targetReps: 10 },
+          { exercise: "Жим лежа", targetSets: 3, targetReps: 8 },
+          { exercise: "Тяга верхнего блока", targetSets: 3, targetReps: 10 },
+          { exercise: "Жим гантелей сидя", targetSets: 2, targetReps: 12 }
+        ]
+      },
+      {
+        id: "starter-fullbody-b",
+        title: "Новичок Full Body B",
+        split: "Full Body",
+        exercises: [
+          { exercise: "Жим ногами", targetSets: 3, targetReps: 10 },
+          { exercise: "Жим гантелей лежа", targetSets: 3, targetReps: 10 },
+          { exercise: "Тяга горизонтального блока", targetSets: 3, targetReps: 10 },
+          { exercise: "Подъем гантелей на бицепс", targetSets: 2, targetReps: 12 }
+        ]
+      },
+      {
+        id: "starter-chest-triceps",
+        title: "Новичок Грудь + Трицепс",
+        split: "Грудь + Трицепс",
+        exercises: [
+          { exercise: "Жим лежа", targetSets: 4, targetReps: 8 },
+          { exercise: "Жим гантелей лежа", targetSets: 3, targetReps: 10 },
+          { exercise: "Сведение рук в тренажере", targetSets: 3, targetReps: 12 },
+          { exercise: "Разгибание рук на блоке", targetSets: 3, targetReps: 12 }
+        ]
+      },
+      {
+        id: "starter-back-biceps",
+        title: "Новичок Спина + Бицепс",
+        split: "Спина + Бицепс",
+        exercises: [
+          { exercise: "Тяга верхнего блока", targetSets: 4, targetReps: 10 },
+          { exercise: "Тяга горизонтального блока", targetSets: 3, targetReps: 12 },
+          { exercise: "Тяга гантели одной рукой", targetSets: 3, targetReps: 10 },
+          { exercise: "Подъем штанги на бицепс", targetSets: 3, targetReps: 10 }
+        ]
+      },
+      {
+        id: "starter-legs-shoulders",
+        title: "Новичок Ноги + Плечи",
+        split: "Плечи + Ноги",
+        exercises: [
+          { exercise: "Присед", targetSets: 4, targetReps: 8 },
+          { exercise: "Жим ногами", targetSets: 3, targetReps: 10 },
+          { exercise: "Жим гантелей сидя", targetSets: 3, targetReps: 10 },
+          { exercise: "Разведение гантелей в стороны", targetSets: 3, targetReps: 12 }
+        ]
+      }
+    ];
+
+    const baseExercisesBySplit = {
+      "Full Body": ["Присед", "Жим лежа", "Тяга верхнего блока", "Жим гантелей сидя", "Румынская тяга", "Планка"],
+      "Грудь + Трицепс": ["Жим лежа", "Жим гантелей лежа", "Жим гантелей на наклонной", "Сведение рук в тренажере", "Разводка гантелей", "Отжимания на брусьях", "Французский жим", "Разгибание рук на блоке", "Разгибание гантели из-за головы"],
+      "Спина + Бицепс": ["Тяга верхнего блока", "Тяга горизонтального блока", "Тяга штанги в наклоне", "Тяга гантели одной рукой", "Подтягивания", "Шраги", "Подъем штанги на бицепс", "Подъем гантелей на бицепс", "Молотки"],
+      "Плечи + Ноги": ["Жим гантелей сидя", "Жим штанги стоя", "Разведение гантелей в стороны", "Разведение гантелей в наклоне", "Тяга к подбородку", "Присед", "Жим ногами", "Выпады", "Сгибание ног", "Разгибание ног", "Подъемы на икры"],
+      "Грудь + Бицепс": ["Жим лежа", "Жим гантелей лежа", "Жим гантелей на наклонной", "Сведение рук в тренажере", "Разводка гантелей", "Подъем штанги на бицепс", "Подъем гантелей на бицепс", "Молотки", "Сгибание рук на скамье Скотта"],
+      "Спина + Трицепс": ["Тяга верхнего блока", "Тяга горизонтального блока", "Тяга штанги в наклоне", "Тяга гантели одной рукой", "Подтягивания", "Гиперэкстензия", "Французский жим", "Разгибание рук на блоке", "Отжимания узким хватом", "Разгибание гантели из-за головы"],
+      "Ноги": ["Присед", "Жим ногами", "Выпады", "Румынская тяга", "Сгибание ног", "Разгибание ног", "Ягодичный мост", "Подъемы на икры"],
+      "Плечи": ["Жим гантелей сидя", "Жим штанги стоя", "Разведение гантелей в стороны", "Разведение гантелей в наклоне", "Тяга к подбородку", "Обратная бабочка"],
+      "Руки": ["Подъем штанги на бицепс", "Подъем гантелей на бицепс", "Молотки", "Сгибание рук на скамье Скотта", "Французский жим", "Разгибание рук на блоке", "Разгибание гантели из-за головы"],
+      "Верх тела": ["Жим лежа", "Жим гантелей лежа", "Тяга верхнего блока", "Тяга горизонтального блока", "Жим гантелей сидя", "Подъем штанги на бицепс", "Французский жим"],
+      "Низ тела": ["Присед", "Жим ногами", "Выпады", "Румынская тяга", "Сгибание ног", "Разгибание ног", "Подъемы на икры"],
+      "Push": ["Жим лежа", "Жим гантелей лежа", "Жим гантелей на наклонной", "Жим штанги стоя", "Жим гантелей сидя", "Разведение гантелей в стороны", "Французский жим", "Разгибание рук на блоке"],
+      "Pull": ["Тяга верхнего блока", "Тяга горизонтального блока", "Тяга штанги в наклоне", "Тяга гантели одной рукой", "Подтягивания", "Шраги", "Подъем штанги на бицепс", "Молотки"],
+      "Legs": ["Присед", "Жим ногами", "Выпады", "Румынская тяга", "Сгибание ног", "Разгибание ног", "Ягодичный мост", "Подъемы на икры"]
+    };
+
+    // ========= STORAGE =========
+    function saveData() {
+      localStorage.setItem("workoutHistory", JSON.stringify(workoutHistory));
+      localStorage.setItem("customExercisesBySplit", JSON.stringify(customExercisesBySplit));
+      localStorage.setItem("plannedWorkouts", JSON.stringify(plannedWorkouts));
+      localStorage.setItem("templates", JSON.stringify(templates));
+      localStorage.setItem("workoutSettings", JSON.stringify(workoutSettings));
+    }
+
+    function loadData() {
+      workoutHistory = JSON.parse(localStorage.getItem("workoutHistory") || "[]");
+      customExercisesBySplit = JSON.parse(localStorage.getItem("customExercisesBySplit") || "{}");
+      plannedWorkouts = JSON.parse(localStorage.getItem("plannedWorkouts") || "[]");
+      templates = JSON.parse(localStorage.getItem("templates") || "[]");
+      workoutSettings = JSON.parse(localStorage.getItem("workoutSettings") || '{"disclaimerAccepted":false}');
+    }
+
+    // ========= HELPERS =========
+    function normalizeExerciseName(name) {
+      return String(name || "").trim().replace(/\s+/g, " ");
+    }
+
+    function showToast(text) {
+      const toast = document.getElementById("toast");
+      toast.textContent = text;
+      toast.classList.add("show");
+      setTimeout(() => toast.classList.remove("show"), 1800);
+    }
+
+    function switchScreen(name) {
+      ["training", "plans", "stats", "more"].forEach(screen => {
+        document.getElementById("screen-" + screen).classList.toggle("active", screen === name);
+        document.getElementById("nav-" + screen).classList.toggle("active", screen === name);
+      });
+
+      if (name === "stats") {
+        renderStatsScreen();
+      }
+      if (name === "plans") {
+        renderPlansScreen();
+      }
+      if (name === "more") {
+        renderMoreScreen();
+      }
+      if (name === "training") {
+        renderTrainingScreen();
+      }
+    }
+
+    function getMergedExercises(split) {
+      const base = baseExercisesBySplit[split] || [];
+      const custom = customExercisesBySplit[split] || [];
+      return [...new Set([...base, ...custom])];
+    }
+
+    function saveCustomExercise(split, exerciseName) {
+      const cleanName = normalizeExerciseName(exerciseName);
+      if (!cleanName) return;
+
+      if (!customExercisesBySplit[split]) {
+        customExercisesBySplit[split] = [];
+      }
+
+      const exists = getMergedExercises(split).some(
+        item => item.toLowerCase() === cleanName.toLowerCase()
+      );
+
+      if (!exists) {
+        customExercisesBySplit[split].push(cleanName);
+        customExercisesBySplit[split].sort((a, b) => a.localeCompare(b, "ru"));
+        saveData();
+      }
+    }
+
+    function getLoadTypeLabel(loadType) {
+      if (loadType === "barbell") return "Штанга";
+      if (loadType === "machine") return "Тренажер";
+      if (loadType === "dumbbell_one") return "1 гантель";
+      if (loadType === "dumbbell_two") return "2 гантели";
+      if (loadType === "bodyweight") return "Собственный вес";
+      return "Нагрузка";
+    }
+
+    function getMultiplier(loadType) {
+      if (loadType === "dumbbell_two") return 2;
+      return 1;
+    }
+
+    function getDisplayWeightText(set) {
+      if (set.loadType === "dumbbell_two") return `${set.enteredWeight} кг × 2`;
+      if (set.loadType === "dumbbell_one") return `${set.enteredWeight} кг`;
+      if (set.loadType === "bodyweight") return "собственный вес";
+      return `${set.enteredWeight} кг`;
+    }
+
+    function getAllSets() {
+      const allSets = [];
+      workoutHistory.forEach(workout => workout.sets.forEach(set => allSets.push(set)));
+      currentSession.sets.forEach(set => allSets.push(set));
+      return allSets;
+    }
+
+    function getExerciseStats(exerciseName) {
+      if (!exerciseName) return null;
+
+      const matched = getAllSets().filter(
+        set => set.exercise.toLowerCase() === exerciseName.toLowerCase()
+      );
+
+      if (!matched.length) return null;
+
+      const last = matched[matched.length - 1];
+      const previous = matched.length >= 2 ? matched[matched.length - 2] : null;
+
+      let best = matched[0];
+      matched.forEach(set => {
+        if (set.totalWeight > best.totalWeight) {
+          best = set;
+        } else if (set.totalWeight === best.totalWeight && set.reps > best.reps) {
+          best = set;
+        }
+      });
+
+      return { last, previous, best };
+    }
+
+    function getCurrentExerciseObject() {
+      if (!currentSession.planExercises.length) return null;
+      return currentSession.planExercises[currentSession.currentExerciseIndex] || null;
+    }
+
+    function getCurrentExerciseName() {
+      const item = getCurrentExerciseObject();
+      if (item) return item.exercise;
+
+      const select = document.getElementById("gymExerciseSelect");
+      return select ? select.value : "";
+    }
+
+    function getDoneSetsForExercise(exerciseName) {
+      return currentSession.sets.filter(
+        set => set.exercise.toLowerCase() === exerciseName.toLowerCase()
+      ).length;
+    }
+
+    function getCooldownBySplit(split) {
+      const map = {
+        "Грудь + Трицепс": ["Растяжка грудных мышц", "Растяжка передней поверхности плеч", "Растяжка трицепса"],
+        "Спина + Бицепс": ["Растяжка широчайших", "Растяжка бицепса", "Мягкая растяжка плеч"],
+        "Плечи + Ноги": ["Растяжка квадрицепса", "Растяжка ягодичных", "Растяжка дельтовидных"],
+        "Грудь + Бицепс": ["Растяжка грудных мышц", "Растяжка бицепса", "Мягкая растяжка плеч"],
+        "Спина + Трицепс": ["Растяжка широчайших", "Растяжка трицепса", "Растяжка плеч"],
+        "Ноги": ["Растяжка квадрицепса", "Растяжка задней поверхности бедра", "Растяжка икр"],
+        "Плечи": ["Растяжка передней дельты", "Растяжка средней дельты", "Мягкая растяжка шеи"],
+        "Руки": ["Растяжка бицепса", "Растяжка трицепса", "Растяжка предплечий"],
+        "Верх тела": ["Растяжка грудных", "Растяжка широчайших", "Растяжка плеч"],
+        "Низ тела": ["Растяжка квадрицепса", "Растяжка ягодичных", "Растяжка икр"],
+        "Push": ["Растяжка грудных", "Растяжка плеч", "Растяжка трицепса"],
+        "Pull": ["Растяжка широчайших", "Растяжка бицепса", "Растяжка задней дельты"],
+        "Legs": ["Растяжка квадрицепса", "Растяжка бицепса бедра", "Растяжка икр"],
+        "Full Body": ["Растяжка грудных", "Растяжка широчайших", "Растяжка ног"]
+      };
+      return map[split] || ["Легкая растяжка основных работавших мышц", "Спокойное дыхание", "Ходьба 2–3 минуты"];
+    }
+
+    function buildSet({
+      date,
+      split,
+      exercise,
+      loadType,
+      enteredWeight,
+      reps
+    }) {
+      const multiplier = getMultiplier(loadType);
+      const totalWeight = enteredWeight * multiplier;
+      const volume = totalWeight * reps;
+      return {
+        id: Date.now() + Math.random(),
+        date,
+        split,
+        exercise,
+        loadType,
+        enteredWeight,
+        totalWeight,
+        reps,
+        volume
+      };
+    }
+
+    function getAllExerciseNamesSorted() {
+      const names = new Set();
+      Object.values(baseExercisesBySplit).forEach(arr => arr.forEach(item => names.add(item)));
+      Object.values(customExercisesBySplit).forEach(arr => arr.forEach(item => names.add(item)));
+      getAllSets().forEach(set => names.add(set.exercise));
+      return [...names].sort((a, b) => a.localeCompare(b, "ru"));
+    }
+
+    // ========= TRAINING FLOW =========
+    function acceptDisclaimer() {
+      workoutSettings.disclaimerAccepted = true;
+      saveData();
+      renderTrainingScreen();
+    }
+
+    function renderTrainingScreen() {
+      document.getElementById("disclaimerCard").classList.toggle("hidden", workoutSettings.disclaimerAccepted);
+
+      document.getElementById("trainingStartView").classList.add("hidden");
+      document.getElementById("trainingSetupView").classList.add("hidden");
+      document.getElementById("warmupView").classList.add("hidden");
+      document.getElementById("gymWorkoutView").classList.add("hidden");
+      document.getElementById("timerView").classList.add("hidden");
+      document.getElementById("cooldownView").classList.add("hidden");
+      document.getElementById("workoutSummaryView").classList.add("hidden");
+      document.getElementById("planPickerView").classList.add("hidden");
+
+      switch (currentSession.state) {
+        case "setup":
+          document.getElementById("trainingSetupView").classList.remove("hidden");
+          break;
+        case "warmup":
+          document.getElementById("warmupView").classList.remove("hidden");
+          break;
+        case "workout":
+          document.getElementById("gymWorkoutView").classList.remove("hidden");
+          renderGymWorkoutView();
+          break;
+        case "timer":
+          document.getElementById("timerView").classList.remove("hidden");
+          break;
+        case "cooldown":
+          document.getElementById("cooldownView").classList.remove("hidden");
+          renderCooldown();
+          break;
+        case "summary":
+          document.getElementById("workoutSummaryView").classList.remove("hidden");
+          renderWorkoutSummary();
+          break;
+        case "plan-picker":
+          document.getElementById("planPickerView").classList.remove("hidden");
+          renderPlanPicker();
+          break;
+        default:
+          document.getElementById("trainingStartView").classList.remove("hidden");
+      }
+    }
+
+    function showHelpInline() {
+      document.getElementById("helpInlineBox").classList.toggle("hidden");
+    }
+
+    function openTrainingSetup() {
+      currentSession.state = "setup";
+      document.getElementById("setupDate").valueAsDate = new Date();
+      renderTrainingScreen();
+    }
+
+    function closeTrainingSetup() {
+      currentSession.state = "idle";
+      renderTrainingScreen();
+    }
+
+    function continueToWarmup() {
+      currentSession.date = document.getElementById("setupDate").value;
+      currentSession.split = document.getElementById("setupSplit").value;
+      currentSession.fromPlanId = null;
+      currentSession.planExercises = [];
+      currentSession.currentExerciseIndex = 0;
+      currentSession.sets = [];
+      currentSession.pendingSummary = null;
+      currentSession.active = true;
+      currentSession.state = "warmup";
+      renderTrainingScreen();
+    }
+
+    function openPlanPicker() {
+      currentSession.state = "plan-picker";
+      renderTrainingScreen();
+    }
+
+    function closePlanPicker() {
+      currentSession.state = "idle";
+      renderTrainingScreen();
+    }
+
+    function renderPlanPicker() {
+      const box = document.getElementById("planPickerList");
+      box.innerHTML = "";
+
+      if (!plannedWorkouts.length) {
+        box.innerHTML = '<p class="empty">Планов пока нет</p>';
+        return;
+      }
+
+      plannedWorkouts.forEach(plan => {
+        const div = document.createElement("div");
+        div.className = "list-item";
+        div.innerHTML = `
+          <div class="list-top">
+            <div>
+              <strong>${plan.date}</strong>
+              <div style="margin-top:6px;"><span class="badge">${plan.split}</span></div>
+              <div class="muted" style="margin-top:8px;">
+                ${plan.exercises.map((item, i) => `${i + 1}. ${item.exercise} — ${item.targetSets}×${item.targetReps}`).join("<br>")}
+              </div>
+            </div>
+            <div class="inline-actions">
+              <button class="btn-primary" onclick="startPlannedWorkout(${plan.id})">Запустить</button>
+            </div>
+          </div>
+        `;
+        box.appendChild(div);
+      });
+    }
+
+    function startPlannedWorkout(planId) {
+      const plan = plannedWorkouts.find(item => item.id === planId);
+      if (!plan) return;
+
+      currentSession.date = plan.date;
+      currentSession.split = plan.split;
+      currentSession.fromPlanId = plan.id;
+      currentSession.planExercises = plan.exercises.map(item => ({ ...item }));
+      currentSession.currentExerciseIndex = 0;
+      currentSession.sets = [];
+      currentSession.pendingSummary = null;
+      currentSession.active = true;
+      currentSession.state = "warmup";
+      renderTrainingScreen();
+    }
+
+    function startFromLastWorkout() {
+      if (!workoutHistory.length) {
+        alert("История тренировок пока пуста");
+        return;
+      }
+
+      const lastWorkout = workoutHistory[0];
+      const grouped = {};
+      lastWorkout.sets.forEach(set => {
+        if (!grouped[set.exercise]) {
+          grouped[set.exercise] = {
+            exercise: set.exercise,
+            targetSets: 0,
+            targetReps: set.reps
+          };
+        }
+        grouped[set.exercise].targetSets += 1;
+        if (set.reps > grouped[set.exercise].targetReps) {
+          grouped[set.exercise].targetReps = set.reps;
+        }
+      });
+
+      currentSession.date = new Date().toISOString().slice(0, 10);
+      currentSession.split = lastWorkout.split;
+      currentSession.fromPlanId = null;
+      currentSession.planExercises = Object.values(grouped);
+      currentSession.currentExerciseIndex = 0;
+      currentSession.sets = [];
+      currentSession.pendingSummary = null;
+      currentSession.active = true;
+      currentSession.state = "warmup";
+      renderTrainingScreen();
+    }
+
+    function finishWarmup() {
+      currentSession.state = "workout";
+      renderTrainingScreen();
+      fillGymFormDefaults();
+    }
+
+    function updateGymExerciseOptions() {
+      const select = document.getElementById("gymExerciseSelect");
+      const all = currentSession.planExercises.length
+        ? currentSession.planExercises.map(item => item.exercise)
+        : getMergedExercises(currentSession.split);
+
+      select.innerHTML = "";
+      [...new Set(all)].forEach(exercise => {
+        const option = document.createElement("option");
+        option.value = exercise;
+        option.textContent = exercise;
+        select.appendChild(option);
+      });
+
+      const current = getCurrentExerciseObject();
+      if (current) {
+        select.value = current.exercise;
+      }
+    }
+
+    function renderGymWorkoutView() {
+      updateGymExerciseOptions();
+
+      const currentExerciseObj = getCurrentExerciseObject();
+      const exerciseName = currentExerciseObj
+        ? currentExerciseObj.exercise
+        : document.getElementById("gymExerciseSelect").value;
+
+      const headerInfo = [];
+      if (currentSession.date) headerInfo.push(currentSession.date);
+      if (currentSession.split) headerInfo.push(currentSession.split);
+      if (currentExerciseObj) headerInfo.push(`Упражнение ${currentSession.currentExerciseIndex + 1} из ${currentSession.planExercises.length}`);
+      document.getElementById("gymHeaderInfo").textContent = headerInfo.join(" · ");
+
+      document.getElementById("gymExerciseTitle").textContent = exerciseName || "Упражнение";
+      document.getElementById("gymExerciseMeta").textContent = currentExerciseObj
+        ? `Цель: ${currentExerciseObj.targetSets}×${currentExerciseObj.targetReps} · Сделано подходов: ${getDoneSetsForExercise(exerciseName)}/${currentExerciseObj.targetSets}`
+        : "Свободная тренировка";
+
+      const stats = getExerciseStats(exerciseName);
+      document.getElementById("gymExerciseStats").textContent = stats
+        ? `Последний раз: ${getDisplayWeightText(stats.last)} × ${stats.last.reps} · Лучший: ${getDisplayWeightText(stats.best)} × ${stats.best.reps}`
+        : "Истории по упражнению пока нет";
+
+      renderCurrentWorkoutMiniList();
+    }
+
+    function fillGymFormDefaults() {
+      const exerciseName = getCurrentExerciseObject()
+        ? getCurrentExerciseObject().exercise
+        : document.getElementById("gymExerciseSelect").value;
+
+      const stats = getExerciseStats(exerciseName);
+      if (!stats) {
+        document.getElementById("gymLoadType").value = "barbell";
+        document.getElementById("gymWeight").value = "";
+        document.getElementById("gymReps").value = "";
+        renderGymWorkoutView();
+        return;
+      }
+
+      document.getElementById("gymLoadType").value = stats.last.loadType;
+      document.getElementById("gymWeight").value = stats.last.loadType === "bodyweight" ? "" : stats.last.enteredWeight;
+      document.getElementById("gymReps").value = stats.last.reps;
+      renderGymWorkoutView();
+    }
+
+    function changeManualExercise() {
+      fillGymFormDefaults();
+    }
+
+    function adjustGymWeight(delta) {
+      const input = document.getElementById("gymWeight");
+      const current = parseFloat(input.value || "0");
+      let next = current + delta;
+      if (next < 0) next = 0;
+      input.value = Number(next.toFixed(1));
+    }
+
+    function adjustGymReps(delta) {
+      const input = document.getElementById("gymReps");
+      const current = parseInt(input.value || "0");
+      let next = current + delta;
+      if (next < 1) next = 1;
+      input.value = next;
+    }
+
+    function fillLikeLastTime() {
+      fillGymFormDefaults();
+    }
+
+    function getPostSetMessage(exerciseName, set) {
+      const matched = getAllSets().filter(
+        item => item.exercise.toLowerCase() === exerciseName.toLowerCase()
+      );
+
+      if (matched.length <= 1) return "Подход сохранен";
+
+      const current = matched[matched.length - 1];
+      const previous = matched[matched.length - 2];
+
+      let best = matched[0];
+      matched.forEach(item => {
+        if (item.totalWeight > best.totalWeight || (item.totalWeight === best.totalWeight && item.reps > best.reps)) {
+          best = item;
+        }
+      });
+
+      if (current.id === best.id) return "Новый лучший результат";
+      if (current.totalWeight > previous.totalWeight) return "Лучше прошлого раза";
+      if (current.totalWeight === previous.totalWeight && current.reps > previous.reps) return "Больше повторов, чем раньше";
+      if (current.totalWeight < previous.totalWeight || current.reps < previous.reps) return "Ниже прошлого результата";
+      return "Подход сохранен";
+    }
+
+    function saveGymSet() {
+      const exercise = document.getElementById("gymExerciseSelect").value;
+      const loadType = document.getElementById("gymLoadType").value;
+      const reps = parseInt(document.getElementById("gymReps").value);
+      let enteredWeight = 0;
+
+      if (!exercise || isNaN(reps)) {
+        alert("Укажи упражнение и повторы");
+        return;
+      }
+
+      if (loadType !== "bodyweight") {
+        enteredWeight = parseFloat(document.getElementById("gymWeight").value);
+        if (isNaN(enteredWeight)) {
+          alert("Укажи вес");
+          return;
+        }
+      }
+
+      const set = buildSet({
+        date: currentSession.date,
+        split: currentSession.split,
+        exercise,
+        loadType,
+        enteredWeight,
+        reps
+      });
+
+      currentSession.sets.push(set);
+      const message = getPostSetMessage(exercise, set);
+      showToast(message);
+
+      currentSession.state = "timer";
+      restTimeLeft = 90;
+      startRestTimer();
+      saveData();
+      renderTrainingScreen();
+    }
+
+    function renderCurrentWorkoutMiniList() {
+      const box = document.getElementById("currentWorkoutMiniList");
+      box.innerHTML = "";
+
+      if (!currentSession.sets.length) {
+        box.innerHTML = '<p class="empty">Подходов пока нет</p>';
+        return;
+      }
+
+      currentSession.sets.slice().reverse().forEach(set => {
+        const div = document.createElement("div");
+        div.className = "list-item";
+        div.innerHTML = `
+          <div class="list-top">
+            <div>
+              <strong>${set.exercise}</strong> — ${getDisplayWeightText(set)} × ${set.reps}
+              <div class="muted">${getLoadTypeLabel(set.loadType)} · тоннаж ${set.volume} кг</div>
+            </div>
+          </div>
+        `;
+        box.appendChild(div);
+      });
+    }
+
+    function nextExercise() {
+      if (!currentSession.planExercises.length) {
+        showToast("В свободной тренировке сам выбери следующее упражнение");
+        return;
+      }
+
+      if (currentSession.currentExerciseIndex < currentSession.planExercises.length - 1) {
+        currentSession.currentExerciseIndex += 1;
+        renderGymWorkoutView();
+        fillGymFormDefaults();
+        showToast("Следующее упражнение");
+      } else {
+        showToast("Это последнее упражнение в плане");
+      }
+    }
+
+    function openCooldown() {
+      if (!currentSession.sets.length) {
+        alert("В тренировке пока нет подходов");
+        return;
+      }
+      stopRestTimerInternal();
+      currentSession.state = "cooldown";
+      renderTrainingScreen();
+    }
+
+    function renderCooldown() {
+      const list = document.getElementById("cooldownList");
+      list.innerHTML = "";
+      getCooldownBySplit(currentSession.split).forEach(item => {
+        const li = document.createElement("li");
+        li.textContent = item;
+        list.appendChild(li);
+      });
+    }
+
+    function finishWorkoutFinal() {
+      const totalVolume = currentSession.sets.reduce((sum, set) => sum + set.volume, 0);
+      const exercises = [...new Set(currentSession.sets.map(set => set.exercise))];
+
+      const historyItem = {
+        id: Date.now(),
+        date: currentSession.date,
+        split: currentSession.split,
+        sets: [...currentSession.sets]
+      };
+
+      workoutHistory.unshift(historyItem);
+
+      if (currentSession.fromPlanId) {
+        plannedWorkouts = plannedWorkouts.filter(item => item.id !== currentSession.fromPlanId);
+      }
+
+      currentSession.pendingSummary = {
+        date: currentSession.date,
+        split: currentSession.split,
+        exercises: exercises.length,
+        sets: currentSession.sets.length,
+        totalVolume
+      };
+
+      saveData();
+      currentSession.state = "summary";
+      renderTrainingScreen();
+    }
+
+    function renderWorkoutSummary() {
+      const data = currentSession.pendingSummary;
+      const box = document.getElementById("workoutSummaryBox");
+      if (!data) {
+        box.innerHTML = '<p class="empty">Нет данных</p>';
+        return;
+      }
+
+      box.innerHTML = `
+        <div class="summary-box">
+          ${data.date} · ${data.split}
+        </div>
+        <div class="muted">
+          Упражнений: ${data.exercises}<br>
+          Подходов: ${data.sets}<br>
+          Общий тоннаж: ${data.totalVolume} кг
+        </div>
+      `;
+    }
+
+    function openStatsAfterWorkout() {
+      resetTrainingSessionState();
+      switchScreen("stats");
+    }
+
+    function resetTrainingHome() {
+      resetTrainingSessionState();
+      switchScreen("training");
+    }
+
+    function resetTrainingSessionState() {
+      stopRestTimerInternal();
+      currentSession = {
+        active: false,
+        date: "",
+        split: "",
+        fromPlanId: null,
+        planExercises: [],
+        currentExerciseIndex: 0,
+        sets: [],
+        state: "idle",
+        pendingSummary: null
+      };
+      renderTrainingScreen();
+    }
+
+    // ========= TIMER =========
+    function formatTime(seconds) {
+      const min = Math.floor(seconds / 60);
+      const sec = seconds % 60;
+      return String(min).padStart(2, "0") + ":" + String(sec).padStart(2, "0");
+    }
+
+    function startRestTimer() {
+      stopRestTimerInternal();
+      document.getElementById("timerDisplay").textContent = formatTime(restTimeLeft);
+
+      restTimerInterval = setInterval(() => {
+        restTimeLeft -= 1;
+        document.getElementById("timerDisplay").textContent = formatTime(restTimeLeft);
+
+        if (restTimeLeft <= 0) {
+          finishRestEarly();
+        }
+      }, 1000);
+    }
+
+    function stopRestTimerInternal() {
+      if (restTimerInterval) {
+        clearInterval(restTimerInterval);
+        restTimerInterval = null;
+      }
+    }
+
+    function addRestTime(seconds) {
+      restTimeLeft += seconds;
+      document.getElementById("timerDisplay").textContent = formatTime(restTimeLeft);
+    }
+
+    function finishRestEarly() {
+      stopRestTimerInternal();
+      currentSession.state = "workout";
+      renderTrainingScreen();
+      renderGymWorkoutView();
+      showToast("Отдых завершен");
+    }
+
+    // ========= PLANS =========
+    function renderPlansScreen() {
+      updatePlanExerciseOptions();
+      renderPlanBuilder();
+      renderPlannedWorkouts();
+      renderTemplateToPlanList();
+    }
+
+    function showPlanBuilder() {
+      document.getElementById("planBuilderCard").classList.remove("hidden");
+      document.getElementById("planDate").valueAsDate = new Date();
+      updatePlanExerciseOptions();
+    }
+
+    function showTemplateToPlanPicker() {
+      document.getElementById("templateToPlanCard").classList.remove("hidden");
+      renderTemplateToPlanList();
+    }
+
+    function hideTemplateToPlanPicker() {
+      document.getElementById("templateToPlanCard").classList.add("hidden");
+    }
+
+    function updatePlanExerciseOptions() {
+      const split = document.getElementById("planSplit").value;
+      const select = document.getElementById("planExerciseSelect");
+      const exercises = getMergedExercises(split);
+      select.innerHTML = "";
+
+      exercises.forEach(exercise => {
+        const option = document.createElement("option");
+        option.value = exercise;
+        option.textContent = exercise;
+        select.appendChild(option);
+      });
+    }
+
+    function addExerciseToPlanBuilder() {
+      const split = document.getElementById("planSplit").value;
+      const selected = document.getElementById("planExerciseSelect").value;
+      const custom = normalizeExerciseName(document.getElementById("planCustomExercise").value);
+      const exercise = custom || selected;
+      const targetSets = parseInt(document.getElementById("planTargetSets").value);
+      const targetReps = parseInt(document.getElementById("planTargetReps").value);
+
+      if (!exercise) {
+        alert("Выбери упражнение или введи свое");
+        return;
+      }
+
+      if (isNaN(targetSets) || isNaN(targetReps)) {
+        alert("Укажи подходы и повторы");
+        return;
+      }
+
+      if (custom) {
+        saveCustomExercise(split, custom);
+        updatePlanExerciseOptions();
+        updateTemplateExerciseOptions();
+      }
+
+      planBuilderExercises.push({ exercise, targetSets, targetReps });
+      document.getElementById("planCustomExercise").value = "";
+      document.getElementById("planTargetSets").value = "";
+      document.getElementById("planTargetReps").value = "";
+      renderPlanBuilder();
+    }
+
+    function clearPlanBuilder() {
+      planBuilderExercises = [];
+      renderPlanBuilder();
+    }
+
+    function renderPlanBuilder() {
+      const box = document.getElementById("planBuilderList");
+      box.innerHTML = "";
+
+      if (!planBuilderExercises.length) {
+        box.innerHTML = '<p class="empty">Пока ничего не добавлено</p>';
+        return;
+      }
+
+      planBuilderExercises.forEach((item, index) => {
+        const div = document.createElement("div");
+        div.className = "list-item";
+        div.innerHTML = `
+          <div class="list-top">
+            <div>
+              <strong>${index + 1}. ${item.exercise}</strong>
+              <div class="muted">Цель: ${item.targetSets} × ${item.targetReps}</div>
+            </div>
+            <div class="inline-actions">
+              <button class="btn-danger" onclick="removePlanBuilderExercise(${index})">Удалить</button>
+            </div>
+          </div>
+        `;
+        box.appendChild(div);
+      });
+    }
+
+    function removePlanBuilderExercise(index) {
+      planBuilderExercises.splice(index, 1);
+      renderPlanBuilder();
+    }
+
+    function savePlannedWorkout() {
+      const date = document.getElementById("planDate").value;
+      const split = document.getElementById("planSplit").value;
+
+      if (!date || !split || !planBuilderExercises.length) {
+        alert("Укажи дату, сплит и добавь упражнения");
+        return;
+      }
+
+      plannedWorkouts.unshift({
+        id: Date.now(),
+        date,
+        split,
+        exercises: [...planBuilderExercises]
+      });
+
+      planBuilderExercises = [];
+      saveData();
+      renderPlansScreen();
+      showToast("План сохранен");
+    }
+
+    function renderPlannedWorkouts() {
+      const box = document.getElementById("plannedWorkoutsList");
+      box.innerHTML = "";
+
+      if (!plannedWorkouts.length) {
+        box.innerHTML = '<p class="empty">Планы тренировок пока не созданы</p>';
+        return;
+      }
+
+      plannedWorkouts.forEach(plan => {
+        const div = document.createElement("div");
+        div.className = "list-item";
+        div.innerHTML = `
+          <div class="list-top">
+            <div>
+              <strong>${plan.date}</strong>
+              <div style="margin-top:6px;"><span class="badge">${plan.split}</span></div>
+              <div class="muted" style="margin-top:8px;">
+                ${plan.exercises.map((item, i) => `${i + 1}. ${item.exercise} — ${item.targetSets}×${item.targetReps}`).join("<br>")}
+              </div>
+            </div>
+            <div class="inline-actions">
+              <button class="btn-primary" onclick="startPlannedWorkout(${plan.id}); switchScreen('training')">Начать</button>
+              <button class="btn-danger" onclick="deletePlannedWorkout(${plan.id})">Удалить</button>
+            </div>
+          </div>
+        `;
+        box.appendChild(div);
+      });
+    }
+
+    function deletePlannedWorkout(planId) {
+      plannedWorkouts = plannedWorkouts.filter(item => item.id !== planId);
+      saveData();
+      renderPlannedWorkouts();
+    }
+
+    function createPlanFromLastWorkout() {
+      if (!workoutHistory.length) {
+        alert("История тренировок пока пуста");
+        return;
+      }
+
+      const lastWorkout = workoutHistory[0];
+      const grouped = {};
+
+      lastWorkout.sets.forEach(set => {
+        if (!grouped[set.exercise]) {
+          grouped[set.exercise] = {
+            exercise: set.exercise,
+            targetSets: 0,
+            targetReps: set.reps
+          };
+        }
+        grouped[set.exercise].targetSets += 1;
+        if (set.reps > grouped[set.exercise].targetReps) {
+          grouped[set.exercise].targetReps = set.reps;
+        }
+      });
+
+      document.getElementById("planBuilderCard").classList.remove("hidden");
+      document.getElementById("planDate").valueAsDate = new Date();
+      document.getElementById("planSplit").value = lastWorkout.split;
+      updatePlanExerciseOptions();
+      planBuilderExercises = Object.values(grouped);
+      renderPlanBuilder();
+      showToast("Конструктор заполнен по прошлой тренировке");
+    }
+
+    function renderTemplateToPlanList() {
+      const box = document.getElementById("templateToPlanList");
+      box.innerHTML = "";
+
+      if (!templates.length) {
+        box.innerHTML = '<p class="empty">Шаблонов пока нет</p>';
+        return;
+      }
+
+      templates.forEach(template => {
+        const div = document.createElement("div");
+        div.className = "list-item";
+        div.innerHTML = `
+          <div class="list-top">
+            <div>
+              <strong>${template.name}</strong>
+              <div style="margin-top:6px;"><span class="badge">${template.split}</span></div>
+              <div class="muted" style="margin-top:8px;">
+                ${template.exercises.map((item, i) => `${i + 1}. ${item.exercise} — ${item.targetSets}×${item.targetReps}`).join("<br>")}
+              </div>
+            </div>
+            <div class="inline-actions">
+              <button class="btn-success" onclick="useTemplateForPlan(${template.id})">Использовать</button>
+            </div>
+          </div>
+        `;
+        box.appendChild(div);
+      });
+    }
+
+    function useTemplateForPlan(templateId) {
+      const template = templates.find(item => item.id === templateId);
+      if (!template) return;
+
+      document.getElementById("planBuilderCard").classList.remove("hidden");
+      document.getElementById("planDate").valueAsDate = new Date();
+      document.getElementById("planSplit").value = template.split;
+      updatePlanExerciseOptions();
+      planBuilderExercises = template.exercises.map(item => ({ ...item }));
+      renderPlanBuilder();
+      hideTemplateToPlanPicker();
+      showToast("Шаблон загружен в конструктор");
+    }
+
+    // ========= STATS =========
+    function renderStatsScreen() {
+      renderProgressExerciseOptions();
+      renderProgressChart();
+      renderStatsList();
+      renderHistoryList();
+    }
+
+    function renderProgressExerciseOptions() {
+      const select = document.getElementById("progressExerciseSelect");
+      const currentValue = select.value;
+      const exercises = getAllExerciseNamesSorted();
+
+      select.innerHTML = "";
+
+      if (!exercises.length) {
+        const option = document.createElement("option");
+        option.value = "";
+        option.textContent = "Нет упражнений";
+        select.appendChild(option);
+        return;
+      }
+
+      exercises.forEach(exercise => {
+        const option = document.createElement("option");
+        option.value = exercise;
+        option.textContent = exercise;
+        select.appendChild(option);
+      });
+
+      if (exercises.includes(currentValue)) {
+        select.value = currentValue;
+      }
+    }
+
+    function getProgressData(exerciseName, metric) {
+      const matched = getAllSets()
+        .filter(set => set.exercise.toLowerCase() === exerciseName.toLowerCase())
+        .sort((a, b) => a.date.localeCompare(b.date));
+
+      const grouped = {};
+      matched.forEach(set => {
+        if (!grouped[set.date]) grouped[set.date] = [];
+        grouped[set.date].push(set);
+      });
+
+      const labels = Object.keys(grouped).sort();
+      const values = labels.map(date => {
+        const sets = grouped[date];
+        if (metric === "best_weight") return Math.max(...sets.map(s => s.totalWeight));
+        if (metric === "volume") return sets.reduce((sum, s) => sum + s.volume, 0);
+        if (metric === "reps") return Math.max(...sets.map(s => s.reps));
+        if (metric === "sets") return sets.length;
+        return 0;
+      });
+
+      return { labels, values };
+    }
+
+    function drawLineChart(canvas, labels, values, metricLabel) {
+      const ctx = canvas.getContext("2d");
+      const width = canvas.width;
+      const height = canvas.height;
+      ctx.clearRect(0, 0, width, height);
+
+      if (!labels.length || !values.length) {
+        ctx.font = "16px Arial";
+        ctx.fillStyle = "#6b7280";
+        ctx.fillText("Недостаточно данных для графика", 20, 40);
+        return;
+      }
+
+      const paddingLeft = 60;
+      const paddingRight = 20;
+      const paddingTop = 30;
+      const paddingBottom = 50;
+      const chartWidth = width - paddingLeft - paddingRight;
+      const chartHeight = height - paddingTop - paddingBottom;
+
+      const maxValue = Math.max(...values);
+      const minValue = Math.min(...values);
+      const range = maxValue - minValue || 1;
+
+      ctx.strokeStyle = "#d1d5db";
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 5; i++) {
+        const y = paddingTop + (chartHeight / 4) * i;
+        ctx.beginPath();
+        ctx.moveTo(paddingLeft, y);
+        ctx.lineTo(width - paddingRight, y);
+        ctx.stroke();
+      }
+
+      ctx.fillStyle = "#6b7280";
+      ctx.font = "12px Arial";
+      for (let i = 0; i < 5; i++) {
+        const value = maxValue - (range / 4) * i;
+        const y = paddingTop + (chartHeight / 4) * i;
+        ctx.fillText(value.toFixed(1), 8, y + 4);
+      }
+
+      const points = values.map((value, index) => {
+        const x = paddingLeft + (labels.length === 1 ? chartWidth / 2 : (chartWidth / (labels.length - 1)) * index);
+        const y = paddingTop + ((maxValue - value) / range) * chartHeight;
+        return { x, y, value, label: labels[index] };
+      });
+
+      ctx.strokeStyle = "#2563eb";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      points.forEach((point, index) => {
+        if (index === 0) ctx.moveTo(point.x, point.y);
+        else ctx.lineTo(point.x, point.y);
+      });
+      ctx.stroke();
+
+      points.forEach(point => {
+        ctx.beginPath();
+        ctx.fillStyle = "#2563eb";
+        ctx.arc(point.x, point.y, 4, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      ctx.fillStyle = "#374151";
+      ctx.font = "12px Arial";
+      points.forEach((point, index) => {
+        ctx.fillText(String(point.value), point.x - 10, point.y - 10);
+        const shortDate = point.label.slice(5);
+        if (labels.length <= 8 || index % Math.ceil(labels.length / 8) === 0) {
+          ctx.save();
+          ctx.translate(point.x - 16, height - 20);
+          ctx.rotate(-0.35);
+          ctx.fillText(shortDate, 0, 0);
+          ctx.restore();
+        }
+      });
+
+      ctx.fillStyle = "#111827";
+      ctx.font = "bold 14px Arial";
+      ctx.fillText(metricLabel, paddingLeft, 18);
+    }
+
+    function renderProgressChart() {
+      renderProgressExerciseOptions();
+
+      const exerciseName = document.getElementById("progressExerciseSelect").value;
+      const metric = document.getElementById("progressMetric").value;
+      const canvas = document.getElementById("progressChart");
+      const hint = document.getElementById("progressChartHint");
+
+      if (!exerciseName) {
+        const ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        hint.textContent = "Нет данных для графика";
+        return;
+      }
+
+      const { labels, values } = getProgressData(exerciseName, metric);
+      const metricMap = {
+        best_weight: "Лучший расчетный вес",
+        volume: "Тоннаж",
+        reps: "Лучшие повторы",
+        sets: "Количество подходов"
+      };
+
+      drawLineChart(canvas, labels, values, metricMap[metric]);
+      hint.textContent = labels.length
+        ? `Упражнение: ${exerciseName}. Точек на графике: ${labels.length}.`
+        : `По упражнению "${exerciseName}" пока нет данных.`;
+    }
+
+    function renderStatsList() {
+      const box = document.getElementById("statsList");
+      box.innerHTML = "";
+
+      const allSets = getAllSets();
+      if (!allSets.length) {
+        box.innerHTML = '<p class="empty">Статистика появится после тренировок</p>';
+        return;
+      }
+
+      const stats = {};
+      allSets.forEach(set => {
+        if (!stats[set.exercise]) {
+          stats[set.exercise] = {
+            exercise: set.exercise,
+            bestWeight: 0,
+            bestRepsAtBestWeight: 0,
+            totalVolume: 0,
+            totalSets: 0,
+            lastDate: ""
+          };
+        }
+
+        stats[set.exercise].totalVolume += set.volume;
+        stats[set.exercise].totalSets += 1;
+        stats[set.exercise].lastDate = set.date;
+
+        if (set.totalWeight > stats[set.exercise].bestWeight) {
+          stats[set.exercise].bestWeight = set.totalWeight;
+          stats[set.exercise].bestRepsAtBestWeight = set.reps;
+        }
+      });
+
+      Object.values(stats)
+        .sort((a, b) => a.exercise.localeCompare(b.exercise, "ru"))
+        .forEach(stat => {
+          const div = document.createElement("div");
+          div.className = "list-item";
+          div.innerHTML = `
+            <strong>${stat.exercise}</strong>
+            <div class="muted" style="margin-top:6px;">
+              Лучший вес: ${stat.bestWeight} кг × ${stat.bestRepsAtBestWeight}<br>
+              Общий тоннаж: ${stat.totalVolume} кг<br>
+              Всего подходов: ${stat.totalSets}<br>
+              Последняя дата: ${stat.lastDate}
+            </div>
+          `;
+          box.appendChild(div);
+        });
+    }
+
+    function renderHistoryList() {
+      const box = document.getElementById("historyList");
+      box.innerHTML = "";
+
+      if (!workoutHistory.length) {
+        box.innerHTML = '<p class="empty">История тренировок пока пуста</p>';
+        return;
+      }
+
+      workoutHistory.forEach(workout => {
+        const totalVolume = workout.sets.reduce((sum, set) => sum + set.volume, 0);
+        const uniqueExercises = [...new Set(workout.sets.map(set => set.exercise))];
+        const div = document.createElement("div");
+        div.className = "list-item";
+
+        let setsHtml = "";
+        workout.sets.forEach(set => {
+          setsHtml += `
+            <div class="muted" style="margin-bottom:8px;">
+              • ${set.exercise} — ${getDisplayWeightText(set)} × ${set.reps}
+              (${getLoadTypeLabel(set.loadType)}, тоннаж ${set.volume} кг)
+            </div>
+          `;
+        });
+
+        div.innerHTML = `
+          <div class="list-top">
+            <div>
+              <strong>${workout.date}</strong>
+              <div style="margin-top:6px;"><span class="badge">${workout.split}</span></div>
+              <div class="muted" style="margin-top:8px;">
+                Упражнений: ${uniqueExercises.length} · Подходов: ${workout.sets.length} · Тоннаж: ${totalVolume} кг
+              </div>
+            </div>
+            <div class="inline-actions">
+              <button class="btn-danger" onclick="deleteHistoryWorkout(${workout.id})">Удалить</button>
+            </div>
+          </div>
+          <div style="margin-top:10px;">${setsHtml}</div>
+        `;
+        box.appendChild(div);
+      });
+    }
+
+    function deleteHistoryWorkout(workoutId) {
+      workoutHistory = workoutHistory.filter(item => item.id !== workoutId);
+      saveData();
+      renderStatsScreen();
+    }
+
+    // ========= MORE =========
+    function renderMoreScreen() {
+      updateTemplateExerciseOptions();
+      renderTemplateBuilder();
+      renderTemplates();
+      renderStarterPrograms();
+    }
+
+    function updateTemplateExerciseOptions() {
+      const split = document.getElementById("templateSplit").value;
+      const select = document.getElementById("templateExerciseSelect");
+      const exercises = getMergedExercises(split);
+      select.innerHTML = "";
+
+      exercises.forEach(exercise => {
+        const option = document.createElement("option");
+        option.value = exercise;
+        option.textContent = exercise;
+        select.appendChild(option);
+      });
+    }
+
+    function addExerciseToTemplateBuilder() {
+      const split = document.getElementById("templateSplit").value;
+      const selected = document.getElementById("templateExerciseSelect").value;
+      const custom = normalizeExerciseName(document.getElementById("templateCustomExercise").value);
+      const exercise = custom || selected;
+      const targetSets = parseInt(document.getElementById("templateTargetSets").value);
+      const targetReps = parseInt(document.getElementById("templateTargetReps").value);
+
+      if (!exercise) {
+        alert("Выбери упражнение или введи свое");
+        return;
+      }
+
+      if (isNaN(targetSets) || isNaN(targetReps)) {
+        alert("Укажи подходы и повторы");
+        return;
+      }
+
+      if (custom) {
+        saveCustomExercise(split, custom);
+        updateTemplateExerciseOptions();
+        updatePlanExerciseOptions();
+      }
+
+      templateBuilderExercises.push({ exercise, targetSets, targetReps });
+      document.getElementById("templateCustomExercise").value = "";
+      document.getElementById("templateTargetSets").value = "";
+      document.getElementById("templateTargetReps").value = "";
+      renderTemplateBuilder();
+    }
+
+    function clearTemplateBuilder() {
+      templateBuilderExercises = [];
+      renderTemplateBuilder();
+    }
+
+    function renderTemplateBuilder() {
+      const box = document.getElementById("templateBuilderList");
+      box.innerHTML = "";
+
+      if (!templateBuilderExercises.length) {
+        box.innerHTML = '<p class="empty">Пока ничего не добавлено</p>';
+        return;
+      }
+
+      templateBuilderExercises.forEach((item, index) => {
+        const div = document.createElement("div");
+        div.className = "list-item";
+        div.innerHTML = `
+          <div class="list-top">
+            <div>
+              <strong>${index + 1}. ${item.exercise}</strong>
+              <div class="muted">Цель: ${item.targetSets} × ${item.targetReps}</div>
+            </div>
+            <div class="inline-actions">
+              <button class="btn-danger" onclick="removeTemplateBuilderExercise(${index})">Удалить</button>
+            </div>
+          </div>
+        `;
+        box.appendChild(div);
+      });
+    }
+
+    function removeTemplateBuilderExercise(index) {
+      templateBuilderExercises.splice(index, 1);
+      renderTemplateBuilder();
+    }
+
+    function saveTemplate() {
+      const name = normalizeExerciseName(document.getElementById("templateName").value);
+      const split = document.getElementById("templateSplit").value;
+
+      if (!name) {
+        alert("Укажи название шаблона");
+        return;
+      }
+
+      if (!templateBuilderExercises.length) {
+        alert("Добавь упражнения");
+        return;
+      }
+
+      templates.unshift({
+        id: Date.now(),
+        name,
+        split,
+        exercises: [...templateBuilderExercises]
+      });
+
+      document.getElementById("templateName").value = "";
+      templateBuilderExercises = [];
+      saveData();
+      renderMoreScreen();
+      showToast("Шаблон сохранен");
+    }
+
+    function renderTemplates() {
+      const box = document.getElementById("templatesList");
+      box.innerHTML = "";
+
+      if (!templates.length) {
+        box.innerHTML = '<p class="empty">Шаблонов пока нет</p>';
+        return;
+      }
+
+      templates.forEach(template => {
+        const div = document.createElement("div");
+        div.className = "list-item";
+        div.innerHTML = `
+          <div class="list-top">
+            <div>
+              <strong>${template.name}</strong>
+              <div style="margin-top:6px;"><span class="badge">${template.split}</span></div>
+              <div class="muted" style="margin-top:8px;">
+                ${template.exercises.map((item, i) => `${i + 1}. ${item.exercise} — ${item.targetSets}×${item.targetReps}`).join("<br>")}
+              </div>
+            </div>
+            <div class="inline-actions">
+              <button class="btn-success" onclick="useTemplateFromMore(${template.id})">В планы</button>
+              <button class="btn-danger" onclick="deleteTemplate(${template.id})">Удалить</button>
+            </div>
+          </div>
+        `;
+        box.appendChild(div);
+      });
+    }
+
+    function useTemplateFromMore(templateId) {
+      switchScreen("plans");
+      setTimeout(() => {
+        useTemplateForPlan(templateId);
+      }, 50);
+    }
+
+    function deleteTemplate(templateId) {
+      templates = templates.filter(item => item.id !== templateId);
+      saveData();
+      renderTemplates();
+    }
+
+    function renderStarterPrograms() {
+      const box = document.getElementById("starterProgramsList");
+      box.innerHTML = "";
+
+      STARTER_PROGRAMS.forEach(program => {
+        const div = document.createElement("div");
+        div.className = "list-item";
+        div.innerHTML = `
+          <div class="list-top">
+            <div>
+              <strong>${program.title}</strong>
+              <div style="margin-top:6px;"><span class="badge">${program.split}</span></div>
+              <div class="muted" style="margin-top:8px;">
+                ${program.exercises.map((item, i) => `${i + 1}. ${item.exercise} — ${item.targetSets}×${item.targetReps}`).join("<br>")}
+              </div>
+            </div>
+            <div class="inline-actions">
+              <button class="btn-primary" onclick="useStarterProgram('${program.id}')">Использовать</button>
+            </div>
+          </div>
+        `;
+        box.appendChild(div);
+      });
+    }
+
+    function useStarterProgram(programId) {
+      const program = STARTER_PROGRAMS.find(item => item.id === programId);
+      if (!program) return;
+
+      switchScreen("plans");
+      setTimeout(() => {
+        document.getElementById("planBuilderCard").classList.remove("hidden");
+        document.getElementById("planDate").valueAsDate = new Date();
+        document.getElementById("planSplit").value = program.split;
+        updatePlanExerciseOptions();
+        planBuilderExercises = program.exercises.map(item => ({ ...item }));
+        renderPlanBuilder();
+        showToast("Готовая программа загружена");
+      }, 50);
+    }
+
+    function openTelegramFeedback() {
+      window.open(FEEDBACK_TELEGRAM, "_blank");
+    }
+
+    // ========= IMPORT/EXPORT =========
+    function exportData() {
+      const data = {
+        workoutHistory,
+        customExercisesBySplit,
+        plannedWorkouts,
+        templates,
+        workoutSettings,
+        exportedAt: new Date().toISOString()
+      };
+
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "gymcontrol-backup.json";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function importData(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          const confirmed = confirm("Импорт заменит текущие данные. Продолжить?");
+          if (!confirmed) return;
+
+          workoutHistory = parsed.workoutHistory || [];
+          customExercisesBySplit = parsed.customExercisesBySplit || {};
+          plannedWorkouts = parsed.plannedWorkouts || [];
+          templates = parsed.templates || [];
+          workoutSettings = parsed.workoutSettings || { disclaimerAccepted: false };
+
+          saveData();
+          renderTrainingScreen();
+          renderPlansScreen();
+          renderStatsScreen();
+          renderMoreScreen();
+          showToast("Данные импортированы");
+        } catch (error) {
+          alert("Не удалось импортировать файл. Проверь JSON.");
+        } finally {
+          event.target.value = "";
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    // ========= PWA =========
+    async function registerServiceWorker() {
+      if ("serviceWorker" in navigator) {
+        try {
+          await navigator.serviceWorker.register("./service-worker.js");
+        } catch (e) {
+          console.log("Service worker not registered", e);
+        }
+      }
+    }
+
+    function initPWAInstall() {
+      window.addEventListener("beforeinstallprompt", (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        document.getElementById("installBox").classList.remove("hidden");
+      });
+
+      document.getElementById("installBtn").addEventListener("click", async () => {
+        if (!deferredPrompt) {
+          alert("На iPhone открой страницу в Safari и добавь через Поделиться → На экран Домой.");
+          return;
+        }
+
+        deferredPrompt.prompt();
+        await deferredPrompt.userChoice;
+        deferredPrompt = null;
+        document.getElementById("installBox").classList.add("hidden");
+      });
+    }
+
+    // ========= INIT =========
+    function init() {
+      loadData();
+
+      document.getElementById("setupDate").valueAsDate = new Date();
+      document.getElementById("planDate").valueAsDate = new Date();
+
+      updatePlanExerciseOptions();
+      updateTemplateExerciseOptions();
+
+      renderTrainingScreen();
+      renderPlansScreen();
+      renderStatsScreen();
+      renderMoreScreen();
+
+      initPWAInstall();
+      registerServiceWorker();
+    }
+
+    init();
+  </script>
+</body>
+</html>
