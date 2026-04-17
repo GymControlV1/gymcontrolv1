@@ -145,6 +145,11 @@
       color: #166534;
     }
 
+    .badge-orange {
+      background: #ffedd5;
+      color: #9a3412;
+    }
+
     .hint-box {
       background: #ecfeff;
       border: 1px solid #a5f3fc;
@@ -191,29 +196,6 @@
       padding: 8px 12px;
       border-radius: 8px;
       font-size: 14px;
-    }
-
-    .chip {
-      display: inline-flex;
-      align-items: center;
-      padding: 8px 10px;
-      border-radius: 999px;
-      background: #e0f2fe;
-      color: #075985;
-      font-size: 14px;
-      margin: 4px 6px 0 0;
-      cursor: pointer;
-    }
-
-    .chip.active {
-      background: #dbeafe;
-      color: #1d4ed8;
-      font-weight: bold;
-    }
-
-    .chip.done {
-      background: #dcfce7;
-      color: #166534;
     }
 
     .help-list, .warmup-list, .cooldown-list {
@@ -348,10 +330,19 @@
       box-shadow: var(--shadow);
       z-index: 200;
       display: none;
+      max-width: 90%;
+      text-align: center;
     }
 
     .overlay-toast.show {
       display: block;
+    }
+
+    .feedback-text {
+      white-space: pre-wrap;
+      word-break: break-word;
+      margin-top: 8px;
+      line-height: 1.5;
     }
 
     @media (max-width: 700px) {
@@ -392,7 +383,6 @@
       </div>
     </div>
 
-    <!-- ТРЕНИРОВКА -->
     <section id="screen-training" class="screen active">
       <div class="card">
         <h1>🏋️ GymControl</h1>
@@ -583,7 +573,6 @@
       </div>
     </section>
 
-    <!-- ПЛАНЫ -->
     <section id="screen-plans" class="screen">
       <div class="card">
         <h2 class="section-title">Планы тренировок</h2>
@@ -644,7 +633,6 @@
       </div>
     </section>
 
-    <!-- СТАТИСТИКА -->
     <section id="screen-stats" class="screen">
       <div class="card">
         <h2 class="section-title">Статистика</h2>
@@ -676,7 +664,6 @@
       </div>
     </section>
 
-    <!-- ЕЩЕ -->
     <section id="screen-more" class="screen">
       <div class="card">
         <h2 class="section-title">Шаблоны</h2>
@@ -735,15 +722,33 @@
 
       <div class="card">
         <h2 class="section-title">Обратная связь</h2>
+
         <div class="feedback-box">
-          <div class="muted" style="margin-bottom:8px;">
-            Для тестирования можно добавить свои ссылки.
+          <div class="muted" style="margin-bottom:10px;">
+            Здесь можно оставить отзыв, сообщить о проблеме или предложить идею. Отзывы сохраняются в приложении.
           </div>
-          <div class="actions full">
-            <button class="btn-secondary" onclick="openTelegramFeedback()">Оставить отзыв</button>
-            <button class="btn-secondary" onclick="openTelegramFeedback()">Сообщить о проблеме</button>
-            <button class="btn-secondary" onclick="openTelegramFeedback()">Предложить идею</button>
+
+          <div class="form-grid">
+            <select id="feedbackType">
+              <option value="Отзыв">Отзыв</option>
+              <option value="Проблема">Проблема</option>
+              <option value="Идея">Идея</option>
+            </select>
+            <input id="feedbackAuthor" type="text" placeholder="Имя или ник (необязательно)" />
           </div>
+
+          <textarea id="feedbackMessage" placeholder="Напиши, что понравилось, что неудобно, какую ошибку нашел или какую идею предлагаешь"></textarea>
+
+          <div class="actions">
+            <button class="btn-primary" onclick="saveFeedback()">Сохранить отзыв</button>
+            <button class="btn-secondary" onclick="copyAllFeedback()">Скопировать все отзывы</button>
+            <button class="btn-success" onclick="exportFeedback()">Экспорт отзывов JSON</button>
+          </div>
+        </div>
+
+        <div style="margin-top:14px;">
+          <h3 style="margin-bottom:10px;">Сохраненные отзывы</h3>
+          <div id="feedbackList"></div>
         </div>
       </div>
 
@@ -777,11 +782,11 @@
   </nav>
 
   <script>
-    // ========= ДАННЫЕ =========
     let workoutHistory = [];
     let customExercisesBySplit = {};
     let plannedWorkouts = [];
     let templates = [];
+    let feedbackEntries = [];
     let workoutSettings = {
       disclaimerAccepted: false
     };
@@ -794,7 +799,7 @@
       planExercises: [],
       currentExerciseIndex: 0,
       sets: [],
-      state: "idle", // idle | setup | warmup | workout | timer | cooldown | summary | plan-picker
+      state: "idle",
       pendingSummary: null
     };
 
@@ -805,7 +810,6 @@
     let restTimeLeft = 90;
     let deferredPrompt = null;
 
-    const FEEDBACK_TELEGRAM = "https://t.me/";
     const STARTER_PROGRAMS = [
       {
         id: "starter-fullbody-a",
@@ -881,12 +885,12 @@
       "Legs": ["Присед", "Жим ногами", "Выпады", "Румынская тяга", "Сгибание ног", "Разгибание ног", "Ягодичный мост", "Подъемы на икры"]
     };
 
-    // ========= STORAGE =========
     function saveData() {
       localStorage.setItem("workoutHistory", JSON.stringify(workoutHistory));
       localStorage.setItem("customExercisesBySplit", JSON.stringify(customExercisesBySplit));
       localStorage.setItem("plannedWorkouts", JSON.stringify(plannedWorkouts));
       localStorage.setItem("templates", JSON.stringify(templates));
+      localStorage.setItem("feedbackEntries", JSON.stringify(feedbackEntries));
       localStorage.setItem("workoutSettings", JSON.stringify(workoutSettings));
     }
 
@@ -895,10 +899,10 @@
       customExercisesBySplit = JSON.parse(localStorage.getItem("customExercisesBySplit") || "{}");
       plannedWorkouts = JSON.parse(localStorage.getItem("plannedWorkouts") || "[]");
       templates = JSON.parse(localStorage.getItem("templates") || "[]");
+      feedbackEntries = JSON.parse(localStorage.getItem("feedbackEntries") || "[]");
       workoutSettings = JSON.parse(localStorage.getItem("workoutSettings") || '{"disclaimerAccepted":false}');
     }
 
-    // ========= HELPERS =========
     function normalizeExerciseName(name) {
       return String(name || "").trim().replace(/\s+/g, " ");
     }
@@ -916,18 +920,10 @@
         document.getElementById("nav-" + screen).classList.toggle("active", screen === name);
       });
 
-      if (name === "stats") {
-        renderStatsScreen();
-      }
-      if (name === "plans") {
-        renderPlansScreen();
-      }
-      if (name === "more") {
-        renderMoreScreen();
-      }
-      if (name === "training") {
-        renderTrainingScreen();
-      }
+      if (name === "stats") renderStatsScreen();
+      if (name === "plans") renderPlansScreen();
+      if (name === "more") renderMoreScreen();
+      if (name === "training") renderTrainingScreen();
     }
 
     function getMergedExercises(split) {
@@ -1012,14 +1008,6 @@
       return currentSession.planExercises[currentSession.currentExerciseIndex] || null;
     }
 
-    function getCurrentExerciseName() {
-      const item = getCurrentExerciseObject();
-      if (item) return item.exercise;
-
-      const select = document.getElementById("gymExerciseSelect");
-      return select ? select.value : "";
-    }
-
     function getDoneSetsForExercise(exerciseName) {
       return currentSession.sets.filter(
         set => set.exercise.toLowerCase() === exerciseName.toLowerCase()
@@ -1046,14 +1034,7 @@
       return map[split] || ["Легкая растяжка основных работавших мышц", "Спокойное дыхание", "Ходьба 2–3 минуты"];
     }
 
-    function buildSet({
-      date,
-      split,
-      exercise,
-      loadType,
-      enteredWeight,
-      reps
-    }) {
+    function buildSet({ date, split, exercise, loadType, enteredWeight, reps }) {
       const multiplier = getMultiplier(loadType);
       const totalWeight = enteredWeight * multiplier;
       const volume = totalWeight * reps;
@@ -1078,7 +1059,6 @@
       return [...names].sort((a, b) => a.localeCompare(b, "ru"));
     }
 
-    // ========= TRAINING FLOW =========
     function acceptDisclaimer() {
       workoutSettings.disclaimerAccepted = true;
       saveData();
@@ -1220,6 +1200,7 @@
 
       const lastWorkout = workoutHistory[0];
       const grouped = {};
+
       lastWorkout.sets.forEach(set => {
         if (!grouped[set.exercise]) {
           grouped[set.exercise] = {
@@ -1343,7 +1324,7 @@
       fillGymFormDefaults();
     }
 
-    function getPostSetMessage(exerciseName, set) {
+    function getPostSetMessage(exerciseName) {
       const matched = getAllSets().filter(
         item => item.exercise.toLowerCase() === exerciseName.toLowerCase()
       );
@@ -1396,7 +1377,7 @@
       });
 
       currentSession.sets.push(set);
-      const message = getPostSetMessage(exercise, set);
+      const message = getPostSetMessage(exercise);
       showToast(message);
 
       currentSession.state = "timer";
@@ -1542,7 +1523,6 @@
       renderTrainingScreen();
     }
 
-    // ========= TIMER =========
     function formatTime(seconds) {
       const min = Math.floor(seconds / 60);
       const sec = seconds % 60;
@@ -1583,7 +1563,6 @@
       showToast("Отдых завершен");
     }
 
-    // ========= PLANS =========
     function renderPlansScreen() {
       updatePlanExerciseOptions();
       renderPlanBuilder();
@@ -1823,7 +1802,6 @@
       showToast("Шаблон загружен в конструктор");
     }
 
-    // ========= STATS =========
     function renderStatsScreen() {
       renderProgressExerciseOptions();
       renderProgressChart();
@@ -2095,12 +2073,12 @@
       renderStatsScreen();
     }
 
-    // ========= MORE =========
     function renderMoreScreen() {
       updateTemplateExerciseOptions();
       renderTemplateBuilder();
       renderTemplates();
       renderStarterPrograms();
+      renderFeedbackList();
     }
 
     function updateTemplateExerciseOptions() {
@@ -2298,17 +2276,133 @@
       }, 50);
     }
 
-    function openTelegramFeedback() {
-      window.open(FEEDBACK_TELEGRAM, "_blank");
+    function saveFeedback() {
+      const type = document.getElementById("feedbackType").value;
+      const author = document.getElementById("feedbackAuthor").value.trim();
+      const message = document.getElementById("feedbackMessage").value.trim();
+
+      if (!message) {
+        alert("Напиши текст отзыва");
+        return;
+      }
+
+      feedbackEntries.unshift({
+        id: Date.now(),
+        type,
+        author: author || "Анонимно",
+        message,
+        createdAt: new Date().toLocaleString("ru-RU")
+      });
+
+      document.getElementById("feedbackAuthor").value = "";
+      document.getElementById("feedbackMessage").value = "";
+      saveData();
+      renderFeedbackList();
+      showToast("Отзыв сохранен");
     }
 
-    // ========= IMPORT/EXPORT =========
+    function renderFeedbackList() {
+      const box = document.getElementById("feedbackList");
+      box.innerHTML = "";
+
+      if (!feedbackEntries.length) {
+        box.innerHTML = '<p class="empty">Отзывов пока нет</p>';
+        return;
+      }
+
+      feedbackEntries.forEach(entry => {
+        const badgeClass = entry.type === "Проблема"
+          ? "badge-orange"
+          : entry.type === "Идея"
+            ? "badge"
+            : "badge-green";
+
+        const div = document.createElement("div");
+        div.className = "list-item";
+        div.innerHTML = `
+          <div class="list-top">
+            <div>
+              <span class="badge ${badgeClass}">${entry.type}</span>
+              <div class="muted" style="margin-top:8px;">${entry.author} · ${entry.createdAt}</div>
+            </div>
+            <div class="inline-actions">
+              <button class="btn-secondary" onclick="copySingleFeedback(${entry.id})">Копировать</button>
+              <button class="btn-danger" onclick="deleteFeedback(${entry.id})">Удалить</button>
+            </div>
+          </div>
+          <div class="feedback-text">${escapeHtml(entry.message)}</div>
+        `;
+        box.appendChild(div);
+      });
+    }
+
+    function escapeHtml(text) {
+      return String(text)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;");
+    }
+
+    function deleteFeedback(id) {
+      feedbackEntries = feedbackEntries.filter(item => item.id !== id);
+      saveData();
+      renderFeedbackList();
+      showToast("Отзыв удален");
+    }
+
+    async function copySingleFeedback(id) {
+      const item = feedbackEntries.find(entry => entry.id === id);
+      if (!item) return;
+
+      const text = `[${item.type}] ${item.author} · ${item.createdAt}\n${item.message}`;
+      try {
+        await navigator.clipboard.writeText(text);
+        showToast("Отзыв скопирован");
+      } catch {
+        alert("Не удалось скопировать текст");
+      }
+    }
+
+    async function copyAllFeedback() {
+      if (!feedbackEntries.length) {
+        alert("Отзывов пока нет");
+        return;
+      }
+
+      const text = feedbackEntries.map(item =>
+        `[${item.type}] ${item.author} · ${item.createdAt}\n${item.message}`
+      ).join("\n\n--------------------\n\n");
+
+      try {
+        await navigator.clipboard.writeText(text);
+        showToast("Все отзывы скопированы");
+      } catch {
+        alert("Не удалось скопировать отзывы");
+      }
+    }
+
+    function exportFeedback() {
+      const data = {
+        exportedAt: new Date().toISOString(),
+        feedbackEntries
+      };
+
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "gymcontrol-feedback.json";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
     function exportData() {
       const data = {
         workoutHistory,
         customExercisesBySplit,
         plannedWorkouts,
         templates,
+        feedbackEntries,
         workoutSettings,
         exportedAt: new Date().toISOString()
       };
@@ -2337,6 +2431,7 @@
           customExercisesBySplit = parsed.customExercisesBySplit || {};
           plannedWorkouts = parsed.plannedWorkouts || [];
           templates = parsed.templates || [];
+          feedbackEntries = parsed.feedbackEntries || [];
           workoutSettings = parsed.workoutSettings || { disclaimerAccepted: false };
 
           saveData();
@@ -2354,7 +2449,6 @@
       reader.readAsText(file);
     }
 
-    // ========= PWA =========
     async function registerServiceWorker() {
       if ("serviceWorker" in navigator) {
         try {
@@ -2385,7 +2479,6 @@
       });
     }
 
-    // ========= INIT =========
     function init() {
       loadData();
 
