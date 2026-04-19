@@ -632,19 +632,30 @@
       <div class="profile-head">
         <div>
           <div class="profile-name" id="profileCurrentName">Профиль не выбран</div>
-          <div class="muted" id="profileStatusText">Создай первый локальный профиль, чтобы начать.</div>
+          <div class="muted" id="profileStatusText">Войди через Telegram или создай локальный профиль, чтобы начать.</div>
         </div>
         <span id="profileBadge" class="badge hidden">Активный профиль</span>
       </div>
 
-      <div class="form-grid">
+      <div id="telegramLoginSection" style="margin-bottom:12px;">
+        <div class="muted" style="margin-bottom:10px;">
+          Telegram-вход нужен для личного кабинета и загрузки истории на другом устройстве.
+        </div>
+        <div id="telegramLoginWidget"></div>
+      </div>
+
+      <div id="profileSetupFields" class="form-grid">
         <select id="profileSelect" onchange="handleProfileSelectChange()"></select>
         <input id="newProfileName" type="text" placeholder="Имя нового профиля" />
         <button class="btn-primary" onclick="createProfileFromInput()">Создать профиль</button>
       </div>
 
+      <div id="profileLoggedActions" class="actions hidden">
+        <button class="btn-secondary" onclick="logoutProfile()">Выйти из профиля</button>
+      </div>
+
       <div id="profileNote" class="profile-note">
-        История тренировок, упражнения, планы, шаблоны и прогресс хранятся отдельно для каждого профиля прямо на этом устройстве.
+        История тренировок, упражнения, планы, шаблоны и прогресс хранятся отдельно для каждого профиля. Через Telegram история будет доступна и на другом устройстве.
       </div>
     </div>
 
@@ -1249,6 +1260,8 @@
     };
 
     const TELEGRAM_URL = "https://t.me/GymControl";
+    const DEFAULT_GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyjo7b2Q1iubGNMHwDweC-QkWkCC5BV9wkFG-YdhTMhYaGZpUWMtPm3Mb0WyB3LxP6O/exec";
+    const DEFAULT_TELEGRAM_BOT_USERNAME = "gymcontrol_auth_bot";
     const PROFILE_INDEX_KEY = "gymcontrolProfiles";
     const CURRENT_PROFILE_KEY = "gymcontrolCurrentProfileId";
     const CLOUD_CONFIG_KEY = "gymcontrolCloudConfig";
@@ -1402,6 +1415,14 @@
       return profile ? profile.name : "";
     }
 
+    function getTelegramProfileId(telegramId) {
+      return `tg:${telegramId}`;
+    }
+
+    function getTelegramBotUsername() {
+      return DEFAULT_TELEGRAM_BOT_USERNAME.trim();
+    }
+
     function hasLegacyRootData() {
       return LEGACY_DATA_KEYS.some(key => localStorage.getItem(key) !== null);
     }
@@ -1429,7 +1450,7 @@
     function loadCloudConfig() {
       const parsed = JSON.parse(localStorage.getItem(CLOUD_CONFIG_KEY) || "null");
       cloudConfig = {
-        scriptUrl: "",
+        scriptUrl: DEFAULT_GOOGLE_SCRIPT_URL,
         autoSync: true,
         lastSyncAt: "",
         lastSyncError: "",
@@ -1509,6 +1530,11 @@
       const currentName = document.getElementById("profileCurrentName");
       const status = document.getElementById("profileStatusText");
       const badge = document.getElementById("profileBadge");
+      const setupFields = document.getElementById("profileSetupFields");
+      const loggedActions = document.getElementById("profileLoggedActions");
+      const telegramSection = document.getElementById("telegramLoginSection");
+      const activeProfile = getCurrentProfile();
+      const selectableProfiles = profiles.filter(profile => profile.authProvider !== "telegram");
 
       select.innerHTML = "";
 
@@ -1518,23 +1544,54 @@
         option.textContent = "Профилей пока нет";
         select.appendChild(option);
         currentName.textContent = "Профиль не выбран";
-        status.textContent = "Создай первый локальный профиль, чтобы начать.";
+        status.textContent = "Войди через Telegram или создай локальный профиль, чтобы начать.";
         badge.classList.add("hidden");
+        setupFields.classList.remove("hidden");
+        loggedActions.classList.add("hidden");
+        telegramSection.classList.remove("hidden");
+        renderTelegramLoginButton();
         updateProfileDependentUI();
         return;
       }
 
-      profiles.forEach(profile => {
+      if (!selectableProfiles.length) {
+        const option = document.createElement("option");
+        option.value = "";
+        option.textContent = "Локальных профилей нет";
+        select.appendChild(option);
+      }
+
+      selectableProfiles.forEach(profile => {
         const option = document.createElement("option");
         option.value = profile.id;
         option.textContent = profile.name;
         select.appendChild(option);
       });
 
-      select.value = currentProfileId;
-      currentName.textContent = getCurrentProfileName();
-      status.textContent = `Тренировок: ${workoutHistory.length} · Шаблонов: ${templates.length} · Планов: ${scheduledWorkouts.length}`;
-      badge.classList.toggle("hidden", !currentProfileId);
+      if (currentProfileId && activeProfile) {
+        currentName.textContent = getCurrentProfileName();
+        const authLabel = activeProfile.authProvider === "telegram"
+          ? `Telegram: @${activeProfile.username || "без username"}`
+          : "Локальный профиль";
+        status.textContent = `${authLabel} · Тренировок: ${workoutHistory.length} · Шаблонов: ${templates.length} · Планов: ${scheduledWorkouts.length}`;
+        badge.classList.remove("hidden");
+        setupFields.classList.add("hidden");
+        loggedActions.classList.remove("hidden");
+        telegramSection.classList.add("hidden");
+      } else {
+        currentName.textContent = "Профиль не выбран";
+        status.textContent = "Войди через Telegram или выбери локальный профиль.";
+        badge.classList.add("hidden");
+        setupFields.classList.remove("hidden");
+        loggedActions.classList.add("hidden");
+        telegramSection.classList.remove("hidden");
+        renderTelegramLoginButton();
+      }
+
+      if (selectableProfiles.some(profile => profile.id === currentProfileId)) {
+        select.value = currentProfileId;
+      }
+
       updateProfileDependentUI();
     }
 
@@ -1559,7 +1616,8 @@
       const profile = {
         id: `profile-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
         name: cleanName,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        authProvider: "local"
       };
 
       profiles.push(profile);
@@ -1615,6 +1673,108 @@
     function handleProfileSelectChange() {
       const profileId = document.getElementById("profileSelect").value;
       switchProfile(profileId);
+    }
+
+    function logoutProfile() {
+      if (hasUnsavedCurrentSession()) {
+        const confirmed = confirm("Есть незавершенная тренировка. Выйти из профиля и сбросить текущую сессию?");
+        if (!confirmed) return;
+      }
+
+      currentProfileId = "";
+      saveProfilesMeta();
+      loadData();
+      resetBuildersAndSession();
+      renderAll();
+      showToast("Выход из профиля выполнен");
+    }
+
+    function upsertTelegramProfile(authData) {
+      const profileId = getTelegramProfileId(authData.id);
+      const profileName = String(authData.first_name || authData.username || "Telegram User").trim();
+      const existing = profiles.find(profile => profile.id === profileId);
+
+      if (existing) {
+        existing.name = profileName;
+        existing.authProvider = "telegram";
+        existing.telegramId = String(authData.id);
+        existing.username = authData.username || "";
+        existing.photoUrl = authData.photo_url || "";
+        existing.updatedAt = new Date().toISOString();
+        return existing;
+      }
+
+      const profile = {
+        id: profileId,
+        name: profileName,
+        authProvider: "telegram",
+        telegramId: String(authData.id),
+        username: authData.username || "",
+        photoUrl: authData.photo_url || "",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      profiles.push(profile);
+      return profile;
+    }
+
+    async function loginWithTelegram(authData) {
+      try {
+        if (!isCloudConfigured()) {
+          throw new Error("Сначала укажи URL Google Apps Script или зашей его в код");
+        }
+
+        const result = await callCloudApi({
+          action: "telegramLogin",
+          authData
+        });
+
+        if (!result.ok) {
+          throw new Error(result.error || "Не удалось войти через Telegram");
+        }
+
+        const profile = upsertTelegramProfile(result.user || authData);
+        currentProfileId = profile.id;
+        saveProfilesMeta();
+        loadData();
+        resetBuildersAndSession();
+        renderAll();
+        await refreshWorkoutHistoryFromCloud(false);
+        showToast(`Вход через Telegram: ${profile.name}`);
+      } catch (error) {
+        alert(`Не удалось войти через Telegram: ${error.message || "неизвестная ошибка"}`);
+      }
+    }
+
+    function renderTelegramLoginButton() {
+      const box = document.getElementById("telegramLoginWidget");
+      if (!box) return;
+
+      const botUsername = getTelegramBotUsername();
+      box.innerHTML = "";
+
+      if (!botUsername) {
+        box.innerHTML = `
+          <div class="hint-box">
+            <strong>Telegram-вход пока не настроен</strong>
+            <div class="muted" style="margin-top:6px;">
+              Укажи username бота в коде приложения, чтобы пользователи могли входить через Telegram.
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      const script = document.createElement("script");
+      script.async = true;
+      script.src = "https://telegram.org/js/telegram-widget.js?22";
+      script.setAttribute("data-telegram-login", botUsername);
+      script.setAttribute("data-size", "large");
+      script.setAttribute("data-userpic", "false");
+      script.setAttribute("data-lang", "ru");
+      script.setAttribute("data-onauth", "onTelegramAuth(user)");
+      box.appendChild(script);
     }
 
     function renderAll() {
@@ -1741,9 +1901,13 @@
     }
 
     function getCloudUserPayload() {
+      const profile = getCurrentProfile();
       return {
         userId: currentProfileId,
-        profileName: getCurrentProfileName()
+        profileName: getCurrentProfileName(),
+        authProvider: profile?.authProvider || "local",
+        telegramId: profile?.telegramId || "",
+        username: profile?.username || ""
       };
     }
 
@@ -4122,6 +4286,9 @@
 
       updatePlanExerciseOptions();
       updateTemplateExerciseOptions();
+      window.onTelegramAuth = function(user) {
+        loginWithTelegram(user);
+      };
       renderAll();
 
       initPWAInstall();
