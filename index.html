@@ -1117,29 +1117,6 @@
       </div>
 
       <div class="card">
-        <h2 class="section-title">Google Sheets</h2>
-        <div class="muted" style="margin-bottom:10px;">
-          Укажи URL опубликованного Google Apps Script. История тренировок будет сохраняться локально и дополнительно синхронизироваться в Google Sheets.
-        </div>
-        <div class="form-grid">
-          <input id="cloudScriptUrl" type="url" placeholder="https://script.google.com/macros/s/.../exec" />
-        </div>
-        <div class="settings-row" style="margin-top:0;">
-          <label class="setting-chip">
-            <input type="checkbox" id="cloudAutoSync" onchange="toggleCloudAutoSync(this.checked)" />
-            <span>Автосинхронизация истории</span>
-          </label>
-        </div>
-        <div class="actions">
-          <button class="btn-primary" onclick="saveCloudScriptUrl()">Сохранить URL</button>
-          <button class="btn-secondary" onclick="pingCloudScript()">Проверить подключение</button>
-          <button class="btn-success" onclick="syncPendingWorkouts(true)">Синхронизировать историю</button>
-          <button class="btn-warning" onclick="refreshWorkoutHistoryFromCloud(true)">Загрузить историю из облака</button>
-        </div>
-        <div id="cloudSyncStatus" class="hint-box" style="margin-top:12px;"></div>
-      </div>
-
-      <div class="card">
         <h2 class="section-title">Обратная связь</h2>
 
         <div class="feedback-box">
