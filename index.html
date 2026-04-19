@@ -641,6 +641,9 @@
         <div class="muted" style="margin-bottom:10px;">
           Telegram-вход нужен для личного кабинета и загрузки истории на другом устройстве.
         </div>
+        <div class="actions" style="margin-top:0; margin-bottom:10px;">
+          <button id="telegramLoginOpenBtn" class="btn-primary" onclick="openTelegramLogin()">Войти через Telegram</button>
+        </div>
         <div id="telegramLoginWidget"></div>
       </div>
 
@@ -1265,6 +1268,7 @@
     const PROFILE_INDEX_KEY = "gymcontrolProfiles";
     const CURRENT_PROFILE_KEY = "gymcontrolCurrentProfileId";
     const CLOUD_CONFIG_KEY = "gymcontrolCloudConfig";
+    const TELEGRAM_LOGIN_SUPPRESSED_KEY = "gymcontrolTelegramLoginSuppressed";
     const LEGACY_DATA_KEYS = [
       "workoutHistory",
       "customExercisesBySplit",
@@ -1421,6 +1425,18 @@
 
     function getTelegramBotUsername() {
       return DEFAULT_TELEGRAM_BOT_USERNAME.trim();
+    }
+
+    function isTelegramLoginSuppressed() {
+      return localStorage.getItem(TELEGRAM_LOGIN_SUPPRESSED_KEY) === "1";
+    }
+
+    function setTelegramLoginSuppressed(value) {
+      if (value) {
+        localStorage.setItem(TELEGRAM_LOGIN_SUPPRESSED_KEY, "1");
+      } else {
+        localStorage.removeItem(TELEGRAM_LOGIN_SUPPRESSED_KEY);
+      }
     }
 
     function hasLegacyRootData() {
@@ -1682,6 +1698,7 @@
       }
 
       currentProfileId = "";
+      setTelegramLoginSuppressed(true);
       saveProfilesMeta();
       loadData();
       resetBuildersAndSession();
@@ -1736,6 +1753,7 @@
 
         const profile = upsertTelegramProfile(result.user || authData);
         currentProfileId = profile.id;
+        setTelegramLoginSuppressed(false);
         saveProfilesMeta();
         loadData();
         resetBuildersAndSession();
@@ -1743,12 +1761,19 @@
         await refreshWorkoutHistoryFromCloud(false);
         showToast(`Вход через Telegram: ${profile.name}`);
       } catch (error) {
+        console.error("Telegram login error", error);
         alert(`Не удалось войти через Telegram: ${error.message || "неизвестная ошибка"}`);
       }
     }
 
-    function renderTelegramLoginButton() {
+    function openTelegramLogin() {
+      setTelegramLoginSuppressed(false);
+      renderTelegramLoginButton(true);
+    }
+
+    function renderTelegramLoginButton(forceOpen = false) {
       const box = document.getElementById("telegramLoginWidget");
+      const openBtn = document.getElementById("telegramLoginOpenBtn");
       if (!box) return;
 
       const botUsername = getTelegramBotUsername();
@@ -1763,6 +1788,15 @@
             </div>
           </div>
         `;
+        return;
+      }
+
+      const shouldShowWidget = forceOpen || !isTelegramLoginSuppressed();
+      if (openBtn) {
+        openBtn.classList.toggle("hidden", shouldShowWidget);
+      }
+
+      if (!shouldShowWidget) {
         return;
       }
 
