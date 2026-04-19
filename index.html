@@ -936,27 +936,27 @@
     <section id="screen-plans" class="screen">
       <div class="card">
         <div class="section-head">
-          <h2 class="section-title">Календарь и расписание</h2>
+          <h2 class="section-title">Планы тренировок</h2>
           <div class="section-head-actions">
             <button class="btn-secondary" onclick="goToTrainingHome()">На главную</button>
           </div>
         </div>
         <div class="actions full">
-          <button class="btn-primary" onclick="showPlanBuilder()">Новая серия вручную</button>
-          <button class="btn-success" onclick="showTemplateToPlanPicker()">Серия из шаблона</button>
-          <button class="btn-warning" onclick="createPlanFromLastWorkout()">Серия из прошлой</button>
+          <button class="btn-primary" onclick="showPlanBuilder()">Создать план вручную</button>
+          <button class="btn-success" onclick="showTemplateToPlanPicker()">Создать из шаблона</button>
+          <button class="btn-warning" onclick="createPlanFromLastWorkout()">Повторить прошлую тренировку</button>
         </div>
       </div>
 
       <div id="planBuilderCard" class="card hidden">
         <div class="section-head">
-          <h2 class="section-title">Конструктор расписания</h2>
+          <h2 class="section-title">Конструктор плана</h2>
           <div class="section-head-actions">
             <button class="btn-secondary" onclick="hidePlanBuilder()">Назад</button>
           </div>
         </div>
         <div class="form-grid">
-          <input id="planTitle" type="text" placeholder="Название серии (необязательно)" />
+          <input id="planDate" type="date" />
           <select id="planSplit" onchange="updatePlanExerciseOptions()">
             <option value="Full Body">Full Body</option>
             <option value="Грудь + Трицепс">Грудь + Трицепс</option>
@@ -973,34 +973,18 @@
             <option value="Pull">Pull</option>
             <option value="Legs">Legs</option>
           </select>
-          <select id="scheduleMode">
-            <option value="single">Одна дата</option>
-            <option value="daily">Каждый день в диапазоне</option>
-            <option value="weekly">Выбранные дни недели</option>
-          </select>
-          <input id="scheduleStartDate" type="date" />
-          <input id="scheduleEndDate" type="date" />
           <select id="planExerciseSelect"></select>
           <input id="planCustomExercise" type="text" placeholder="Или свое упражнение" />
           <input id="planTargetSets" type="number" min="1" step="1" placeholder="Подходы" />
           <input id="planTargetReps" type="number" min="1" step="1" placeholder="Повторы" />
         </div>
-        <div class="weekday-picker" style="margin-bottom:12px;">
-          <label class="weekday-chip"><input type="checkbox" class="schedule-weekday" value="1" /> Пн</label>
-          <label class="weekday-chip"><input type="checkbox" class="schedule-weekday" value="2" /> Вт</label>
-          <label class="weekday-chip"><input type="checkbox" class="schedule-weekday" value="3" /> Ср</label>
-          <label class="weekday-chip"><input type="checkbox" class="schedule-weekday" value="4" /> Чт</label>
-          <label class="weekday-chip"><input type="checkbox" class="schedule-weekday" value="5" /> Пт</label>
-          <label class="weekday-chip"><input type="checkbox" class="schedule-weekday" value="6" /> Сб</label>
-          <label class="weekday-chip"><input type="checkbox" class="schedule-weekday" value="0" /> Вс</label>
-        </div>
         <div class="actions">
           <button class="btn-primary" onclick="addExerciseToPlanBuilder()">Добавить упражнение</button>
           <button class="btn-secondary" onclick="clearPlanBuilder()">Очистить конструктор</button>
-          <button class="btn-success" onclick="savePlannedWorkout()">Создать расписание</button>
+          <button class="btn-success" onclick="savePlannedWorkout()">Сохранить план</button>
         </div>
         <div style="margin-top:12px;">
-          <div class="muted" style="margin-bottom:8px;">Упражнения серии:</div>
+          <div class="muted" style="margin-bottom:8px;">Упражнения плана:</div>
           <div id="planBuilderList"></div>
         </div>
       </div>
@@ -1016,16 +1000,7 @@
       </div>
 
       <div class="card">
-        <div class="calendar-toolbar">
-          <button class="btn-secondary" onclick="changeCalendarMonth(-1)">← Месяц назад</button>
-          <strong id="calendarMonthLabel">Календарь</strong>
-          <button class="btn-secondary" onclick="changeCalendarMonth(1)">Месяц вперёд →</button>
-        </div>
-        <div id="plansCalendar" class="calendar-grid"></div>
-      </div>
-
-      <div class="card">
-        <h2 class="section-title">Ближайшие тренировки</h2>
+        <h2 class="section-title">Запланированные тренировки</h2>
         <div id="plannedWorkoutsList"></div>
       </div>
     </section>
@@ -1128,6 +1103,29 @@
       </div>
 
       <div class="card">
+        <h2 class="section-title">Google Sheets</h2>
+        <div class="muted" style="margin-bottom:10px;">
+          Укажи URL опубликованного Google Apps Script. История тренировок будет сохраняться локально и дополнительно синхронизироваться в Google Sheets.
+        </div>
+        <div class="form-grid">
+          <input id="cloudScriptUrl" type="url" placeholder="https://script.google.com/macros/s/.../exec" />
+        </div>
+        <div class="settings-row" style="margin-top:0;">
+          <label class="setting-chip">
+            <input type="checkbox" id="cloudAutoSync" onchange="toggleCloudAutoSync(this.checked)" />
+            <span>Автосинхронизация истории</span>
+          </label>
+        </div>
+        <div class="actions">
+          <button class="btn-primary" onclick="saveCloudScriptUrl()">Сохранить URL</button>
+          <button class="btn-secondary" onclick="pingCloudScript()">Проверить подключение</button>
+          <button class="btn-success" onclick="syncPendingWorkouts(true)">Синхронизировать историю</button>
+          <button class="btn-warning" onclick="refreshWorkoutHistoryFromCloud(true)">Загрузить историю из облака</button>
+        </div>
+        <div id="cloudSyncStatus" class="hint-box" style="margin-top:12px;"></div>
+      </div>
+
+      <div class="card">
         <h2 class="section-title">Обратная связь</h2>
 
         <div class="feedback-box">
@@ -1211,6 +1209,7 @@
     let scheduledWorkouts = [];
     let templates = [];
     let feedbackEntries = [];
+    let pendingCloudWorkouts = [];
     let workoutSettings = {
       disclaimerAccepted: false,
       soundEnabled: true,
@@ -1233,22 +1232,26 @@
     };
 
     let planBuilderExercises = [];
-    let planBuilderSourceType = "manual";
-    let planBuilderSourceTemplateId = null;
     let templateBuilderExercises = [];
     let restTimerInterval = null;
     let restTimeLeft = 90;
     let restEndTime = 0;
     let pendingRestAction = null;
-    let planCalendarDate = new Date();
     let deferredPrompt = null;
     let audioContext = null;
     let profiles = [];
     let currentProfileId = "";
+    let cloudConfig = {
+      scriptUrl: "",
+      autoSync: true,
+      lastSyncAt: "",
+      lastSyncError: ""
+    };
 
     const TELEGRAM_URL = "https://t.me/GymControl";
     const PROFILE_INDEX_KEY = "gymcontrolProfiles";
     const CURRENT_PROFILE_KEY = "gymcontrolCurrentProfileId";
+    const CLOUD_CONFIG_KEY = "gymcontrolCloudConfig";
     const LEGACY_DATA_KEYS = [
       "workoutHistory",
       "customExercisesBySplit",
@@ -1348,6 +1351,7 @@
         scheduledWorkouts: [],
         templates: [],
         feedbackEntries: [],
+        pendingCloudWorkouts: [],
         workoutSettings: getEmptyWorkoutSettings()
       };
     }
@@ -1376,6 +1380,7 @@
           : [];
       templates = Array.isArray(safe.templates) ? safe.templates : [];
       feedbackEntries = Array.isArray(safe.feedbackEntries) ? safe.feedbackEntries : [];
+      pendingCloudWorkouts = Array.isArray(safe.pendingCloudWorkouts) ? safe.pendingCloudWorkouts : [];
       workoutSettings = safe.workoutSettings && typeof safe.workoutSettings === "object"
         ? {
             ...getEmptyWorkoutSettings(),
@@ -1421,6 +1426,21 @@
       }
     }
 
+    function loadCloudConfig() {
+      const parsed = JSON.parse(localStorage.getItem(CLOUD_CONFIG_KEY) || "null");
+      cloudConfig = {
+        scriptUrl: "",
+        autoSync: true,
+        lastSyncAt: "",
+        lastSyncError: "",
+        ...(parsed || {})
+      };
+    }
+
+    function saveCloudConfig() {
+      localStorage.setItem(CLOUD_CONFIG_KEY, JSON.stringify(cloudConfig));
+    }
+
     function loadProfilesMeta() {
       profiles = JSON.parse(localStorage.getItem(PROFILE_INDEX_KEY) || "[]");
       currentProfileId = localStorage.getItem(CURRENT_PROFILE_KEY) || "";
@@ -1456,8 +1476,6 @@
 
     function resetBuildersAndSession() {
       planBuilderExercises = [];
-      planBuilderSourceType = "manual";
-      planBuilderSourceTemplateId = null;
       templateBuilderExercises = [];
       stopRestTimerInternal();
       currentSession = {
@@ -1515,7 +1533,7 @@
 
       select.value = currentProfileId;
       currentName.textContent = getCurrentProfileName();
-      status.textContent = `Тренировок: ${workoutHistory.length} · Шаблонов: ${templates.length} · В календаре: ${scheduledWorkouts.length}`;
+      status.textContent = `Тренировок: ${workoutHistory.length} · Шаблонов: ${templates.length} · Планов: ${scheduledWorkouts.length}`;
       badge.classList.toggle("hidden", !currentProfileId);
       updateProfileDependentUI();
     }
@@ -1555,6 +1573,9 @@
       resetBuildersAndSession();
       renderAll();
       renderProfileManager();
+      if (cloudConfig.autoSync && isCloudConfigured()) {
+        refreshWorkoutHistoryFromCloud(false);
+      }
       return true;
     }
 
@@ -1584,6 +1605,10 @@
       switchScreen("training");
       renderAll();
       renderProfileManager();
+      if (cloudConfig.autoSync && isCloudConfigured()) {
+        syncPendingWorkouts(false);
+        refreshWorkoutHistoryFromCloud(false);
+      }
       showToast(`Профиль: ${getCurrentProfileName()}`);
     }
 
@@ -1612,6 +1637,7 @@
           scheduledWorkouts,
           templates,
           feedbackEntries,
+          pendingCloudWorkouts,
           workoutSettings
         })
       );
@@ -1625,6 +1651,210 @@
 
       const parsed = JSON.parse(localStorage.getItem(getCurrentProfileStorageKey()) || "null");
       applyProfileData(parsed || getEmptyProfileData());
+    }
+
+    function getCloudScriptUrl() {
+      return String(cloudConfig.scriptUrl || "").trim();
+    }
+
+    function isCloudConfigured() {
+      return !!getCloudScriptUrl();
+    }
+
+    function renderCloudSyncSettings() {
+      const urlInput = document.getElementById("cloudScriptUrl");
+      const autoSync = document.getElementById("cloudAutoSync");
+      const status = document.getElementById("cloudSyncStatus");
+      if (!urlInput || !autoSync || !status) return;
+
+      urlInput.value = cloudConfig.scriptUrl || "";
+      autoSync.checked = !!cloudConfig.autoSync;
+
+      if (!cloudConfig.scriptUrl) {
+        status.innerHTML = `
+          <strong>Облако не настроено</strong>
+          <div class="muted" style="margin-top:6px;">
+            Пока история хранится только локально в браузере этого устройства.
+          </div>
+        `;
+        return;
+      }
+
+      status.innerHTML = `
+        <strong>Google Sheets подключен</strong>
+        <div class="muted" style="margin-top:6px;">
+          Ожидают отправки: ${pendingCloudWorkouts.length}<br>
+          Последняя синхронизация: ${cloudConfig.lastSyncAt || "еще не выполнялась"}<br>
+          ${cloudConfig.lastSyncError ? `Последняя ошибка: ${escapeHtml(cloudConfig.lastSyncError)}` : "Ошибок синхронизации нет"}
+        </div>
+      `;
+    }
+
+    function saveCloudScriptUrl() {
+      const input = document.getElementById("cloudScriptUrl");
+      cloudConfig.scriptUrl = String(input?.value || "").trim();
+      cloudConfig.lastSyncError = "";
+      saveCloudConfig();
+      renderCloudSyncSettings();
+      showToast("URL Google Apps Script сохранен");
+    }
+
+    function toggleCloudAutoSync(value) {
+      cloudConfig.autoSync = !!value;
+      saveCloudConfig();
+      renderCloudSyncSettings();
+    }
+
+    async function callCloudApi(payload) {
+      const url = getCloudScriptUrl();
+      if (!url) throw new Error("Не указан URL Google Apps Script");
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "text/plain;charset=utf-8"
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      return response.json();
+    }
+
+    async function pingCloudScript() {
+      try {
+        const result = await callCloudApi({ action: "ping" });
+        if (!result.ok) throw new Error(result.error || "Не удалось подключиться");
+        cloudConfig.lastSyncError = "";
+        saveCloudConfig();
+        renderCloudSyncSettings();
+        showToast("Google Sheets отвечает");
+      } catch (error) {
+        cloudConfig.lastSyncError = error.message || "Ошибка подключения";
+        saveCloudConfig();
+        renderCloudSyncSettings();
+        alert(`Не удалось подключиться к Google Apps Script: ${cloudConfig.lastSyncError}`);
+      }
+    }
+
+    function getCloudUserPayload() {
+      return {
+        userId: currentProfileId,
+        profileName: getCurrentProfileName()
+      };
+    }
+
+    function queueWorkoutForCloud(workout) {
+      const exists = pendingCloudWorkouts.some(item => item.id === workout.id);
+      if (!exists) {
+        const copy = typeof structuredClone !== "undefined"
+          ? structuredClone(workout)
+          : JSON.parse(JSON.stringify(workout));
+        pendingCloudWorkouts.push(copy);
+        saveData();
+      }
+    }
+
+    async function syncPendingWorkouts(manual = false) {
+      if (!isCloudConfigured()) {
+        if (manual) alert("Сначала укажи URL Google Apps Script");
+        return false;
+      }
+
+      if (!pendingCloudWorkouts.length) {
+        if (manual) showToast("Все тренировки уже синхронизированы");
+        renderCloudSyncSettings();
+        return true;
+      }
+
+      const remaining = [];
+
+      for (const workout of pendingCloudWorkouts) {
+        try {
+          const result = await callCloudApi({
+            action: "saveWorkout",
+            user: getCloudUserPayload(),
+            workout
+          });
+
+          if (!result.ok) {
+            throw new Error(result.error || "Не удалось сохранить тренировку");
+          }
+        } catch (error) {
+          remaining.push(workout);
+          cloudConfig.lastSyncError = error.message || "Ошибка синхронизации";
+        }
+      }
+
+      pendingCloudWorkouts = remaining;
+      if (!remaining.length) {
+        cloudConfig.lastSyncAt = new Date().toLocaleString("ru-RU");
+        cloudConfig.lastSyncError = "";
+      }
+
+      saveCloudConfig();
+      saveData();
+      renderCloudSyncSettings();
+
+      if (manual) {
+        if (!remaining.length) showToast("История синхронизирована");
+        else alert(`Часть тренировок не отправлена. Осталось в очереди: ${remaining.length}`);
+      }
+
+      return !remaining.length;
+    }
+
+    function mergeWorkoutHistory(localItems, remoteItems) {
+      const map = new Map();
+      [...remoteItems, ...localItems].forEach(item => {
+        if (!item || item.id === undefined || item.id === null) return;
+        map.set(String(item.id), item);
+      });
+
+      return [...map.values()].sort((a, b) => {
+        const dateCompare = String(b.date || "").localeCompare(String(a.date || ""));
+        if (dateCompare !== 0) return dateCompare;
+        return String(b.id).localeCompare(String(a.id));
+      });
+    }
+
+    async function refreshWorkoutHistoryFromCloud(manual = false) {
+      if (!isCloudConfigured()) {
+        if (manual) alert("Сначала укажи URL Google Apps Script");
+        return false;
+      }
+
+      try {
+        const result = await callCloudApi({
+          action: "getWorkoutHistory",
+          user: getCloudUserPayload()
+        });
+
+        if (!result.ok) {
+          throw new Error(result.error || "Не удалось загрузить историю");
+        }
+
+        const remote = Array.isArray(result.workouts) ? result.workouts : [];
+        workoutHistory = mergeWorkoutHistory(workoutHistory, remote);
+        cloudConfig.lastSyncAt = new Date().toLocaleString("ru-RU");
+        cloudConfig.lastSyncError = "";
+        saveCloudConfig();
+        saveData();
+        renderTrainingScreen();
+        renderStatsScreen();
+        renderCloudSyncSettings();
+        if (manual) showToast("История загружена из Google Sheets");
+        return true;
+      } catch (error) {
+        cloudConfig.lastSyncError = error.message || "Ошибка загрузки";
+        saveCloudConfig();
+        renderCloudSyncSettings();
+        if (manual) alert(`Не удалось загрузить историю: ${cloudConfig.lastSyncError}`);
+        return false;
+      }
     }
 
     function showToast(text) {
@@ -2608,6 +2838,7 @@
       };
 
       workoutHistory.unshift(historyItem);
+      queueWorkoutForCloud(historyItem);
 
       if (currentSession.fromScheduledWorkoutId) {
         const scheduled = scheduledWorkouts.find(item => item.id === currentSession.fromScheduledWorkoutId);
@@ -2628,6 +2859,9 @@
       };
 
       saveData();
+      if (cloudConfig.autoSync) {
+        syncPendingWorkouts(false);
+      }
 
       if (goHomeAfter) {
         resetTrainingSessionState();
@@ -2798,15 +3032,11 @@
       renderPlanBuilder();
       renderPlannedWorkouts();
       renderTemplateToPlanList();
-      renderPlansCalendar();
     }
 
     function showPlanBuilder() {
       document.getElementById("planBuilderCard").classList.remove("hidden");
-      document.getElementById("scheduleStartDate").valueAsDate = new Date();
-      document.getElementById("scheduleEndDate").valueAsDate = new Date();
-      planBuilderSourceType = "manual";
-      planBuilderSourceTemplateId = null;
+      document.getElementById("planDate").valueAsDate = new Date();
       updatePlanExerciseOptions();
     }
 
@@ -2870,8 +3100,6 @@
 
     function clearPlanBuilder() {
       planBuilderExercises = [];
-      planBuilderSourceType = "manual";
-      planBuilderSourceTemplateId = null;
       renderPlanBuilder();
     }
 
@@ -2908,45 +3136,31 @@
     }
 
     function savePlannedWorkout() {
-      const title = normalizeExerciseName(document.getElementById("planTitle").value);
-      const startDate = document.getElementById("scheduleStartDate").value;
-      const endDate = document.getElementById("scheduleEndDate").value || startDate;
-      const mode = document.getElementById("scheduleMode").value;
+      const date = document.getElementById("planDate").value;
       const split = document.getElementById("planSplit").value;
 
-      if (!startDate || !split || !planBuilderExercises.length) {
-        alert("Укажи даты, сплит и добавь упражнения");
+      if (!date || !split || !planBuilderExercises.length) {
+        alert("Укажи дату, сплит и добавь упражнения");
         return;
       }
 
-      const dates = buildScheduleDates(startDate, endDate, mode);
-      if (!dates.length) {
-        alert("Не удалось построить расписание. Проверь даты и дни недели.");
-        return;
-      }
-
-      dates.reverse().forEach(date => {
-        scheduledWorkouts.unshift({
-          id: Date.now() + Math.random(),
-          title: title || split,
-          date,
-          split,
-          exercises: planBuilderExercises.map(item => ({ ...item })),
-          sourceType: planBuilderSourceType,
-          sourceTemplateId: planBuilderSourceTemplateId,
-          status: "scheduled",
-          createdAt: new Date().toISOString(),
-          completedWorkoutId: null
-        });
+      scheduledWorkouts.unshift({
+        id: Date.now() + Math.random(),
+        title: split,
+        date,
+        split,
+        exercises: planBuilderExercises.map(item => ({ ...item })),
+        sourceType: "manual",
+        sourceTemplateId: null,
+        status: "scheduled",
+        createdAt: new Date().toISOString(),
+        completedWorkoutId: null
       });
 
-      document.getElementById("planTitle").value = "";
       planBuilderExercises = [];
-      planBuilderSourceType = "manual";
-      planBuilderSourceTemplateId = null;
       saveData();
       renderPlansScreen();
-      showToast(`В календарь добавлено тренировок: ${dates.length}`);
+      showToast("План сохранен");
     }
 
     function renderPlannedWorkouts() {
@@ -2955,10 +3169,10 @@
 
       const items = [...scheduledWorkouts]
         .sort((a, b) => a.date.localeCompare(b.date))
-        .slice(0, 12);
+        .slice(0, 20);
 
       if (!items.length) {
-        box.innerHTML = '<p class="empty">Тренировок в календаре пока нет</p>';
+        box.innerHTML = '<p class="empty">Планы тренировок пока не созданы</p>';
         return;
       }
 
@@ -2974,7 +3188,6 @@
           <div class="list-top">
             <div>
               <strong>${plan.date}</strong>
-              <div style="margin-top:4px;">${escapeHtml(plan.title || plan.split)}</div>
               <div style="margin-top:6px;"><span class="badge">${plan.split}</span></div>
               <div style="margin-top:6px;"><span class="badge ${badgeClass}">${plan.status === "completed" ? "Выполнена" : plan.status === "skipped" ? "Пропущена" : "Запланирована"}</span></div>
               <div class="muted" style="margin-top:8px;">
@@ -3006,88 +3219,6 @@
       renderPlansScreen();
     }
 
-    function buildScheduleDates(startDate, endDate, mode) {
-      const start = new Date(`${startDate}T00:00:00`);
-      const end = new Date(`${endDate}T00:00:00`);
-      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) return [];
-
-      if (mode === "single") {
-        return [startDate];
-      }
-
-      const selectedWeekdays = [...document.querySelectorAll(".schedule-weekday:checked")]
-        .map(input => Number(input.value));
-
-      const dates = [];
-      for (let current = new Date(start); current <= end; current.setDate(current.getDate() + 1)) {
-        if (mode === "daily") {
-          dates.push(current.toISOString().slice(0, 10));
-          continue;
-        }
-
-        if (mode === "weekly" && selectedWeekdays.includes(current.getDay())) {
-          dates.push(current.toISOString().slice(0, 10));
-        }
-      }
-
-      return dates;
-    }
-
-    function changeCalendarMonth(delta) {
-      planCalendarDate = new Date(planCalendarDate.getFullYear(), planCalendarDate.getMonth() + delta, 1);
-      renderPlansCalendar();
-    }
-
-    function renderPlansCalendar() {
-      const box = document.getElementById("plansCalendar");
-      const label = document.getElementById("calendarMonthLabel");
-      if (!box || !label) return;
-
-      box.innerHTML = "";
-      const monthStart = new Date(planCalendarDate.getFullYear(), planCalendarDate.getMonth(), 1);
-      const monthEnd = new Date(planCalendarDate.getFullYear(), planCalendarDate.getMonth() + 1, 0);
-      label.textContent = monthStart.toLocaleDateString("ru-RU", { month: "long", year: "numeric" });
-
-      ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].forEach(day => {
-        const div = document.createElement("div");
-        div.className = "calendar-weekday";
-        div.textContent = day;
-        box.appendChild(div);
-      });
-
-      const startOffset = (monthStart.getDay() + 6) % 7;
-      const totalCells = Math.ceil((startOffset + monthEnd.getDate()) / 7) * 7;
-      const today = new Date().toISOString().slice(0, 10);
-
-      for (let i = 0; i < totalCells; i++) {
-        const date = new Date(monthStart);
-        date.setDate(i - startOffset + 1);
-        const dateStr = date.toISOString().slice(0, 10);
-        const items = scheduledWorkouts
-          .filter(item => item.date === dateStr)
-          .sort((a, b) => String(a.title || "").localeCompare(String(b.title || ""), "ru"));
-
-        const div = document.createElement("div");
-        div.className = `calendar-day ${date.getMonth() !== monthStart.getMonth() ? "muted-day" : ""} ${dateStr === today ? "today" : ""}`;
-        div.innerHTML = `
-          <div class="calendar-day-head">
-            <span class="calendar-day-number">${date.getDate()}</span>
-            <span class="muted">${items.length ? items.length + " шт." : ""}</span>
-          </div>
-          <div class="calendar-items">
-            ${items.slice(0, 3).map(item => `
-              <div class="calendar-item ${item.status}">
-                <strong>${escapeHtml(item.title || item.split)}</strong><br>
-                ${escapeHtml(item.split)}
-              </div>
-            `).join("")}
-            ${items.length > 3 ? `<div class="muted">Еще: ${items.length - 3}</div>` : ""}
-          </div>
-        `;
-        box.appendChild(div);
-      }
-    }
-
     function createPlanFromLastWorkout() {
       if (!currentProfileId) {
         alert("Сначала создай или выбери профиль");
@@ -3116,16 +3247,12 @@
       });
 
       document.getElementById("planBuilderCard").classList.remove("hidden");
-      document.getElementById("scheduleStartDate").valueAsDate = new Date();
-      document.getElementById("scheduleEndDate").valueAsDate = new Date();
+      document.getElementById("planDate").valueAsDate = new Date();
       document.getElementById("planSplit").value = lastWorkout.split;
-      document.getElementById("planTitle").value = lastWorkout.split;
       updatePlanExerciseOptions();
       planBuilderExercises = Object.values(grouped);
-      planBuilderSourceType = "last-workout";
-      planBuilderSourceTemplateId = null;
       renderPlanBuilder();
-      showToast("Конструктор серии заполнен по прошлой тренировке");
+      showToast("Конструктор заполнен по прошлой тренировке");
     }
 
     function togglePlanExerciseEditor() {
@@ -3257,17 +3384,13 @@
       if (!template) return;
 
       document.getElementById("planBuilderCard").classList.remove("hidden");
-      document.getElementById("scheduleStartDate").valueAsDate = new Date();
-      document.getElementById("scheduleEndDate").valueAsDate = new Date();
-      document.getElementById("planTitle").value = template.name;
+      document.getElementById("planDate").valueAsDate = new Date();
       document.getElementById("planSplit").value = template.split;
       updatePlanExerciseOptions();
       planBuilderExercises = template.exercises.map(item => ({ ...item }));
-      planBuilderSourceType = "template";
-      planBuilderSourceTemplateId = template.id;
       renderPlanBuilder();
       hideTemplateToPlanPicker();
-      showToast("Шаблон загружен в конструктор серии");
+      showToast("Шаблон загружен в конструктор");
     }
 
     function renderStatsScreen() {
@@ -3545,6 +3668,7 @@
       renderTemplates();
       renderStarterPrograms();
       renderFeedbackList();
+      renderCloudSyncSettings();
       syncSettingsUI();
     }
 
@@ -3732,16 +3856,12 @@
       switchScreen("plans");
       setTimeout(() => {
         document.getElementById("planBuilderCard").classList.remove("hidden");
-        document.getElementById("scheduleStartDate").valueAsDate = new Date();
-        document.getElementById("scheduleEndDate").valueAsDate = new Date();
-        document.getElementById("planTitle").value = program.title;
+        document.getElementById("planDate").valueAsDate = new Date();
         document.getElementById("planSplit").value = program.split;
         updatePlanExerciseOptions();
         planBuilderExercises = program.exercises.map(item => ({ ...item }));
-        planBuilderSourceType = "starter-program";
-        planBuilderSourceTemplateId = null;
         renderPlanBuilder();
-        showToast("Готовая программа загружена в календарный конструктор");
+        showToast("Готовая программа загружена");
       }, 50);
     }
 
@@ -3916,6 +4036,7 @@
         scheduledWorkouts,
         templates,
         feedbackEntries,
+        pendingCloudWorkouts,
         workoutSettings,
         exportedAt: new Date().toISOString()
       };
@@ -3993,11 +4114,11 @@
     function init() {
       migrateLegacyDataToProfilesIfNeeded();
       loadProfilesMeta();
+      loadCloudConfig();
       loadData();
 
       document.getElementById("setupDate").valueAsDate = new Date();
-      document.getElementById("scheduleStartDate").valueAsDate = new Date();
-      document.getElementById("scheduleEndDate").valueAsDate = new Date();
+      document.getElementById("planDate").valueAsDate = new Date();
 
       updatePlanExerciseOptions();
       updateTemplateExerciseOptions();
@@ -4019,6 +4140,11 @@
 
       document.body.addEventListener("click", unlockAudio, { once: true });
       document.body.addEventListener("touchstart", unlockAudio, { once: true });
+
+      if (cloudConfig.autoSync && isCloudConfigured()) {
+        syncPendingWorkouts(false);
+        refreshWorkoutHistoryFromCloud(false);
+      }
     }
 
     init();
