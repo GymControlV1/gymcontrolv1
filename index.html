@@ -212,6 +212,84 @@
       color: #166534;
     }
 
+    .info-box {
+      background: var(--primary-soft);
+      border: 1px solid #bfdbfe;
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+
+    .info-box strong {
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .profile-summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 10px;
+    }
+
+    .profile-stat-card {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      padding: 14px;
+    }
+
+    .profile-stat-value {
+      font-size: 26px;
+      font-weight: bold;
+      color: var(--primary-dark);
+      margin-bottom: 4px;
+    }
+
+    .profile-stat-label {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .session-progress-card {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.16);
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 14px;
+    }
+
+    .session-progress-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .session-progress-item {
+      background: rgba(255,255,255,0.1);
+      border-radius: 12px;
+      padding: 10px;
+    }
+
+    .session-progress-value {
+      font-size: 22px;
+      font-weight: bold;
+      color: white;
+      margin-bottom: 3px;
+    }
+
+    .session-progress-label {
+      font-size: 12px;
+      color: rgba(255,255,255,0.82);
+    }
+
+    .session-progress-note {
+      color: rgba(255,255,255,0.9);
+      font-size: 14px;
+      line-height: 1.45;
+      margin-top: 10px;
+    }
+
     .list-item {
       background: #f9fafb;
       border: 1px solid #e5e7eb;
@@ -819,6 +897,16 @@
             </div>
           </div>
           <div id="gymHeaderInfo" class="muted"></div>
+          <div id="gymSessionProgressCard" class="session-progress-card">
+            <strong style="color:white; display:block; margin-bottom:4px;">Ход тренировки</strong>
+            <div id="gymSessionProgressNote" class="session-progress-note"></div>
+            <div id="gymSessionProgressGrid" class="session-progress-grid"></div>
+            <div class="actions full" style="margin-top:12px;">
+              <button class="btn-secondary" onclick="goToPreviousExercise()">Предыдущее упражнение</button>
+              <button class="btn-secondary" onclick="nextExercise()">Следующее упражнение</button>
+              <button class="btn-secondary" onclick="togglePlanExerciseEditor()">Править план</button>
+            </div>
+          </div>
           <div id="gymExerciseTitle" class="gym-exercise-title">Упражнение</div>
           <div id="gymExerciseMeta" class="muted" style="margin-bottom:10px;"></div>
           <div id="gymExerciseStats" class="muted"></div>
@@ -1185,6 +1273,42 @@
         </div>
       </div>
     </section>
+
+    <section id="screen-profile" class="screen">
+      <div class="card">
+        <div class="section-head">
+          <h2 class="section-title">Личный кабинет</h2>
+          <div class="section-head-actions">
+            <button class="btn-secondary" onclick="goToTrainingHome()">На главную</button>
+          </div>
+        </div>
+        <div id="profileCabinetHeader" class="info-box"></div>
+        <div id="profileCabinetStats" class="profile-summary-grid"></div>
+      </div>
+
+      <div class="card">
+        <h2 class="section-title">Облако и устройства</h2>
+        <div id="profileCloudStatus" class="muted" style="margin-bottom:10px;"></div>
+        <div class="actions full">
+          <button class="btn-primary" onclick="syncAllCloudData(true)">Синхронизировать сейчас</button>
+          <button class="btn-secondary" onclick="refreshAllCloudData(true)">Обновить из облака</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 class="section-title">Краткая сводка</h2>
+        <div id="profileCabinetSummary" class="muted"></div>
+      </div>
+
+      <div class="card">
+        <h2 class="section-title">Действия</h2>
+        <div class="actions full">
+          <button class="btn-secondary" onclick="switchScreen('stats')">Открыть статистику</button>
+          <button class="btn-secondary" onclick="switchScreen('plans')">Открыть планы</button>
+          <button class="btn-danger" onclick="logoutProfile()">Выйти из профиля</button>
+        </div>
+      </div>
+    </section>
     </div>
   </div>
 
@@ -1193,6 +1317,7 @@
     <button id="nav-plans" class="nav-btn" onclick="switchScreen('plans')">Планы</button>
     <button id="nav-stats" class="nav-btn" onclick="switchScreen('stats')">Статистика</button>
     <button id="nav-more" class="nav-btn" onclick="switchScreen('more')">Еще</button>
+    <button id="nav-profile" class="nav-btn" onclick="switchScreen('profile')">Профиль</button>
   </nav>
 
   <script>
@@ -1803,6 +1928,7 @@
       renderPlansScreen();
       renderStatsScreen();
       renderMoreScreen();
+      renderProfileScreen();
       syncSettingsUI();
       renderProfileManager();
     }
@@ -2044,6 +2170,41 @@
         if (manual) alert(`Не удалось загрузить профиль: ${cloudConfig.lastSyncError}`);
         return false;
       }
+    }
+
+    async function syncAllCloudData(manual = false) {
+      const deletedOk = await syncPendingDeletedWorkouts(false);
+      const workoutsOk = await syncPendingWorkouts(false);
+      const profileOk = await syncCloudProfileData(false);
+
+      renderProfileScreen();
+
+      if (manual) {
+        if (deletedOk && workoutsOk && profileOk) {
+          showToast("Данные синхронизированы");
+        } else {
+          alert(`Синхронизация завершилась с ошибкой: ${cloudConfig.lastSyncError || "неизвестная ошибка"}`);
+        }
+      }
+
+      return deletedOk && workoutsOk && profileOk;
+    }
+
+    async function refreshAllCloudData(manual = false) {
+      const historyOk = await refreshWorkoutHistoryFromCloud(false);
+      const profileOk = await refreshCloudProfileData(false);
+
+      renderProfileScreen();
+
+      if (manual) {
+        if (historyOk && profileOk) {
+          showToast("Данные из облака обновлены");
+        } else {
+          alert(`Не удалось полностью обновить данные: ${cloudConfig.lastSyncError || "неизвестная ошибка"}`);
+        }
+      }
+
+      return historyOk && profileOk;
     }
 
     function queueWorkoutForCloud(workout) {
@@ -2311,7 +2472,7 @@
     }
 
     function switchScreen(name) {
-      ["training", "plans", "stats", "more"].forEach(screen => {
+      ["training", "plans", "stats", "more", "profile"].forEach(screen => {
         document.getElementById("screen-" + screen).classList.toggle("active", screen === name);
         document.getElementById("nav-" + screen).classList.toggle("active", screen === name);
       });
@@ -2320,6 +2481,7 @@
       if (name === "plans") renderPlansScreen();
       if (name === "stats") renderStatsScreen();
       if (name === "more") renderMoreScreen();
+      if (name === "profile") renderProfileScreen();
     }
 
     function getMergedExercises(split) {
@@ -2417,6 +2579,25 @@
       return currentSession.sets.filter(
         set => set.exercise.toLowerCase() === exerciseName.toLowerCase()
       ).length;
+    }
+
+    function getCompletedExercisesCount() {
+      if (!currentSession.planExercises.length) {
+        return [...new Set(currentSession.sets.map(set => set.exercise.toLowerCase()))].length;
+      }
+
+      return currentSession.planExercises.filter(item => {
+        return getDoneSetsForExercise(item.exercise) > 0;
+      }).length;
+    }
+
+    function getCurrentSessionVolume() {
+      return currentSession.sets.reduce((sum, set) => sum + set.volume, 0);
+    }
+
+    function getNextExerciseName() {
+      if (!currentSession.planExercises.length) return "";
+      return currentSession.planExercises[currentSession.currentExerciseIndex + 1]?.exercise || "";
     }
 
     function getCooldownBySplit(split) {
@@ -2923,12 +3104,67 @@
 
       const currentExerciseObj = getCurrentExerciseObject();
       const exerciseName = document.getElementById("gymExerciseSelect").value || (currentExerciseObj ? currentExerciseObj.exercise : "");
+      const nextExerciseName = getNextExerciseName();
+      const completedExercises = getCompletedExercisesCount();
+      const volumeToday = getCurrentSessionVolume();
 
       const headerInfo = [];
       if (currentSession.date) headerInfo.push(currentSession.date);
       if (currentSession.split) headerInfo.push(currentSession.split);
       if (currentExerciseObj) headerInfo.push(`Упражнение ${currentSession.currentExerciseIndex + 1} из ${currentSession.planExercises.length}`);
       document.getElementById("gymHeaderInfo").textContent = headerInfo.join(" · ");
+
+      const progressNote = document.getElementById("gymSessionProgressNote");
+      const progressGrid = document.getElementById("gymSessionProgressGrid");
+      const progressCard = document.getElementById("gymSessionProgressCard");
+
+      if (currentSession.planExercises.length) {
+        progressCard.classList.remove("hidden");
+        progressNote.textContent = nextExerciseName
+          ? `Сейчас: ${exerciseName}. Дальше по плану: ${nextExerciseName}.`
+          : `Сейчас последнее упражнение плана: ${exerciseName}. После него останется заминка.`;
+        progressGrid.innerHTML = `
+          <div class="session-progress-item">
+            <div class="session-progress-value">${currentSession.currentExerciseIndex + 1}/${currentSession.planExercises.length}</div>
+            <div class="session-progress-label">Позиция в плане</div>
+          </div>
+          <div class="session-progress-item">
+            <div class="session-progress-value">${completedExercises}</div>
+            <div class="session-progress-label">Упражнений уже начато</div>
+          </div>
+          <div class="session-progress-item">
+            <div class="session-progress-value">${currentSession.sets.length}</div>
+            <div class="session-progress-label">Подходов за тренировку</div>
+          </div>
+          <div class="session-progress-item">
+            <div class="session-progress-value">${volumeToday}</div>
+            <div class="session-progress-label">Текущий тоннаж</div>
+          </div>
+        `;
+      } else {
+        progressCard.classList.remove("hidden");
+        progressNote.textContent = exerciseName
+          ? `Свободная тренировка. Сейчас выбрано упражнение: ${exerciseName}.`
+          : "Свободная тренировка. Выбери упражнение и сохраняй подходы.";
+        progressGrid.innerHTML = `
+          <div class="session-progress-item">
+            <div class="session-progress-value">${completedExercises}</div>
+            <div class="session-progress-label">Упражнений затронуто</div>
+          </div>
+          <div class="session-progress-item">
+            <div class="session-progress-value">${currentSession.sets.length}</div>
+            <div class="session-progress-label">Подходов за тренировку</div>
+          </div>
+          <div class="session-progress-item">
+            <div class="session-progress-value">${volumeToday}</div>
+            <div class="session-progress-label">Текущий тоннаж</div>
+          </div>
+          <div class="session-progress-item">
+            <div class="session-progress-value">${getHistoricalSetsForExercise(exerciseName).length}</div>
+            <div class="session-progress-label">Исторических подходов</div>
+          </div>
+        `;
+      }
 
       document.getElementById("gymExerciseTitle").textContent = exerciseName || "Упражнение";
       document.getElementById("gymExerciseMeta").textContent = currentExerciseObj
@@ -3205,6 +3441,24 @@
         showToast("Следующее упражнение");
       } else {
         showToast("Это последнее упражнение в плане");
+      }
+    }
+
+    function goToPreviousExercise() {
+      if (!currentSession.planExercises.length) {
+        showToast("В свободной тренировке можно просто выбрать упражнение вручную");
+        return;
+      }
+
+      if (currentSession.currentExerciseIndex > 0) {
+        currentSession.currentExerciseIndex -= 1;
+        resetEditorMode();
+        currentSession.exerciseFeedback = "";
+        renderGymWorkoutView();
+        fillGymFormDefaults();
+        showToast("Возврат к предыдущему упражнению");
+      } else {
+        showToast("Это первое упражнение в плане");
       }
     }
 
@@ -4161,6 +4415,65 @@
       renderFeedbackList();
       renderCloudSyncSettings();
       syncSettingsUI();
+    }
+
+    function renderProfileScreen() {
+      const header = document.getElementById("profileCabinetHeader");
+      const stats = document.getElementById("profileCabinetStats");
+      const cloud = document.getElementById("profileCloudStatus");
+      const summary = document.getElementById("profileCabinetSummary");
+      if (!header || !stats || !cloud || !summary) return;
+
+      if (!currentProfileId) {
+        header.innerHTML = "<strong>Профиль не выбран</strong><div class='muted'>Сначала войди через Telegram или создай локальный профиль.</div>";
+        stats.innerHTML = "";
+        cloud.textContent = "Облачная синхронизация недоступна без активного профиля.";
+        summary.textContent = "";
+        return;
+      }
+
+      const profile = getCurrentProfile();
+      const authLabel = profile?.authProvider === "telegram"
+        ? `Telegram: @${profile.username || "без username"}`
+        : "Локальный профиль";
+      const completedPlans = scheduledWorkouts.filter(item => item.status === "completed").length;
+      const scheduledPlans = scheduledWorkouts.filter(item => item.status === "scheduled").length;
+      const nextPlan = [...scheduledWorkouts]
+        .filter(item => item.status === "scheduled")
+        .sort((a, b) => String(a.date).localeCompare(String(b.date)))[0];
+      const lastWorkout = workoutHistory[0];
+
+      header.innerHTML = `
+        <strong>${escapeHtml(getCurrentProfileName())}</strong>
+        <div class="muted">
+          ${authLabel}<br>
+          Профиль создан: ${profile?.createdAt ? new Date(profile.createdAt).toLocaleString("ru-RU") : "неизвестно"}<br>
+          Последняя синхронизация: ${cloudConfig.lastSyncAt || "еще не выполнялась"}
+        </div>
+      `;
+
+      stats.innerHTML = [
+        { value: workoutHistory.length, label: "Тренировок" },
+        { value: scheduledPlans, label: "Активных планов" },
+        { value: templates.length, label: "Шаблонов" },
+        { value: completedPlans, label: "Выполненных планов" }
+      ].map(item => `
+        <div class="profile-stat-card">
+          <div class="profile-stat-value">${item.value}</div>
+          <div class="profile-stat-label">${item.label}</div>
+        </div>
+      `).join("");
+
+      cloud.textContent = shouldUseCloudProfileSync()
+        ? `Профиль связан с облаком. Очередь тренировок: ${pendingCloudWorkouts.length}. Очередь удалений: ${pendingCloudDeletedWorkoutIds.length}. Последняя ошибка: ${cloudConfig.lastSyncError || "нет"}.`
+        : "Сейчас это локальный профиль. Для синхронизации между устройствами нужен вход через Telegram.";
+
+      summary.innerHTML = `
+        Последняя тренировка: ${lastWorkout ? `${lastWorkout.date} · ${escapeHtml(lastWorkout.split)} · ${lastWorkout.sets.length} подходов` : "пока нет тренировок"}<br>
+        Ближайший план: ${nextPlan ? `${nextPlan.date} · ${escapeHtml(nextPlan.title || nextPlan.split)}` : "пока ничего не запланировано"}<br>
+        Кастомных сплитов/упражнений: ${Object.values(customExercisesBySplit).reduce((sum, items) => sum + items.length, 0)}<br>
+        Отзывов в приложении: ${feedbackEntries.length}
+      `;
     }
 
     function updateTemplateExerciseOptions() {
