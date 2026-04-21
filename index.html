@@ -1202,6 +1202,7 @@
     let templates = [];
     let feedbackEntries = [];
     let pendingCloudWorkouts = [];
+    let pendingCloudDeletedWorkoutIds = [];
     let workoutSettings = {
       disclaimerAccepted: false,
       soundEnabled: true,
@@ -1349,6 +1350,7 @@
         templates: [],
         feedbackEntries: [],
         pendingCloudWorkouts: [],
+        pendingCloudDeletedWorkoutIds: [],
         workoutSettings: getEmptyWorkoutSettings()
       };
     }
@@ -1378,6 +1380,7 @@
       templates = Array.isArray(safe.templates) ? safe.templates : [];
       feedbackEntries = Array.isArray(safe.feedbackEntries) ? safe.feedbackEntries : [];
       pendingCloudWorkouts = Array.isArray(safe.pendingCloudWorkouts) ? safe.pendingCloudWorkouts : [];
+      pendingCloudDeletedWorkoutIds = Array.isArray(safe.pendingCloudDeletedWorkoutIds) ? safe.pendingCloudDeletedWorkoutIds : [];
       workoutSettings = safe.workoutSettings && typeof safe.workoutSettings === "object"
         ? {
             ...getEmptyWorkoutSettings(),
@@ -1816,6 +1819,7 @@
           templates,
           feedbackEntries,
           pendingCloudWorkouts,
+          pendingCloudDeletedWorkoutIds,
           workoutSettings
         })
       );
@@ -2053,11 +2057,68 @@
       }
     }
 
+    function queueWorkoutDeletionForCloud(workoutId) {
+      const id = String(workoutId);
+      pendingCloudWorkouts = pendingCloudWorkouts.filter(item => String(item.id) !== id);
+      if (!pendingCloudDeletedWorkoutIds.includes(id)) {
+        pendingCloudDeletedWorkoutIds.push(id);
+      }
+      saveData({ skipCloudProfileSync: true });
+    }
+
+    async function syncPendingDeletedWorkouts(manual = false) {
+      if (!isCloudConfigured()) {
+        return false;
+      }
+
+      if (!pendingCloudDeletedWorkoutIds.length) {
+        return true;
+      }
+
+      const remaining = [];
+
+      for (const workoutId of pendingCloudDeletedWorkoutIds) {
+        try {
+          const result = await callCloudApi({
+            action: "deleteWorkout",
+            user: getCloudUserPayload(),
+            workoutId
+          });
+
+          if (!result.ok) {
+            throw new Error(result.error || "Не удалось удалить тренировку");
+          }
+        } catch (error) {
+          remaining.push(workoutId);
+          cloudConfig.lastSyncError = error.message || "Ошибка удаления";
+        }
+      }
+
+      pendingCloudDeletedWorkoutIds = remaining;
+      if (!remaining.length) {
+        cloudConfig.lastSyncAt = new Date().toLocaleString("ru-RU");
+        cloudConfig.lastSyncError = "";
+      }
+
+      saveCloudConfig();
+      saveData({ skipCloudProfileSync: true });
+      renderCloudSyncSettings();
+
+      if (manual) {
+        if (!remaining.length) showToast("Удаления синхронизированы");
+        else alert(`Часть удалений не отправлена. Осталось: ${remaining.length}`);
+      }
+
+      return !remaining.length;
+    }
+
     async function syncPendingWorkouts(manual = false) {
       if (!isCloudConfigured()) {
         if (manual) alert("Сначала укажи URL Google Apps Script");
         return false;
       }
+
+      await syncPendingDeletedWorkouts(false);
 
       if (!pendingCloudWorkouts.length) {
         if (manual) showToast("Все тренировки уже синхронизированы");
@@ -2123,6 +2184,8 @@
       }
 
       try {
+        await syncPendingDeletedWorkouts(false);
+
         const result = await callCloudApi({
           action: "getWorkoutHistory",
           user: getCloudUserPayload()
@@ -2132,7 +2195,10 @@
           throw new Error(result.error || "Не удалось загрузить историю");
         }
 
-        const remote = Array.isArray(result.workouts) ? result.workouts : [];
+        const deletedIds = new Set(pendingCloudDeletedWorkoutIds.map(String));
+        const remote = Array.isArray(result.workouts)
+          ? result.workouts.filter(item => !deletedIds.has(String(item.id)))
+          : [];
         workoutHistory = mergeWorkoutHistory(workoutHistory, remote);
         cloudConfig.lastSyncAt = new Date().toLocaleString("ru-RU");
         cloudConfig.lastSyncError = "";
@@ -4078,9 +4144,13 @@
     }
 
     function deleteHistoryWorkout(workoutId) {
+      queueWorkoutDeletionForCloud(workoutId);
       workoutHistory = workoutHistory.filter(item => item.id !== workoutId);
       saveData();
       renderStatsScreen();
+      if (cloudConfig.autoSync && isCloudConfigured()) {
+        syncPendingDeletedWorkouts(false);
+      }
     }
 
     function renderMoreScreen() {
