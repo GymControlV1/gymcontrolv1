@@ -1218,6 +1218,11 @@
       </div>
 
       <div class="card">
+        <h2 class="section-title">Проведенные тренировки</h2>
+        <div id="profileWorkoutHistoryList"></div>
+      </div>
+
+      <div class="card">
         <h2 class="section-title">Действия</h2>
         <div class="actions full">
           <button class="btn-secondary" onclick="showProfileStats()">Открыть статистику</button>
@@ -2467,6 +2472,25 @@
       return `${set.enteredWeight} кг`;
     }
 
+    function getWorkoutDateTimeText(workout) {
+      if (workout?.createdAt) {
+        const date = new Date(workout.createdAt);
+        if (!Number.isNaN(date.getTime())) {
+          return date.toLocaleString("ru-RU");
+        }
+      }
+
+      const numericId = Number(workout?.id);
+      if (Number.isFinite(numericId) && numericId > 1000000000000) {
+        const date = new Date(numericId);
+        if (!Number.isNaN(date.getTime())) {
+          return date.toLocaleString("ru-RU");
+        }
+      }
+
+      return workout?.date || "Дата не указана";
+    }
+
     function getAllSets() {
       const allSets = [];
       workoutHistory.forEach(workout => workout.sets.forEach(set => allSets.push(set)));
@@ -3542,6 +3566,7 @@
 
       const historyItem = {
         id: Date.now(),
+        createdAt: new Date().toISOString(),
         date: currentSession.date,
         split: currentSession.split,
         sets: [...currentSession.sets]
@@ -4386,6 +4411,49 @@
       syncSettingsUI();
     }
 
+    function renderProfileWorkoutHistoryList() {
+      const box = document.getElementById("profileWorkoutHistoryList");
+      if (!box) return;
+
+      box.innerHTML = "";
+
+      if (!workoutHistory.length) {
+        box.innerHTML = '<p class="empty">Тренировок пока нет</p>';
+        return;
+      }
+
+      workoutHistory.forEach(workout => {
+        const totalVolume = workout.sets.reduce((sum, set) => sum + set.volume, 0);
+        const uniqueExercises = [...new Set(workout.sets.map(set => set.exercise))];
+        const details = workout.sets.map((set, index) => `
+          <div class="muted" style="margin-bottom:8px;">
+            ${index + 1}. ${escapeHtml(set.exercise)} — ${getDisplayWeightText(set)} × ${set.reps}
+            (${getLoadTypeLabel(set.loadType)}, тоннаж ${set.volume} кг)
+          </div>
+        `).join("");
+
+        const div = document.createElement("div");
+        div.className = "list-item";
+        div.innerHTML = `
+          <details>
+            <summary style="cursor:pointer; font-weight:bold;">
+              ${workout.date} · ${escapeHtml(workout.split)} · ${workout.sets.length} подходов
+            </summary>
+            <div style="margin-top:10px;">
+              <div class="muted" style="margin-bottom:10px;">
+                Дата и время: ${getWorkoutDateTimeText(workout)}<br>
+                Упражнений: ${uniqueExercises.length}<br>
+                Подходов: ${workout.sets.length}<br>
+                Общий тоннаж: ${totalVolume} кг
+              </div>
+              <div>${details}</div>
+            </div>
+          </details>
+        `;
+        box.appendChild(div);
+      });
+    }
+
     function renderProfileScreen() {
       const header = document.getElementById("profileCabinetHeader");
       const cloud = document.getElementById("profileCloudStatus");
@@ -4421,6 +4489,8 @@
         Ближайший план: ${nextPlan ? `${nextPlan.date} · ${escapeHtml(nextPlan.title || nextPlan.split)}` : "пока ничего не запланировано"}<br>
         Кастомных сплитов/упражнений: ${Object.values(customExercisesBySplit).reduce((sum, items) => sum + items.length, 0)}
       `;
+
+      renderProfileWorkoutHistoryList();
     }
 
     function updateTemplateExerciseOptions() {

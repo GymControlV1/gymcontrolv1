@@ -1,4 +1,4 @@
-const CACHE_NAME = "gymcontrol-v13";
+const CACHE_NAME = "gymcontrol-v14";
 const URLS_TO_CACHE = [
   "./",
   "./index.html",
