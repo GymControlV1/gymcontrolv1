@@ -899,6 +899,7 @@
             </div>
           </div>
           <div id="timerHint" class="muted" style="margin-bottom:10px;"></div>
+          <div id="timerFeedbackBox" class="motivation-box hidden" style="margin-bottom:12px;"></div>
           <div id="timerDisplay" class="timer-display">01:30</div>
           <div class="actions full" style="justify-content:center;">
             <button class="btn-secondary" onclick="addRestTime(15)">+15 сек</button>
@@ -1219,7 +1220,8 @@
       pendingSummary: null,
       editingSetIndex: -1,
       lastMotivation: "",
-      planEditorOpen: false
+      planEditorOpen: false,
+      exerciseFeedback: ""
     };
 
     let planBuilderExercises = [];
@@ -1228,6 +1230,7 @@
     let restTimeLeft = 90;
     let restEndTime = 0;
     let pendingRestAction = null;
+    let pendingProfileSyncTimeout = null;
     let deferredPrompt = null;
     let audioContext = null;
     let profiles = [];
@@ -1504,7 +1507,8 @@
         pendingSummary: null,
         editingSetIndex: -1,
         lastMotivation: "",
-        planEditorOpen: false
+        planEditorOpen: false,
+        exerciseFeedback: ""
       };
     }
 
@@ -1626,6 +1630,7 @@
       renderProfileManager();
       if (cloudConfig.autoSync && isCloudConfigured()) {
         refreshWorkoutHistoryFromCloud(false);
+        refreshCloudProfileData(false);
       }
       return true;
     }
@@ -1659,6 +1664,7 @@
       if (cloudConfig.autoSync && isCloudConfigured()) {
         syncPendingWorkouts(false);
         refreshWorkoutHistoryFromCloud(false);
+        refreshCloudProfileData(false);
       }
       showToast(`Профиль: ${getCurrentProfileName()}`);
     }
@@ -1736,6 +1742,7 @@
         resetBuildersAndSession();
         renderAll();
         await refreshWorkoutHistoryFromCloud(false);
+        await refreshCloudProfileData(false);
         showToast(`Вход через Telegram: ${profile.name}`);
       } catch (error) {
         console.error("Telegram login error", error);
@@ -1797,7 +1804,7 @@
       renderProfileManager();
     }
 
-    function saveData() {
+    function saveData(options = {}) {
       if (!currentProfileId) return;
 
       localStorage.setItem(
@@ -1812,6 +1819,10 @@
           workoutSettings
         })
       );
+
+      if (!options.skipCloudProfileSync) {
+        scheduleCloudProfileSync();
+      }
     }
 
     function loadData() {
@@ -1922,6 +1933,115 @@
       };
     }
 
+    function shouldUseCloudProfileSync(profile = getCurrentProfile()) {
+      return !!profile && profile.authProvider === "telegram" && isCloudConfigured();
+    }
+
+    function buildCloudProfileSnapshot() {
+      return {
+        customExercisesBySplit,
+        scheduledWorkouts,
+        templates,
+        feedbackEntries,
+        workoutSettings
+      };
+    }
+
+    function scheduleCloudProfileSync() {
+      if (!cloudConfig.autoSync || !shouldUseCloudProfileSync()) return;
+
+      if (pendingProfileSyncTimeout) {
+        clearTimeout(pendingProfileSyncTimeout);
+      }
+
+      pendingProfileSyncTimeout = setTimeout(() => {
+        pendingProfileSyncTimeout = null;
+        syncCloudProfileData(false);
+      }, 800);
+    }
+
+    async function syncCloudProfileData(manual = false) {
+      if (!shouldUseCloudProfileSync()) {
+        return false;
+      }
+
+      try {
+        const result = await callCloudApi({
+          action: "saveProfileData",
+          user: getCloudUserPayload(),
+          profileData: buildCloudProfileSnapshot()
+        });
+
+        if (!result.ok) {
+          throw new Error(result.error || "Не удалось сохранить профиль");
+        }
+
+        cloudConfig.lastSyncAt = new Date().toLocaleString("ru-RU");
+        cloudConfig.lastSyncError = "";
+        saveCloudConfig();
+        renderCloudSyncSettings();
+        if (manual) showToast("Профиль синхронизирован");
+        return true;
+      } catch (error) {
+        cloudConfig.lastSyncError = error.message || "Ошибка синхронизации профиля";
+        saveCloudConfig();
+        renderCloudSyncSettings();
+        if (manual) alert(`Не удалось синхронизировать профиль: ${cloudConfig.lastSyncError}`);
+        return false;
+      }
+    }
+
+    async function refreshCloudProfileData(manual = false) {
+      if (!shouldUseCloudProfileSync()) {
+        return false;
+      }
+
+      try {
+        const result = await callCloudApi({
+          action: "getProfileData",
+          user: getCloudUserPayload()
+        });
+
+        if (!result.ok) {
+          throw new Error(result.error || "Не удалось загрузить данные профиля");
+        }
+
+        const remote = result.profileData;
+        if (!remote) {
+          if (manual) showToast("Облачный профиль пока пуст");
+          return true;
+        }
+
+        customExercisesBySplit = remote.customExercisesBySplit && typeof remote.customExercisesBySplit === "object"
+          ? remote.customExercisesBySplit
+          : customExercisesBySplit;
+        scheduledWorkouts = Array.isArray(remote.scheduledWorkouts) ? remote.scheduledWorkouts : scheduledWorkouts;
+        templates = Array.isArray(remote.templates) ? remote.templates : templates;
+        feedbackEntries = Array.isArray(remote.feedbackEntries) ? remote.feedbackEntries : feedbackEntries;
+        workoutSettings = remote.workoutSettings && typeof remote.workoutSettings === "object"
+          ? {
+              ...getEmptyWorkoutSettings(),
+              ...remote.workoutSettings
+            }
+          : workoutSettings;
+
+        cloudConfig.lastSyncAt = new Date().toLocaleString("ru-RU");
+        cloudConfig.lastSyncError = "";
+        saveCloudConfig();
+        saveData({ skipCloudProfileSync: true });
+        renderAll();
+        renderCloudSyncSettings();
+        if (manual) showToast("Профиль загружен из облака");
+        return true;
+      } catch (error) {
+        cloudConfig.lastSyncError = error.message || "Ошибка загрузки профиля";
+        saveCloudConfig();
+        renderCloudSyncSettings();
+        if (manual) alert(`Не удалось загрузить профиль: ${cloudConfig.lastSyncError}`);
+        return false;
+      }
+    }
+
     function queueWorkoutForCloud(workout) {
       const exists = pendingCloudWorkouts.some(item => item.id === workout.id);
       if (!exists) {
@@ -2017,7 +2137,7 @@
         cloudConfig.lastSyncAt = new Date().toLocaleString("ru-RU");
         cloudConfig.lastSyncError = "";
         saveCloudConfig();
-        saveData();
+        saveData({ skipCloudProfileSync: true });
         renderTrainingScreen();
         renderStatsScreen();
         renderCloudSyncSettings();
@@ -2253,6 +2373,83 @@
       return map[split] || ["Легкая растяжка основных работавших мышц", "Спокойное дыхание", "Ходьба 2–3 минуты"];
     }
 
+    function getStretchAdviceForExercise(exerciseName, split) {
+      const name = String(exerciseName || "").toLowerCase();
+
+      if (name.includes("жим") || name.includes("сведение") || name.includes("развод")) {
+        return "После упражнения потяни грудные мышцы и переднюю поверхность плеч.";
+      }
+
+      if (name.includes("тяга") || name.includes("подтяг")) {
+        return "После упражнения сделай мягкую растяжку широчайших и задней поверхности плеч.";
+      }
+
+      if (name.includes("присед") || name.includes("выпад") || name.includes("жим ног")) {
+        return "После упражнения потяни квадрицепсы, ягодичные и икры.";
+      }
+
+      if (name.includes("бицепс") || name.includes("молот")) {
+        return "После упражнения мягко растяни бицепс и предплечья.";
+      }
+
+      if (name.includes("трицепс") || name.includes("разгиб")) {
+        return "После упражнения сделай растяжку трицепса и плеч.";
+      }
+
+      if (name.includes("дельт") || name.includes("плеч") || name.includes("жим гантелей сидя") || name.includes("жим штанги стоя")) {
+        return "После упражнения мягко растяни дельтовидные мышцы и шею.";
+      }
+
+      const fallback = getCooldownBySplit(split).slice(0, 2);
+      return `После упражнения удели внимание: ${fallback.join(", ")}.`;
+    }
+
+    function getExerciseCompletionFeedback(exerciseName) {
+      const doneSets = currentSession.sets.filter(
+        set => set.exercise.toLowerCase() === exerciseName.toLowerCase()
+      );
+      const historical = getHistoricalSetsForExercise(exerciseName);
+
+      if (!doneSets.length) {
+        return "";
+      }
+
+      let bestToday = doneSets[0];
+      doneSets.forEach(set => {
+        if (set.totalWeight > bestToday.totalWeight || (set.totalWeight === bestToday.totalWeight && set.reps > bestToday.reps)) {
+          bestToday = set;
+        }
+      });
+
+      const parts = [
+        `Упражнение завершено: лучший подход сегодня ${getDisplayWeightText(bestToday)} × ${bestToday.reps}.`
+      ];
+
+      if (historical.length) {
+        let bestPrevious = historical[0];
+        historical.forEach(set => {
+          if (set.totalWeight > bestPrevious.totalWeight || (set.totalWeight === bestPrevious.totalWeight && set.reps > bestPrevious.reps)) {
+            bestPrevious = set;
+          }
+        });
+
+        parts.push(`Прошлый ориентир: ${getDisplayWeightText(bestPrevious)} × ${bestPrevious.reps}.`);
+
+        if (bestToday.totalWeight > bestPrevious.totalWeight || (bestToday.totalWeight === bestPrevious.totalWeight && bestToday.reps > bestPrevious.reps)) {
+          parts.push("Есть прогресс по сравнению с предыдущими тренировками.");
+        } else if (bestToday.totalWeight === bestPrevious.totalWeight && bestToday.reps === bestPrevious.reps) {
+          parts.push("Результат удержан на прежнем уровне.");
+        } else {
+          parts.push("Сегодня чуть легче прошлого результата, это нормально на фоне усталости или восстановления.");
+        }
+      } else {
+        parts.push("Это первое сохраненное выполнение этого упражнения.");
+      }
+
+      parts.push(getStretchAdviceForExercise(exerciseName, currentSession.split));
+      return parts.join(" ");
+    }
+
     function buildSet({ date, split, exercise, loadType, enteredWeight, reps }) {
       const multiplier = getMultiplier(loadType);
       const totalWeight = enteredWeight * multiplier;
@@ -2370,6 +2567,7 @@
         case "timer":
           document.getElementById("timerView").classList.remove("hidden");
           updateTimerHint();
+          renderTimerFeedback();
           break;
         case "cooldown":
           document.getElementById("cooldownView").classList.remove("hidden");
@@ -2485,6 +2683,7 @@
       currentSession.active = true;
       currentSession.lastMotivation = "";
       currentSession.planEditorOpen = false;
+      currentSession.exerciseFeedback = "";
       currentSession.state = "warmup";
       renderTrainingScreen();
     }
@@ -2554,6 +2753,7 @@
       currentSession.active = true;
       currentSession.lastMotivation = "";
       currentSession.planEditorOpen = false;
+      currentSession.exerciseFeedback = "";
       currentSession.state = "warmup";
       renderTrainingScreen();
     }
@@ -2597,6 +2797,7 @@
       currentSession.active = true;
       currentSession.lastMotivation = "";
       currentSession.planEditorOpen = false;
+      currentSession.exerciseFeedback = "";
       currentSession.state = "warmup";
       renderTrainingScreen();
     }
@@ -2609,6 +2810,7 @@
 
     function updateGymExerciseOptions() {
       const select = document.getElementById("gymExerciseSelect");
+      const selectedExercise = select.value;
       const all = currentSession.planExercises.length
         ? currentSession.planExercises.map(item => item.exercise)
         : getMergedExercises(currentSession.split);
@@ -2622,7 +2824,11 @@
       });
 
       const current = getCurrentExerciseObject();
-      if (current) select.value = current.exercise;
+      if (current) {
+        select.value = current.exercise;
+      } else if (selectedExercise && all.includes(selectedExercise)) {
+        select.value = selectedExercise;
+      }
     }
 
     function renderEditorInfo() {
@@ -2650,9 +2856,7 @@
       updateGymExerciseOptions();
 
       const currentExerciseObj = getCurrentExerciseObject();
-      const exerciseName = currentExerciseObj
-        ? currentExerciseObj.exercise
-        : document.getElementById("gymExerciseSelect").value;
+      const exerciseName = document.getElementById("gymExerciseSelect").value || (currentExerciseObj ? currentExerciseObj.exercise : "");
 
       const headerInfo = [];
       if (currentSession.date) headerInfo.push(currentSession.date);
@@ -2758,6 +2962,15 @@
     }
 
     function changeManualExercise() {
+      const selectedExercise = document.getElementById("gymExerciseSelect").value;
+
+      if (currentSession.planExercises.length) {
+        const nextIndex = currentSession.planExercises.findIndex(item => item.exercise === selectedExercise);
+        if (nextIndex >= 0) {
+          currentSession.currentExerciseIndex = nextIndex;
+        }
+      }
+
       if (currentSession.editingSetIndex === -1) {
         fillGymFormDefaults();
       } else {
@@ -2872,9 +3085,17 @@
 
       currentSession.sets.push(newSet);
       currentSession.lastMotivation = "";
+      currentSession.exerciseFeedback = "";
       saveData();
-      renderGymWorkoutView();
-      showToast("Подход сохранен");
+      currentSession.state = "timer";
+      pendingRestAction = {
+        type: "after-set",
+        exerciseName: newSet.exercise
+      };
+      restTimeLeft = 90;
+      startRestTimer();
+      renderTrainingScreen();
+      showToast("Подход сохранен, отдых начался");
     }
 
     function renderCurrentWorkoutMiniList() {
@@ -2957,6 +3178,7 @@
       }
 
       currentSession.lastMotivation = getExerciseCompletionMotivation(exerciseName);
+      currentSession.exerciseFeedback = getExerciseCompletionFeedback(exerciseName);
       currentSession.state = "timer";
       pendingRestAction = {
         type: "after-exercise",
@@ -2978,7 +3200,26 @@
         return;
       }
 
+      if (pendingRestAction && pendingRestAction.type === "after-set") {
+        hint.textContent = `Идет отдых после подхода в упражнении «${pendingRestAction.exerciseName}».`;
+        return;
+      }
+
       hint.textContent = "Можно прибавить время или завершить отдых раньше.";
+    }
+
+    function renderTimerFeedback() {
+      const box = document.getElementById("timerFeedbackBox");
+      if (!box) return;
+
+      if (pendingRestAction && pendingRestAction.type === "after-exercise" && currentSession.exerciseFeedback) {
+        box.textContent = currentSession.exerciseFeedback;
+        box.classList.remove("hidden");
+        return;
+      }
+
+      box.textContent = "";
+      box.classList.add("hidden");
     }
 
     function openCooldown() {
@@ -3110,7 +3351,8 @@
         pendingSummary: null,
         editingSetIndex: -1,
         lastMotivation: "",
-        planEditorOpen: false
+        planEditorOpen: false,
+        exerciseFeedback: ""
       };
       renderTrainingScreen();
     }
@@ -3133,6 +3375,7 @@
       restEndTime = Date.now() + restTimeLeft * 1000;
       updateRestTimeFromClock();
       updateTimerHint();
+      renderTimerFeedback();
 
       restTimerInterval = setInterval(() => {
         updateRestTimeFromClock();
@@ -3185,6 +3428,7 @@
           currentSession.currentExerciseIndex += 1;
           resetEditorMode();
           currentSession.state = "workout";
+          currentSession.exerciseFeedback = "";
           renderTrainingScreen();
           fillGymFormDefaults();
           showToast(`Следующее упражнение после «${exerciseName}»`);
@@ -3192,12 +3436,14 @@
         }
 
         currentSession.state = "cooldown";
+        currentSession.exerciseFeedback = "";
         renderTrainingScreen();
         showToast("Все упражнения по плану завершены");
         return;
       }
 
       currentSession.state = "workout";
+      currentSession.exerciseFeedback = "";
       renderTrainingScreen();
       fillGymFormDefaults();
     }
@@ -4322,6 +4568,7 @@
       if (cloudConfig.autoSync && isCloudConfigured()) {
         syncPendingWorkouts(false);
         refreshWorkoutHistoryFromCloud(false);
+        refreshCloudProfileData(false);
       }
     }
 
