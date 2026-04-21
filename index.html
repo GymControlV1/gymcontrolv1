@@ -719,6 +719,9 @@
         <div class="muted" style="margin-bottom:10px;">
           Telegram-вход нужен для личного кабинета и загрузки истории на другом устройстве.
         </div>
+        <div class="actions hidden" id="telegramLoginFallbackWrap" style="margin-top:0; margin-bottom:10px;">
+          <button class="btn-primary" onclick="renderTelegramLoginButton()">Показать Telegram-вход</button>
+        </div>
         <div id="telegramLoginWidget"></div>
       </div>
 
@@ -1795,10 +1798,12 @@
 
     function renderTelegramLoginButton() {
       const box = document.getElementById("telegramLoginWidget");
+      const fallbackWrap = document.getElementById("telegramLoginFallbackWrap");
       if (!box) return;
 
       const botUsername = getTelegramBotUsername();
       box.innerHTML = "";
+      if (fallbackWrap) fallbackWrap.classList.add("hidden");
 
       if (!botUsername) {
         box.innerHTML = `
@@ -1824,23 +1829,28 @@
       script.setAttribute("data-userpic", "false");
       script.setAttribute("data-lang", "ru");
       script.setAttribute("data-onauth", "onTelegramAuth(user)");
+      script.onerror = () => {
+        box.innerHTML = "";
+        if (fallbackWrap) fallbackWrap.classList.remove("hidden");
+      };
       box.appendChild(script);
 
       setTimeout(() => {
         const hasWidget = !!box.querySelector("iframe");
-        if (hasWidget) return;
+        if (hasWidget) {
+          if (fallbackWrap) fallbackWrap.classList.add("hidden");
+          return;
+        }
 
         box.innerHTML = `
           <div class="hint-box">
             <strong>Виджет Telegram не загрузился</strong>
             <div class="muted" style="margin-top:6px;">
-              Попробуй обновить страницу. Если открыт режим инкогнито или браузер блокирует сторонние виджеты, открой сайт в обычном окне браузера.
-            </div>
-            <div class="actions" style="margin-top:10px;">
-              <button class="btn-primary" onclick="renderTelegramLoginButton()">Повторить загрузку Telegram-входа</button>
+              Попробуй нажать кнопку ниже или обновить страницу. Если браузер блокирует внешние виджеты, резервная кнопка поможет повторить загрузку.
             </div>
           </div>
         `;
+        if (fallbackWrap) fallbackWrap.classList.remove("hidden");
       }, 1800);
     }
 
