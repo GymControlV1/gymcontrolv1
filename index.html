@@ -719,9 +719,6 @@
         <div class="muted" style="margin-bottom:10px;">
           Telegram-вход нужен для личного кабинета и загрузки истории на другом устройстве.
         </div>
-        <div class="actions" style="margin-top:0; margin-bottom:10px;">
-          <button id="telegramLoginOpenBtn" class="btn-primary" onclick="openTelegramLogin()">Войти через Telegram</button>
-        </div>
         <div id="telegramLoginWidget"></div>
       </div>
 
@@ -1793,12 +1790,11 @@
 
     function openTelegramLogin() {
       setTelegramLoginSuppressed(false);
-      renderTelegramLoginButton(true);
+      renderTelegramLoginButton();
     }
 
-    function renderTelegramLoginButton(forceOpen = false) {
+    function renderTelegramLoginButton() {
       const box = document.getElementById("telegramLoginWidget");
-      const openBtn = document.getElementById("telegramLoginOpenBtn");
       if (!box) return;
 
       const botUsername = getTelegramBotUsername();
@@ -1813,15 +1809,6 @@
             </div>
           </div>
         `;
-        return;
-      }
-
-      const shouldShowWidget = forceOpen || !isTelegramLoginSuppressed();
-      if (openBtn) {
-        openBtn.classList.toggle("hidden", shouldShowWidget);
-      }
-
-      if (!shouldShowWidget) {
         return;
       }
 
