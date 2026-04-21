@@ -709,10 +709,10 @@
     <div id="profileCard" class="card profile-card">
       <div class="profile-head">
         <div>
+          <div class="muted">Активный профиль</div>
           <div class="profile-name" id="profileCurrentName">Профиль не выбран</div>
-          <div class="muted" id="profileStatusText">Войди через Telegram или создай локальный профиль, чтобы начать.</div>
         </div>
-        <span id="profileBadge" class="badge hidden">Активный профиль</span>
+        <span id="profileBadge" class="badge hidden">Активный</span>
       </div>
 
       <div id="telegramLoginSection" style="margin-bottom:12px;">
@@ -729,10 +729,6 @@
         <select id="profileSelect" onchange="handleProfileSelectChange()"></select>
         <input id="newProfileName" type="text" placeholder="Имя нового профиля" />
         <button class="btn-primary" onclick="createProfileFromInput()">Создать профиль</button>
-      </div>
-
-      <div id="profileLoggedActions" class="actions hidden">
-        <button class="btn-secondary" onclick="logoutProfile()">Выйти из профиля</button>
       </div>
 
       <div id="profileNote" class="profile-note">
@@ -809,6 +805,16 @@
             </label>
           </div>
         </div>
+
+        <div class="card">
+          <h2 class="section-title">Обратная связь</h2>
+          <div class="muted">
+            Если хочешь предложить идею, сообщить о проблеме или просто написать отзыв, переходи сразу в Telegram.
+          </div>
+          <div class="actions">
+            <button class="btn-teal" onclick="openFeedbackTelegram()">Открыть Telegram</button>
+          </div>
+        </div>
       </div>
 
       <div id="trainingSetupView" class="hidden">
@@ -860,11 +866,6 @@
         <div class="card">
           <div class="section-head">
             <h2 class="section-title">Разминка</h2>
-            <div class="section-head-actions">
-              <button class="btn-secondary" onclick="goBackFromTrainingState()">Назад</button>
-              <button class="btn-success" onclick="finishWorkoutAndGoHome()">Завершить и выйти</button>
-              <button class="btn-danger" onclick="confirmAbandonWorkout()">На главную</button>
-            </div>
           </div>
           <div class="muted" style="margin-bottom:10px;">
             Сделай 3–5 минут суставной разминки перед рабочей частью.
@@ -883,6 +884,11 @@
             <button class="btn-success" onclick="finishWarmup()">Разминка выполнена</button>
             <button class="btn-secondary" onclick="finishWarmup()">Пропустить</button>
           </div>
+          <div class="actions">
+            <button class="btn-secondary" onclick="goBackFromTrainingState()">Назад</button>
+            <button class="btn-success" onclick="finishWorkoutAndGoHome()">Завершить и выйти</button>
+            <button class="btn-danger" onclick="confirmAbandonWorkout()">На главную</button>
+          </div>
         </div>
       </div>
 
@@ -897,16 +903,6 @@
             </div>
           </div>
           <div id="gymHeaderInfo" class="muted"></div>
-          <div id="gymSessionProgressCard" class="session-progress-card">
-            <strong style="color:white; display:block; margin-bottom:4px;">Ход тренировки</strong>
-            <div id="gymSessionProgressNote" class="session-progress-note"></div>
-            <div id="gymSessionProgressGrid" class="session-progress-grid"></div>
-            <div class="actions full" style="margin-top:12px;">
-              <button class="btn-secondary" onclick="goToPreviousExercise()">Предыдущее упражнение</button>
-              <button class="btn-secondary" onclick="nextExercise()">Следующее упражнение</button>
-              <button class="btn-secondary" onclick="togglePlanExerciseEditor()">Править план</button>
-            </div>
-          </div>
           <div id="gymExerciseTitle" class="gym-exercise-title">Упражнение</div>
           <div id="gymExerciseMeta" class="muted" style="margin-bottom:10px;"></div>
           <div id="gymExerciseStats" class="muted"></div>
@@ -922,6 +918,7 @@
 
           <div class="form-grid" style="margin-top:14px;">
             <select id="gymExerciseSelect" onchange="changeManualExercise()"></select>
+            <input id="gymCustomExercise" type="text" placeholder="Свое упражнение" />
             <select id="gymLoadType">
               <option value="barbell">Штанга / общий вес</option>
               <option value="machine">Тренажер / общий вес</option>
@@ -940,10 +937,25 @@
             <button class="btn-secondary" onclick="fillLikeLastTime()">Как в прошлый раз</button>
           </div>
 
+          <div class="actions">
+            <button class="btn-secondary" onclick="addCustomExerciseFromWorkout()">Добавить свое упражнение</button>
+          </div>
+
           <div class="actions full" style="margin-top:14px;">
             <button id="saveSetBtn" class="btn-primary full-width-btn" onclick="saveGymSet()">Готово</button>
             <button id="completeExerciseBtn" class="btn-warning full-width-btn" onclick="completeCurrentExercise()">Завершить упражнение</button>
             <button class="btn-danger full-width-btn" onclick="openCooldown()">Завершить тренировку</button>
+          </div>
+
+          <div id="gymSessionProgressCard" class="session-progress-card">
+            <strong style="color:white; display:block; margin-bottom:4px;">Ход тренировки</strong>
+            <div id="gymSessionProgressNote" class="session-progress-note"></div>
+            <div id="gymSessionProgressGrid" class="session-progress-grid"></div>
+            <div class="actions full" style="margin-top:12px;">
+              <button class="btn-secondary" onclick="goToPreviousExercise()">Предыдущее упражнение</button>
+              <button class="btn-secondary" onclick="nextExercise()">Следующее упражнение</button>
+              <button class="btn-secondary" onclick="togglePlanExerciseEditor()">Править план</button>
+            </div>
           </div>
         </div>
 
@@ -1146,97 +1158,12 @@
 
     <section id="screen-more" class="screen">
       <div class="card">
-        <div class="section-head">
-          <h2 class="section-title">Шаблоны</h2>
-          <div class="section-head-actions">
-            <button class="btn-secondary" onclick="goToTrainingHome()">На главную</button>
-          </div>
-        </div>
-        <div class="form-grid">
-          <input id="templateName" type="text" placeholder="Название шаблона" />
-          <select id="templateSplit" onchange="updateTemplateExerciseOptions()">
-            <option value="Full Body">Full Body</option>
-            <option value="Грудь + Трицепс">Грудь + Трицепс</option>
-            <option value="Спина + Бицепс">Спина + Бицепс</option>
-            <option value="Плечи + Ноги">Плечи + Ноги</option>
-            <option value="Грудь + Бицепс">Грудь + Бицепс</option>
-            <option value="Спина + Трицепс">Спина + Трицепс</option>
-            <option value="Ноги">Ноги</option>
-            <option value="Плечи">Плечи</option>
-            <option value="Руки">Руки</option>
-            <option value="Верх тела">Верх тела</option>
-            <option value="Низ тела">Низ тела</option>
-            <option value="Push">Push</option>
-            <option value="Pull">Pull</option>
-            <option value="Legs">Legs</option>
-          </select>
-          <select id="templateExerciseSelect"></select>
-          <input id="templateCustomExercise" type="text" placeholder="Или свое упражнение" />
-          <input id="templateTargetSets" type="number" min="1" step="1" placeholder="Подходы" />
-          <input id="templateTargetReps" type="number" min="1" step="1" placeholder="Повторы" />
-        </div>
-        <div class="actions">
-          <button class="btn-primary" onclick="addExerciseToTemplateBuilder()">Добавить в шаблон</button>
-          <button class="btn-secondary" onclick="clearTemplateBuilder()">Очистить</button>
-          <button class="btn-success" onclick="saveTemplate()">Сохранить шаблон</button>
-        </div>
-        <div style="margin-top:12px;">
-          <div class="muted" style="margin-bottom:8px;">Конструктор шаблона:</div>
-          <div id="templateBuilderList"></div>
-        </div>
-      </div>
-
-      <div class="card">
-        <h2 class="section-title">Мои шаблоны</h2>
-        <div id="templatesList"></div>
-      </div>
-
-      <div class="card">
-        <h2 class="section-title">Готовые программы для новичков</h2>
-        <div id="starterProgramsList"></div>
-      </div>
-
-      <div class="card">
         <h2 class="section-title">Резервная копия</h2>
         <div class="actions">
           <button class="btn-primary" onclick="exportData()">Экспорт JSON</button>
           <button class="btn-secondary" onclick="document.getElementById('importFile').click()">Импорт JSON</button>
         </div>
         <input id="importFile" class="file-input" type="file" accept=".json,application/json" onchange="importData(event)" />
-      </div>
-
-      <div class="card">
-        <h2 class="section-title">Обратная связь</h2>
-
-        <div class="feedback-box">
-          <div class="muted" style="margin-bottom:10px;">
-            Можно сохранить отзыв внутри приложения и сразу открыть Telegram `@GymControl`.
-            Текст сообщения автоматически копируется в буфер.
-          </div>
-
-          <div class="form-grid">
-            <select id="feedbackType">
-              <option value="Отзыв">Отзыв</option>
-              <option value="Проблема">Проблема</option>
-              <option value="Идея">Идея</option>
-            </select>
-            <input id="feedbackAuthor" type="text" placeholder="Имя или ник (необязательно)" />
-          </div>
-
-          <textarea id="feedbackMessage" placeholder="Напиши, что понравилось, что неудобно, какую ошибку нашел или какую идею предлагаешь"></textarea>
-
-          <div class="actions full">
-            <button class="btn-primary" onclick="saveFeedback()">Сохранить отзыв</button>
-            <button class="btn-teal" onclick="sendFeedbackToTelegram()">Открыть Telegram</button>
-            <button class="btn-secondary" onclick="copyAllFeedback()">Скопировать все отзывы</button>
-            <button class="btn-success" onclick="exportFeedback()">Экспорт отзывов JSON</button>
-          </div>
-        </div>
-
-        <div style="margin-top:14px;">
-          <h3 style="margin-bottom:10px;">Сохраненные отзывы</h3>
-          <div id="feedbackList"></div>
-        </div>
       </div>
 
       <div class="card">
@@ -1283,16 +1210,6 @@
           </div>
         </div>
         <div id="profileCabinetHeader" class="info-box"></div>
-        <div id="profileCabinetStats" class="profile-summary-grid"></div>
-      </div>
-
-      <div class="card">
-        <h2 class="section-title">Облако и устройства</h2>
-        <div id="profileCloudStatus" class="muted" style="margin-bottom:10px;"></div>
-        <div class="actions full">
-          <button class="btn-primary" onclick="syncAllCloudData(true)">Синхронизировать сейчас</button>
-          <button class="btn-secondary" onclick="refreshAllCloudData(true)">Обновить из облака</button>
-        </div>
       </div>
 
       <div class="card">
@@ -1303,9 +1220,18 @@
       <div class="card">
         <h2 class="section-title">Действия</h2>
         <div class="actions full">
-          <button class="btn-secondary" onclick="switchScreen('stats')">Открыть статистику</button>
-          <button class="btn-secondary" onclick="switchScreen('plans')">Открыть планы</button>
+          <button class="btn-secondary" onclick="showProfileStats()">Открыть статистику</button>
+          <button class="btn-secondary" onclick="showProfilePlans()">Открыть планы</button>
           <button class="btn-danger" onclick="logoutProfile()">Выйти из профиля</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 class="section-title">Облако и устройства</h2>
+        <div id="profileCloudStatus" class="muted" style="margin-bottom:10px;"></div>
+        <div class="actions full">
+          <button class="btn-primary" onclick="syncAllCloudData(true)">Синхронизировать сейчас</button>
+          <button class="btn-secondary" onclick="refreshAllCloudData(true)">Обновить из облака</button>
         </div>
       </div>
     </section>
@@ -1314,8 +1240,6 @@
 
   <nav id="bottomNav" class="bottom-nav">
     <button id="nav-training" class="nav-btn active" onclick="switchScreen('training')">Тренировка</button>
-    <button id="nav-plans" class="nav-btn" onclick="switchScreen('plans')">Планы</button>
-    <button id="nav-stats" class="nav-btn" onclick="switchScreen('stats')">Статистика</button>
     <button id="nav-more" class="nav-btn" onclick="switchScreen('more')">Еще</button>
     <button id="nav-profile" class="nav-btn" onclick="switchScreen('profile')">Профиль</button>
   </nav>
@@ -1653,10 +1577,8 @@
     function renderProfileManager() {
       const select = document.getElementById("profileSelect");
       const currentName = document.getElementById("profileCurrentName");
-      const status = document.getElementById("profileStatusText");
       const badge = document.getElementById("profileBadge");
       const setupFields = document.getElementById("profileSetupFields");
-      const loggedActions = document.getElementById("profileLoggedActions");
       const telegramSection = document.getElementById("telegramLoginSection");
       const activeProfile = getCurrentProfile();
       const selectableProfiles = profiles.filter(profile => profile.authProvider !== "telegram");
@@ -1669,10 +1591,8 @@
         option.textContent = "Профилей пока нет";
         select.appendChild(option);
         currentName.textContent = "Профиль не выбран";
-        status.textContent = "Войди через Telegram или создай локальный профиль, чтобы начать.";
         badge.classList.add("hidden");
         setupFields.classList.remove("hidden");
-        loggedActions.classList.add("hidden");
         telegramSection.classList.remove("hidden");
         renderTelegramLoginButton();
         updateProfileDependentUI();
@@ -1695,20 +1615,13 @@
 
       if (currentProfileId && activeProfile) {
         currentName.textContent = getCurrentProfileName();
-        const authLabel = activeProfile.authProvider === "telegram"
-          ? `Telegram: @${activeProfile.username || "без username"}`
-          : "Локальный профиль";
-        status.textContent = `${authLabel} · Тренировок: ${workoutHistory.length} · Шаблонов: ${templates.length} · Планов: ${scheduledWorkouts.length}`;
         badge.classList.remove("hidden");
         setupFields.classList.add("hidden");
-        loggedActions.classList.remove("hidden");
         telegramSection.classList.add("hidden");
       } else {
         currentName.textContent = "Профиль не выбран";
-        status.textContent = "Войди через Telegram или выбери локальный профиль.";
         badge.classList.add("hidden");
         setupFields.classList.remove("hidden");
-        loggedActions.classList.add("hidden");
         telegramSection.classList.remove("hidden");
         renderTelegramLoginButton();
       }
@@ -2474,7 +2387,8 @@
     function switchScreen(name) {
       ["training", "plans", "stats", "more", "profile"].forEach(screen => {
         document.getElementById("screen-" + screen).classList.toggle("active", screen === name);
-        document.getElementById("nav-" + screen).classList.toggle("active", screen === name);
+        const navBtn = document.getElementById("nav-" + screen);
+        if (navBtn) navBtn.classList.toggle("active", screen === name);
       });
 
       if (name === "training") renderTrainingScreen();
@@ -2482,6 +2396,14 @@
       if (name === "stats") renderStatsScreen();
       if (name === "more") renderMoreScreen();
       if (name === "profile") renderProfileScreen();
+    }
+
+    function showProfileStats() {
+      switchScreen("stats");
+    }
+
+    function showProfilePlans() {
+      switchScreen("plans");
     }
 
     function getMergedExercises(split) {
@@ -3299,6 +3221,40 @@
     function fillLikeLastTime() {
       if (currentSession.editingSetIndex >= 0) return;
       fillGymFormDefaults();
+    }
+
+    function addCustomExerciseFromWorkout() {
+      const input = document.getElementById("gymCustomExercise");
+      const name = normalizeExerciseName(input?.value || "");
+
+      if (!name) {
+        alert("Впиши название упражнения");
+        return;
+      }
+
+      if (!currentSession.split) {
+        alert("Сначала выбери тип тренировки");
+        return;
+      }
+
+      saveCustomExercise(currentSession.split, name);
+
+      if (currentSession.planExercises.length) {
+        const existsInPlan = currentSession.planExercises.some(item => item.exercise.toLowerCase() === name.toLowerCase());
+        if (!existsInPlan) {
+          currentSession.planExercises.push({
+            exercise: name,
+            targetSets: 3,
+            targetReps: 10
+          });
+        }
+      }
+
+      updateGymExerciseOptions();
+      document.getElementById("gymExerciseSelect").value = name;
+      input.value = "";
+      changeManualExercise();
+      showToast("Упражнение добавлено");
     }
 
     function getMotivationForSet(newSet, editing = false) {
@@ -4408,36 +4364,24 @@
     }
 
     function renderMoreScreen() {
-      updateTemplateExerciseOptions();
-      renderTemplateBuilder();
-      renderTemplates();
-      renderStarterPrograms();
-      renderFeedbackList();
       renderCloudSyncSettings();
       syncSettingsUI();
     }
 
     function renderProfileScreen() {
       const header = document.getElementById("profileCabinetHeader");
-      const stats = document.getElementById("profileCabinetStats");
       const cloud = document.getElementById("profileCloudStatus");
       const summary = document.getElementById("profileCabinetSummary");
-      if (!header || !stats || !cloud || !summary) return;
+      if (!header || !cloud || !summary) return;
 
       if (!currentProfileId) {
         header.innerHTML = "<strong>Профиль не выбран</strong><div class='muted'>Сначала войди через Telegram или создай локальный профиль.</div>";
-        stats.innerHTML = "";
         cloud.textContent = "Облачная синхронизация недоступна без активного профиля.";
         summary.textContent = "";
         return;
       }
 
       const profile = getCurrentProfile();
-      const authLabel = profile?.authProvider === "telegram"
-        ? `Telegram: @${profile.username || "без username"}`
-        : "Локальный профиль";
-      const completedPlans = scheduledWorkouts.filter(item => item.status === "completed").length;
-      const scheduledPlans = scheduledWorkouts.filter(item => item.status === "scheduled").length;
       const nextPlan = [...scheduledWorkouts]
         .filter(item => item.status === "scheduled")
         .sort((a, b) => String(a.date).localeCompare(String(b.date)))[0];
@@ -4446,23 +4390,9 @@
       header.innerHTML = `
         <strong>${escapeHtml(getCurrentProfileName())}</strong>
         <div class="muted">
-          ${authLabel}<br>
-          Профиль создан: ${profile?.createdAt ? new Date(profile.createdAt).toLocaleString("ru-RU") : "неизвестно"}<br>
-          Последняя синхронизация: ${cloudConfig.lastSyncAt || "еще не выполнялась"}
+          Профиль создан: ${profile?.createdAt ? new Date(profile.createdAt).toLocaleString("ru-RU") : "неизвестно"}
         </div>
       `;
-
-      stats.innerHTML = [
-        { value: workoutHistory.length, label: "Тренировок" },
-        { value: scheduledPlans, label: "Активных планов" },
-        { value: templates.length, label: "Шаблонов" },
-        { value: completedPlans, label: "Выполненных планов" }
-      ].map(item => `
-        <div class="profile-stat-card">
-          <div class="profile-stat-value">${item.value}</div>
-          <div class="profile-stat-label">${item.label}</div>
-        </div>
-      `).join("");
 
       cloud.textContent = shouldUseCloudProfileSync()
         ? `Профиль связан с облаком. Очередь тренировок: ${pendingCloudWorkouts.length}. Очередь удалений: ${pendingCloudDeletedWorkoutIds.length}. Последняя ошибка: ${cloudConfig.lastSyncError || "нет"}.`
@@ -4471,8 +4401,7 @@
       summary.innerHTML = `
         Последняя тренировка: ${lastWorkout ? `${lastWorkout.date} · ${escapeHtml(lastWorkout.split)} · ${lastWorkout.sets.length} подходов` : "пока нет тренировок"}<br>
         Ближайший план: ${nextPlan ? `${nextPlan.date} · ${escapeHtml(nextPlan.title || nextPlan.split)}` : "пока ничего не запланировано"}<br>
-        Кастомных сплитов/упражнений: ${Object.values(customExercisesBySplit).reduce((sum, items) => sum + items.length, 0)}<br>
-        Отзывов в приложении: ${feedbackEntries.length}
+        Кастомных сплитов/упражнений: ${Object.values(customExercisesBySplit).reduce((sum, items) => sum + items.length, 0)}
       `;
     }
 
@@ -4726,6 +4655,10 @@
         alert("Не удалось автоматически скопировать текст. Скопируй его вручную после открытия Telegram.");
       }
 
+      window.open(TELEGRAM_URL, "_blank");
+    }
+
+    function openFeedbackTelegram() {
       window.open(TELEGRAM_URL, "_blank");
     }
 
