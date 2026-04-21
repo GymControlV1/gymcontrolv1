@@ -4424,8 +4424,11 @@
     }
 
     function updateTemplateExerciseOptions() {
-      const split = document.getElementById("templateSplit").value;
+      const splitSelect = document.getElementById("templateSplit");
       const select = document.getElementById("templateExerciseSelect");
+      if (!splitSelect || !select) return;
+
+      const split = splitSelect.value;
       const exercises = getMergedExercises(split);
       select.innerHTML = "";
 
