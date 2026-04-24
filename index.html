@@ -775,6 +775,73 @@
         </div>
 
         <div class="card">
+          <div class="section-head">
+            <h2 class="section-title">Сегодня</h2>
+            <div class="section-head-actions">
+              <button class="btn-secondary" onclick="switchScreen('balance')">Баланс</button>
+            </div>
+          </div>
+          <div id="todaySummaryBox" class="muted"></div>
+          <div class="actions full" style="margin-top:12px;">
+            <button class="btn-secondary" onclick="toggleTodayPanel('body')">+ Вес/талия</button>
+            <button class="btn-secondary" onclick="toggleTodayPanel('water')">+ Вода</button>
+            <button class="btn-secondary" onclick="toggleTodayPanel('nutrition')">+ КБЖУ</button>
+            <button class="btn-secondary" onclick="toggleTodayPanel('activity')">+ Активность</button>
+          </div>
+        </div>
+
+        <div id="todayBodyPanel" class="card hidden">
+          <h2 class="section-title">Вес и замеры</h2>
+          <div class="form-grid">
+            <input id="dailyWeightInput" type="number" min="0" step="0.1" placeholder="Вес, кг" />
+            <input id="dailyWaistInput" type="number" min="0" step="0.1" placeholder="Талия, см" />
+            <input id="dailyHipsInput" type="number" min="0" step="0.1" placeholder="Бедра/ягодицы, см (для женщин)" />
+          </div>
+          <div class="actions">
+            <button class="btn-primary" onclick="saveTodayBodyEntry()">Сохранить замеры</button>
+            <button class="btn-secondary" onclick="toggleTodayPanel()">Скрыть</button>
+          </div>
+        </div>
+
+        <div id="todayWaterPanel" class="card hidden">
+          <h2 class="section-title">Вода</h2>
+          <div class="muted" id="todayWaterSummary" style="margin-bottom:10px;"></div>
+          <div class="actions full">
+            <button class="btn-secondary" onclick="addWaterQuick(200)">+200 мл</button>
+            <button class="btn-secondary" onclick="addWaterQuick(250)">+250 мл</button>
+            <button class="btn-secondary" onclick="addWaterQuick(300)">+300 мл</button>
+            <button class="btn-secondary" onclick="addWaterQuick(400)">+400 мл</button>
+            <button class="btn-secondary" onclick="addWaterQuick(500)">+500 мл</button>
+          </div>
+        </div>
+
+        <div id="todayNutritionPanel" class="card hidden">
+          <h2 class="section-title">КБЖУ</h2>
+          <div class="form-grid">
+            <input id="dailyCaloriesInput" type="number" min="0" step="1" placeholder="Калории" />
+            <input id="dailyProteinInput" type="number" min="0" step="1" placeholder="Белки, г" />
+            <input id="dailyFatInput" type="number" min="0" step="1" placeholder="Жиры, г" />
+            <input id="dailyCarbsInput" type="number" min="0" step="1" placeholder="Углеводы, г" />
+          </div>
+          <div class="actions">
+            <button class="btn-primary" onclick="saveTodayNutritionEntry()">Сохранить КБЖУ</button>
+            <button class="btn-secondary" onclick="toggleTodayPanel()">Скрыть</button>
+          </div>
+        </div>
+
+        <div id="todayActivityPanel" class="card hidden">
+          <h2 class="section-title">Активность</h2>
+          <div class="form-grid">
+            <input id="dailyActivityCaloriesInput" type="number" min="0" step="1" placeholder="Активные ккал" />
+            <input id="dailyStepsInput" type="number" min="0" step="1" placeholder="Шаги" />
+          </div>
+          <div class="actions">
+            <button class="btn-primary" onclick="saveTodayActivityEntry()">Сохранить активность</button>
+            <button class="btn-secondary" onclick="toggleTodayPanel()">Скрыть</button>
+          </div>
+        </div>
+
+        <div class="card">
           <h2 class="section-title">Помощь</h2>
           <div class="muted">
             Выбери тренировку или план, вводи вес и повторы, сохраняй подходы и отдыхай по таймеру.
@@ -1257,6 +1324,53 @@
       </div>
     </section>
 
+    <section id="screen-balance" class="screen">
+      <div class="card">
+        <div class="section-head">
+          <h2 class="section-title">Баланс</h2>
+          <div class="section-head-actions">
+            <button class="btn-secondary" onclick="switchScreen('training')">На главную</button>
+          </div>
+        </div>
+        <div id="balanceDateNote" class="muted"></div>
+      </div>
+
+      <div class="card">
+        <h2 class="section-title">Тело</h2>
+        <div id="balanceBodyCard" class="muted"></div>
+      </div>
+
+      <div class="card">
+        <h2 class="section-title">Калории</h2>
+        <div id="balanceCaloriesCard" class="muted"></div>
+      </div>
+
+      <div class="card">
+        <h2 class="section-title">КБЖУ</h2>
+        <div id="balanceMacrosCard" class="muted"></div>
+      </div>
+
+      <div class="card">
+        <h2 class="section-title">Вода</h2>
+        <div id="balanceWaterCard" class="muted"></div>
+      </div>
+
+      <div class="card">
+        <h2 class="section-title">Активность</h2>
+        <div id="balanceActivityCard" class="muted"></div>
+      </div>
+
+      <div class="card">
+        <h2 class="section-title">Умные заметки</h2>
+        <div id="balanceNotesCard" class="muted"></div>
+      </div>
+
+      <div class="card">
+        <h2 class="section-title">Динамика 7 дней</h2>
+        <div id="balanceWeekCard" class="muted"></div>
+      </div>
+    </section>
+
     <section id="screen-profile" class="screen">
       <div class="card">
         <div class="section-head">
@@ -1271,6 +1385,23 @@
       <div class="card">
         <h2 class="section-title">Краткая сводка</h2>
         <div id="profileCabinetSummary" class="muted"></div>
+      </div>
+
+      <div class="card">
+        <h2 class="section-title">Параметры тела</h2>
+        <div class="form-grid">
+          <input id="bodyHeightInput" type="number" min="0" step="1" placeholder="Рост, см" />
+          <input id="bodyAgeInput" type="number" min="0" step="1" placeholder="Возраст" />
+          <select id="bodySexInput">
+            <option value="male">Мужчина</option>
+            <option value="female">Женщина</option>
+          </select>
+          <input id="bodyNeckInput" type="number" min="0" step="0.1" placeholder="Шея, см" />
+        </div>
+        <div class="actions">
+          <button class="btn-primary" onclick="saveBodyProfileSettings()">Сохранить параметры</button>
+        </div>
+        <div id="profileBodyNote" class="muted" style="margin-top:10px;"></div>
       </div>
 
       <div class="card">
@@ -1301,6 +1432,7 @@
 
   <nav id="bottomNav" class="bottom-nav">
     <button id="nav-training" class="nav-btn active" onclick="switchScreen('training')">Тренировка</button>
+    <button id="nav-balance" class="nav-btn" onclick="switchScreen('balance')">Баланс</button>
     <button id="nav-more" class="nav-btn" onclick="switchScreen('more')">Еще</button>
     <button id="nav-profile" class="nav-btn" onclick="switchScreen('profile')">Профиль</button>
   </nav>
@@ -1313,6 +1445,8 @@
     let feedbackEntries = [];
     let pendingCloudWorkouts = [];
     let pendingCloudDeletedWorkoutIds = [];
+    let dailyMetricsByDate = {};
+    let bodyProfile = {};
     let workoutSettings = {
       disclaimerAccepted: false,
       soundEnabled: true,
@@ -1459,6 +1593,38 @@
       };
     }
 
+    function getEmptyBodyProfile() {
+      return {
+        height: null,
+        age: null,
+        sex: "male",
+        neck: null
+      };
+    }
+
+    function createEmptyDailyMetrics(date = getTodayKey()) {
+      return {
+        date,
+        weight: null,
+        waist: null,
+        hips: null,
+        bodyFatPercent: null,
+        fatMass: null,
+        leanMass: null,
+        calories: 0,
+        protein: 0,
+        fat: 0,
+        carbs: 0,
+        water: 0,
+        liquids: 0,
+        activityCalories: 0,
+        steps: 0,
+        bmr: 0,
+        totalBurn: 0,
+        deficit: 0
+      };
+    }
+
     function getEmptyProfileData() {
       return {
         workoutHistory: [],
@@ -1468,8 +1634,129 @@
         feedbackEntries: [],
         pendingCloudWorkouts: [],
         pendingCloudDeletedWorkoutIds: [],
+        dailyMetricsByDate: {},
+        bodyProfile: getEmptyBodyProfile(),
         workoutSettings: getEmptyWorkoutSettings()
       };
+    }
+
+    function getTodayKey() {
+      return new Date().toISOString().slice(0, 10);
+    }
+
+    function toNumberOrNull(value) {
+      if (value === "" || value === null || value === undefined) return null;
+      const num = Number(value);
+      return Number.isFinite(num) ? num : null;
+    }
+
+    function clampMetricNumber(value) {
+      const num = Number(value || 0);
+      return Number.isFinite(num) && num > 0 ? num : 0;
+    }
+
+    function roundTo(value, digits = 1) {
+      const factor = 10 ** digits;
+      return Math.round(value * factor) / factor;
+    }
+
+    function getMacroTargets() {
+      return {
+        caloriesMin: 1800,
+        caloriesMax: 2000,
+        proteinMin: 150,
+        proteinMax: 170,
+        fatMin: 50,
+        fatMax: 65,
+        carbsMin: 130,
+        carbsMax: 190,
+        waterTarget: 3000
+      };
+    }
+
+    function getDailyMetrics(date = getTodayKey(), createIfMissing = false) {
+      if (!dailyMetricsByDate[date] && createIfMissing) {
+        dailyMetricsByDate[date] = createEmptyDailyMetrics(date);
+      }
+      return dailyMetricsByDate[date] || null;
+    }
+
+    function calculateBmrForEntry(entry) {
+      const weight = toNumberOrNull(entry.weight);
+      const height = toNumberOrNull(bodyProfile.height);
+      const age = toNumberOrNull(bodyProfile.age);
+      if (!weight || !height || !age) return 0;
+      const sex = bodyProfile.sex || "male";
+      const base = 10 * weight + 6.25 * height - 5 * age;
+      return Math.round(base + (sex === "female" ? -161 : 5));
+    }
+
+    function calculateBodyComposition(entry) {
+      const weight = toNumberOrNull(entry.weight);
+      const waist = toNumberOrNull(entry.waist);
+      const neck = toNumberOrNull(bodyProfile.neck);
+      const height = toNumberOrNull(bodyProfile.height);
+      const hips = toNumberOrNull(entry.hips);
+      const sex = bodyProfile.sex || "male";
+
+      if (!weight || !waist || !neck || !height) {
+        entry.bodyFatPercent = null;
+        entry.fatMass = null;
+        entry.leanMass = null;
+        return;
+      }
+
+      let bodyFat = null;
+      if (sex === "female") {
+        if (!hips || waist + hips <= neck || height <= 0) {
+          entry.bodyFatPercent = null;
+          entry.fatMass = null;
+          entry.leanMass = null;
+          return;
+        }
+        bodyFat = 495 / (1.29579 - 0.35004 * Math.log10(waist + hips - neck) + 0.22100 * Math.log10(height)) - 450;
+      } else {
+        if (waist <= neck || height <= 0) {
+          entry.bodyFatPercent = null;
+          entry.fatMass = null;
+          entry.leanMass = null;
+          return;
+        }
+        bodyFat = 495 / (1.0324 - 0.19077 * Math.log10(waist - neck) + 0.15456 * Math.log10(height)) - 450;
+      }
+
+      if (!Number.isFinite(bodyFat) || bodyFat <= 0) {
+        entry.bodyFatPercent = null;
+        entry.fatMass = null;
+        entry.leanMass = null;
+        return;
+      }
+
+      entry.bodyFatPercent = roundTo(bodyFat, 1);
+      entry.fatMass = roundTo(weight * entry.bodyFatPercent / 100, 1);
+      entry.leanMass = roundTo(weight - entry.fatMass, 1);
+    }
+
+    function recalculateDailyEntry(entry) {
+      if (!entry) return entry;
+      entry.calories = clampMetricNumber(entry.calories);
+      entry.protein = clampMetricNumber(entry.protein);
+      entry.fat = clampMetricNumber(entry.fat);
+      entry.carbs = clampMetricNumber(entry.carbs);
+      entry.water = clampMetricNumber(entry.water);
+      entry.liquids = clampMetricNumber(entry.liquids);
+      entry.activityCalories = clampMetricNumber(entry.activityCalories);
+      entry.steps = clampMetricNumber(entry.steps);
+      calculateBodyComposition(entry);
+      entry.bmr = calculateBmrForEntry(entry);
+      entry.totalBurn = Math.round((entry.bmr || 0) + (entry.activityCalories || 0));
+      entry.deficit = Math.round((entry.totalBurn || 0) - (entry.calories || 0));
+      return entry;
+    }
+
+    function ensureTodayEntry() {
+      const today = getDailyMetrics(getTodayKey(), true);
+      return recalculateDailyEntry(today);
     }
 
     function applyProfileData(data) {
@@ -1498,6 +1785,15 @@
       feedbackEntries = Array.isArray(safe.feedbackEntries) ? safe.feedbackEntries : [];
       pendingCloudWorkouts = Array.isArray(safe.pendingCloudWorkouts) ? safe.pendingCloudWorkouts : [];
       pendingCloudDeletedWorkoutIds = Array.isArray(safe.pendingCloudDeletedWorkoutIds) ? safe.pendingCloudDeletedWorkoutIds : [];
+      dailyMetricsByDate = safe.dailyMetricsByDate && typeof safe.dailyMetricsByDate === "object"
+        ? safe.dailyMetricsByDate
+        : {};
+      bodyProfile = safe.bodyProfile && typeof safe.bodyProfile === "object"
+        ? {
+            ...getEmptyBodyProfile(),
+            ...safe.bodyProfile
+          }
+        : getEmptyBodyProfile();
       workoutSettings = safe.workoutSettings && typeof safe.workoutSettings === "object"
         ? {
             ...getEmptyWorkoutSettings(),
@@ -1934,8 +2230,242 @@
       });
     }
 
+    function formatMetric(value, suffix = "") {
+      if (value === null || value === undefined || value === "") return "—";
+      return `${value}${suffix}`;
+    }
+
+    function getTodayEntry() {
+      return ensureTodayEntry();
+    }
+
+    function toggleTodayPanel(panel = "") {
+      const names = ["Body", "Water", "Nutrition", "Activity"];
+      if (!panel) {
+        names.forEach(name => {
+          const el = document.getElementById(`today${name}Panel`);
+          if (el) el.classList.add("hidden");
+        });
+        return;
+      }
+
+      const targetId = `today${panel.charAt(0).toUpperCase()}${panel.slice(1)}Panel`;
+      const target = document.getElementById(targetId);
+      const willShow = !!target && target.classList.contains("hidden");
+
+      names.forEach(name => {
+        const el = document.getElementById(`today${name}Panel`);
+        if (el) el.classList.add("hidden");
+      });
+
+      if (target && willShow) {
+        target.classList.remove("hidden");
+      }
+    }
+
+    function getDeficitStatusText(deficit) {
+      if (deficit > 1200) return "слишком высокий";
+      if (deficit > 1000) return "высокий";
+      if (deficit >= 700) return "идеал";
+      if (deficit >= 500) return "норм";
+      return "слабый";
+    }
+
+    function getDailyNotes(entry) {
+      const notes = [];
+      if ((entry.deficit || 0) > 1200) notes.push("Дефицит слишком высокий. Добавь 200–300 ккал.");
+      if ((entry.protein || 0) < 150) notes.push("Недостаточно белка. Добери 20–40 г.");
+      if ((entry.fat || 0) > 65) notes.push("Жиры выше нормы. Убери жирное.");
+      if ((entry.water || 0) < 2500) notes.push("Недостаточно воды.");
+      if (!notes.length) notes.push("День в идеальном диапазоне.");
+      return notes;
+    }
+
+    function getRecentDailyEntries(days = 7) {
+      return Object.values(dailyMetricsByDate)
+        .map(item => recalculateDailyEntry({ ...createEmptyDailyMetrics(item.date), ...item }))
+        .sort((a, b) => String(a.date).localeCompare(String(b.date)))
+        .slice(-days);
+    }
+
+    function getWeeklyDynamics() {
+      const entries = getRecentDailyEntries(7);
+      const firstWithWeight = entries.find(item => item.weight !== null);
+      const lastWithWeight = [...entries].reverse().find(item => item.weight !== null);
+      const firstWithWaist = entries.find(item => item.waist !== null);
+      const lastWithWaist = [...entries].reverse().find(item => item.waist !== null);
+      const avgDeficit = entries.length ? Math.round(entries.reduce((sum, item) => sum + (item.deficit || 0), 0) / entries.length) : 0;
+      const avgProtein = entries.length ? Math.round(entries.reduce((sum, item) => sum + (item.protein || 0), 0) / entries.length) : 0;
+      return {
+        entries,
+        weightChange: firstWithWeight && lastWithWeight ? roundTo(lastWithWeight.weight - firstWithWeight.weight, 1) : null,
+        waistChange: firstWithWaist && lastWithWaist ? roundTo(lastWithWaist.waist - firstWithWaist.waist, 1) : null,
+        avgDeficit,
+        avgProtein
+      };
+    }
+
+    function saveDailyEntry(date, updater) {
+      const base = { ...createEmptyDailyMetrics(date), ...(getDailyMetrics(date) || {}) };
+      const updated = updater(base) || base;
+      dailyMetricsByDate[date] = recalculateDailyEntry(updated);
+      saveData();
+      renderAll();
+      return dailyMetricsByDate[date];
+    }
+
+    function saveTodayBodyEntry() {
+      const date = getTodayKey();
+      saveDailyEntry(date, entry => {
+        entry.weight = toNumberOrNull(document.getElementById("dailyWeightInput").value);
+        entry.waist = toNumberOrNull(document.getElementById("dailyWaistInput").value);
+        entry.hips = toNumberOrNull(document.getElementById("dailyHipsInput").value);
+        return entry;
+      });
+      showToast("Замеры сохранены");
+    }
+
+    function saveTodayNutritionEntry() {
+      const date = getTodayKey();
+      saveDailyEntry(date, entry => {
+        entry.calories = clampMetricNumber(document.getElementById("dailyCaloriesInput").value);
+        entry.protein = clampMetricNumber(document.getElementById("dailyProteinInput").value);
+        entry.fat = clampMetricNumber(document.getElementById("dailyFatInput").value);
+        entry.carbs = clampMetricNumber(document.getElementById("dailyCarbsInput").value);
+        return entry;
+      });
+      showToast("КБЖУ сохранены");
+    }
+
+    function saveTodayActivityEntry() {
+      const date = getTodayKey();
+      saveDailyEntry(date, entry => {
+        entry.activityCalories = clampMetricNumber(document.getElementById("dailyActivityCaloriesInput").value);
+        entry.steps = clampMetricNumber(document.getElementById("dailyStepsInput").value);
+        return entry;
+      });
+      showToast("Активность сохранена");
+    }
+
+    function addWaterQuick(amount) {
+      const date = getTodayKey();
+      saveDailyEntry(date, entry => {
+        entry.water = clampMetricNumber(entry.water) + amount;
+        entry.liquids = clampMetricNumber(entry.liquids) + amount;
+        return entry;
+      });
+      showToast(`Добавлено ${amount} мл`);
+    }
+
+    function saveBodyProfileSettings() {
+      bodyProfile = {
+        height: toNumberOrNull(document.getElementById("bodyHeightInput").value),
+        age: toNumberOrNull(document.getElementById("bodyAgeInput").value),
+        sex: document.getElementById("bodySexInput").value || "male",
+        neck: toNumberOrNull(document.getElementById("bodyNeckInput").value)
+      };
+
+      Object.keys(dailyMetricsByDate).forEach(date => {
+        dailyMetricsByDate[date] = recalculateDailyEntry({
+          ...createEmptyDailyMetrics(date),
+          ...dailyMetricsByDate[date]
+        });
+      });
+
+      saveData();
+      renderAll();
+      showToast("Параметры тела сохранены");
+    }
+
+    function renderTodayForms(entry) {
+      const safe = entry || getTodayEntry();
+      const setValue = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.value = value ?? "";
+      };
+      setValue("dailyWeightInput", safe.weight);
+      setValue("dailyWaistInput", safe.waist);
+      setValue("dailyHipsInput", safe.hips);
+      setValue("dailyCaloriesInput", safe.calories);
+      setValue("dailyProteinInput", safe.protein);
+      setValue("dailyFatInput", safe.fat);
+      setValue("dailyCarbsInput", safe.carbs);
+      setValue("dailyActivityCaloriesInput", safe.activityCalories);
+      setValue("dailyStepsInput", safe.steps);
+      const waterSummary = document.getElementById("todayWaterSummary");
+      if (waterSummary) {
+        waterSummary.textContent = `Чистой воды: ${safe.water || 0} мл · Всего жидкостей: ${safe.liquids || 0} мл`;
+      }
+    }
+
+    function renderTodaySummary() {
+      const entry = getTodayEntry();
+      const box = document.getElementById("todaySummaryBox");
+      if (box) {
+        box.innerHTML = `
+          Вес: ${formatMetric(entry.weight, " кг")} · Талия: ${formatMetric(entry.waist, " см")} · % жира: ${formatMetric(entry.bodyFatPercent, "%")}<br>
+          Калории: ${entry.calories || 0} · Дефицит: ${entry.deficit || 0} · Вода: ${entry.water || 0} мл
+        `;
+      }
+      renderTodayForms(entry);
+    }
+
+    function renderBalanceScreen() {
+      const entry = getTodayEntry();
+      const targets = getMacroTargets();
+      const notes = getDailyNotes(entry);
+      const week = getWeeklyDynamics();
+      const profileNote = document.getElementById("balanceDateNote");
+      const bodyCard = document.getElementById("balanceBodyCard");
+      const caloriesCard = document.getElementById("balanceCaloriesCard");
+      const macrosCard = document.getElementById("balanceMacrosCard");
+      const waterCard = document.getElementById("balanceWaterCard");
+      const activityCard = document.getElementById("balanceActivityCard");
+      const notesCard = document.getElementById("balanceNotesCard");
+      const weekCard = document.getElementById("balanceWeekCard");
+      if (!profileNote) return;
+
+      profileNote.textContent = `Сегодня: ${entry.date}`;
+      bodyCard.innerHTML = `
+        Вес: ${formatMetric(entry.weight, " кг")}<br>
+        Талия: ${formatMetric(entry.waist, " см")}<br>
+        ${bodyProfile.sex === "female" ? `Бедра: ${formatMetric(entry.hips, " см")}<br>` : ""}
+        % жира: ${formatMetric(entry.bodyFatPercent, "%")}<br>
+        Жировая масса: ${formatMetric(entry.fatMass, " кг")}<br>
+        Безжировая масса: ${formatMetric(entry.leanMass, " кг")}
+      `;
+      caloriesCard.innerHTML = `
+        Расход: ${entry.totalBurn || 0} ккал<br>
+        Съедено: ${entry.calories || 0} ккал<br>
+        Дефицит: ${entry.deficit || 0} ккал<br>
+        Статус: ${getDeficitStatusText(entry.deficit || 0)}
+      `;
+      macrosCard.innerHTML = `
+        Калории: ${entry.calories || 0} / ${targets.caloriesMin}–${targets.caloriesMax}<br>
+        Белок: ${entry.protein || 0} / ${targets.proteinMin}–${targets.proteinMax} г<br>
+        Жиры: ${entry.fat || 0} / ${targets.fatMin}–${targets.fatMax} г<br>
+        Углеводы: ${entry.carbs || 0} / ${targets.carbsMin}–${targets.carbsMax} г
+      `;
+      waterCard.innerHTML = `
+        Вода: ${entry.water || 0} / ${targets.waterTarget} мл<br>
+        Жидкости: ${entry.liquids || 0} мл
+      `;
+      activityCard.innerHTML = `
+        Активные ккал: ${entry.activityCalories || 0}<br>
+        Шаги: ${entry.steps || 0}
+      `;
+      notesCard.innerHTML = notes.map(note => `• ${escapeHtml(note)}`).join("<br>");
+      weekCard.innerHTML = `
+        Изменение веса: ${formatMetric(week.weightChange, " кг")}<br>
+        Изменение талии: ${formatMetric(week.waistChange, " см")}<br>
+        Средний дефицит: ${week.avgDeficit} ккал<br>
+        Средний белок: ${week.avgProtein} г
+      `;
+    }
+
     function renderAll() {
       renderTrainingScreen();
+      renderBalanceScreen();
       renderPlansScreen();
       renderStatsScreen();
       renderMoreScreen();
@@ -1957,6 +2487,8 @@
           feedbackEntries,
           pendingCloudWorkouts,
           pendingCloudDeletedWorkoutIds,
+          dailyMetricsByDate,
+          bodyProfile,
           workoutSettings
         })
       );
@@ -2084,6 +2616,8 @@
         scheduledWorkouts,
         templates,
         feedbackEntries,
+        dailyMetricsByDate,
+        bodyProfile,
         workoutSettings
       };
     }
@@ -2159,6 +2693,15 @@
         scheduledWorkouts = Array.isArray(remote.scheduledWorkouts) ? remote.scheduledWorkouts : scheduledWorkouts;
         templates = Array.isArray(remote.templates) ? remote.templates : templates;
         feedbackEntries = Array.isArray(remote.feedbackEntries) ? remote.feedbackEntries : feedbackEntries;
+        dailyMetricsByDate = remote.dailyMetricsByDate && typeof remote.dailyMetricsByDate === "object"
+          ? remote.dailyMetricsByDate
+          : dailyMetricsByDate;
+        bodyProfile = remote.bodyProfile && typeof remote.bodyProfile === "object"
+          ? {
+              ...getEmptyBodyProfile(),
+              ...remote.bodyProfile
+            }
+          : bodyProfile;
         workoutSettings = remote.workoutSettings && typeof remote.workoutSettings === "object"
           ? {
               ...getEmptyWorkoutSettings(),
@@ -2483,13 +3026,14 @@
     }
 
     function switchScreen(name) {
-      ["training", "plans", "stats", "more", "profile"].forEach(screen => {
+      ["training", "balance", "plans", "stats", "more", "profile"].forEach(screen => {
         document.getElementById("screen-" + screen).classList.toggle("active", screen === name);
         const navBtn = document.getElementById("nav-" + screen);
         if (navBtn) navBtn.classList.toggle("active", screen === name);
       });
 
       if (name === "training") renderTrainingScreen();
+      if (name === "balance") renderBalanceScreen();
       if (name === "plans") renderPlansScreen();
       if (name === "stats") renderStatsScreen();
       if (name === "more") renderMoreScreen();
@@ -3029,6 +3573,8 @@
     }
 
     function renderTrainingScreen() {
+      ensureTodayEntry();
+      renderTodaySummary();
       document.getElementById("disclaimerCard").classList.toggle("hidden", workoutSettings.disclaimerAccepted);
 
       document.getElementById("trainingStartView").classList.add("hidden");
@@ -4990,16 +5536,19 @@
       const header = document.getElementById("profileCabinetHeader");
       const cloud = document.getElementById("profileCloudStatus");
       const summary = document.getElementById("profileCabinetSummary");
-      if (!header || !cloud || !summary) return;
+      const bodyNote = document.getElementById("profileBodyNote");
+      if (!header || !cloud || !summary || !bodyNote) return;
 
       if (!currentProfileId) {
         header.innerHTML = "<strong>Профиль не выбран</strong><div class='muted'>Сначала войди через Google или создай локальный профиль.</div>";
         cloud.textContent = "Облачная синхронизация недоступна без активного профиля.";
         summary.textContent = "";
+        bodyNote.textContent = "";
         return;
       }
 
       const profile = getCurrentProfile();
+      const today = getTodayEntry();
       const nextPlan = [...scheduledWorkouts]
         .filter(item => item.status === "scheduled")
         .sort((a, b) => String(a.date).localeCompare(String(b.date)))[0];
@@ -5020,6 +5569,15 @@
         Последняя тренировка: ${lastWorkout ? `${lastWorkout.date} · ${escapeHtml(lastWorkout.split)} · ${lastWorkout.sets.length} подходов` : "пока нет тренировок"}<br>
         Ближайший план: ${nextPlan ? `${nextPlan.date} · ${escapeHtml(nextPlan.title || nextPlan.split)}` : "пока ничего не запланировано"}<br>
         Кастомных сплитов/упражнений: ${Object.values(customExercisesBySplit).reduce((sum, items) => sum + items.length, 0)}
+      `;
+
+      document.getElementById("bodyHeightInput").value = bodyProfile.height ?? "";
+      document.getElementById("bodyAgeInput").value = bodyProfile.age ?? "";
+      document.getElementById("bodySexInput").value = bodyProfile.sex || "male";
+      document.getElementById("bodyNeckInput").value = bodyProfile.neck ?? "";
+      bodyNote.innerHTML = `
+        Профиль тела: рост ${formatMetric(bodyProfile.height, " см")}, возраст ${formatMetric(bodyProfile.age)}, пол ${bodyProfile.sex === "female" ? "женщина" : "мужчина"}, шея ${formatMetric(bodyProfile.neck, " см")}<br>
+        Сегодняшний расчет: BMR ${today.bmr || 0} ккал, расход ${today.totalBurn || 0} ккал, дефицит ${today.deficit || 0} ккал.
       `;
 
       renderProfileWorkoutHistoryList();
