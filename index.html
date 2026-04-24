@@ -113,6 +113,19 @@
       margin-bottom: 12px;
     }
 
+    .form-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .field-label {
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 600;
+      padding-left: 2px;
+    }
+
     input, select, button, textarea {
       width: 100%;
       border: 1px solid var(--border);
@@ -183,6 +196,11 @@
     .badge-orange {
       background: #ffedd5;
       color: #9a3412;
+    }
+
+    .badge-red {
+      background: #fee2e2;
+      color: #991b1b;
     }
 
     .hint-box {
@@ -366,6 +384,11 @@
       background: var(--primary-soft);
     }
 
+    #nav-balance.active {
+      color: #166534;
+      background: #dcfce7;
+    }
+
     .hidden { display: none !important; }
     .file-input { display: none; }
 
@@ -389,6 +412,53 @@
       grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
       gap: 10px;
       margin-bottom: 10px;
+    }
+
+    .status-panel {
+      border-radius: 14px;
+      padding: 12px;
+      font-weight: 700;
+      margin-bottom: 10px;
+      border: 1px solid transparent;
+    }
+
+    .status-ok {
+      background: #dcfce7;
+      border-color: #86efac;
+      color: #166534;
+    }
+
+    .status-bad {
+      background: #fee2e2;
+      border-color: #fca5a5;
+      color: #991b1b;
+    }
+
+    .mini-chart {
+      display: grid;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .mini-chart-row {
+      display: grid;
+      grid-template-columns: 80px 1fr 70px;
+      gap: 10px;
+      align-items: center;
+      font-size: 13px;
+    }
+
+    .mini-chart-bar {
+      height: 10px;
+      background: #e5e7eb;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .mini-chart-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #2563eb, #60a5fa);
     }
 
     .install-box {
@@ -793,9 +863,18 @@
         <div id="todayBodyPanel" class="card hidden">
           <h2 class="section-title">Вес и замеры</h2>
           <div class="form-grid">
-            <input id="dailyWeightInput" type="number" min="0" step="0.1" placeholder="Вес, кг" />
-            <input id="dailyWaistInput" type="number" min="0" step="0.1" placeholder="Талия, см" />
-            <input id="dailyHipsInput" type="number" min="0" step="0.1" placeholder="Бедра/ягодицы, см (для женщин)" />
+            <div class="form-field">
+              <div class="field-label">Вес, кг</div>
+              <input id="dailyWeightInput" type="number" min="0" step="0.1" placeholder="Вес, кг" />
+            </div>
+            <div class="form-field">
+              <div class="field-label">Талия, см</div>
+              <input id="dailyWaistInput" type="number" min="0" step="0.1" placeholder="Талия, см" />
+            </div>
+            <div class="form-field">
+              <div class="field-label">Бедра/ягодицы, см</div>
+              <input id="dailyHipsInput" type="number" min="0" step="0.1" placeholder="Для женщин" />
+            </div>
           </div>
           <div class="actions">
             <button class="btn-primary" onclick="saveTodayBodyEntry()">Сохранить замеры</button>
@@ -807,10 +886,9 @@
           <h2 class="section-title">Вода</h2>
           <div class="muted" id="todayWaterSummary" style="margin-bottom:10px;"></div>
           <div class="actions full">
-            <button class="btn-secondary" onclick="addWaterQuick(200)">+200 мл</button>
-            <button class="btn-secondary" onclick="addWaterQuick(250)">+250 мл</button>
+            <button class="btn-secondary" onclick="addWaterQuick(100)">+100 мл</button>
+            <button class="btn-secondary" onclick="addWaterQuick(150)">+150 мл</button>
             <button class="btn-secondary" onclick="addWaterQuick(300)">+300 мл</button>
-            <button class="btn-secondary" onclick="addWaterQuick(400)">+400 мл</button>
             <button class="btn-secondary" onclick="addWaterQuick(500)">+500 мл</button>
           </div>
         </div>
@@ -818,10 +896,22 @@
         <div id="todayNutritionPanel" class="card hidden">
           <h2 class="section-title">КБЖУ</h2>
           <div class="form-grid">
-            <input id="dailyCaloriesInput" type="number" min="0" step="1" placeholder="Калории" />
-            <input id="dailyProteinInput" type="number" min="0" step="1" placeholder="Белки, г" />
-            <input id="dailyFatInput" type="number" min="0" step="1" placeholder="Жиры, г" />
-            <input id="dailyCarbsInput" type="number" min="0" step="1" placeholder="Углеводы, г" />
+            <div class="form-field">
+              <div class="field-label">Ккал</div>
+              <input id="dailyCaloriesInput" type="number" min="0" step="1" placeholder="Калории" />
+            </div>
+            <div class="form-field">
+              <div class="field-label">Белки, г</div>
+              <input id="dailyProteinInput" type="number" min="0" step="1" placeholder="Белки" />
+            </div>
+            <div class="form-field">
+              <div class="field-label">Жиры, г</div>
+              <input id="dailyFatInput" type="number" min="0" step="1" placeholder="Жиры" />
+            </div>
+            <div class="form-field">
+              <div class="field-label">Углеводы, г</div>
+              <input id="dailyCarbsInput" type="number" min="0" step="1" placeholder="Углеводы" />
+            </div>
           </div>
           <div class="actions">
             <button class="btn-primary" onclick="saveTodayNutritionEntry()">Сохранить КБЖУ</button>
@@ -832,8 +922,14 @@
         <div id="todayActivityPanel" class="card hidden">
           <h2 class="section-title">Активность</h2>
           <div class="form-grid">
-            <input id="dailyActivityCaloriesInput" type="number" min="0" step="1" placeholder="Активные ккал" />
-            <input id="dailyStepsInput" type="number" min="0" step="1" placeholder="Шаги" />
+            <div class="form-field">
+              <div class="field-label">Сожжено ккал</div>
+              <input id="dailyActivityCaloriesInput" type="number" min="0" step="1" placeholder="Активные ккал" />
+            </div>
+            <div class="form-field">
+              <div class="field-label">Шаги</div>
+              <input id="dailyStepsInput" type="number" min="0" step="1" placeholder="Шаги" />
+            </div>
           </div>
           <div class="actions">
             <button class="btn-primary" onclick="saveTodayActivityEntry()">Сохранить активность</button>
@@ -857,6 +953,9 @@
               <li>После подхода запустится таймер отдыха.</li>
               <li>Прогресс смотри во вкладке «Статистика».</li>
             </ol>
+            <div class="muted" style="margin-top:10px;">
+              Замеры тела: вес лучше утром натощак, талию мерь на расслабленном выдохе, шею чуть ниже кадыка, а для женщин бедра/ягодицы по самой широкой части.
+            </div>
           </div>
         </div>
 
@@ -1390,13 +1489,29 @@
       <div class="card">
         <h2 class="section-title">Параметры тела</h2>
         <div class="form-grid">
-          <input id="bodyHeightInput" type="number" min="0" step="1" placeholder="Рост, см" />
-          <input id="bodyAgeInput" type="number" min="0" step="1" placeholder="Возраст" />
-          <select id="bodySexInput">
-            <option value="male">Мужчина</option>
-            <option value="female">Женщина</option>
-          </select>
-          <input id="bodyNeckInput" type="number" min="0" step="0.1" placeholder="Шея, см" />
+          <div class="form-field">
+            <div class="field-label">Рост, см</div>
+            <input id="bodyHeightInput" type="number" min="0" step="1" placeholder="Рост, см" />
+          </div>
+          <div class="form-field">
+            <div class="field-label">Возраст</div>
+            <input id="bodyAgeInput" type="number" min="0" step="1" placeholder="Возраст" />
+          </div>
+          <div class="form-field">
+            <div class="field-label">Пол</div>
+            <select id="bodySexInput">
+              <option value="male">Мужчина</option>
+              <option value="female">Женщина</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <div class="field-label">Шея, см</div>
+            <input id="bodyNeckInput" type="number" min="0" step="0.1" placeholder="Шея, см" />
+          </div>
+          <div class="form-field">
+            <div class="field-label">Цель по жиру, %</div>
+            <input id="bodyTargetFatInput" type="number" min="0" step="0.1" placeholder="Например 12" />
+          </div>
         </div>
         <div class="actions">
           <button class="btn-primary" onclick="saveBodyProfileSettings()">Сохранить параметры</button>
@@ -1598,7 +1713,8 @@
         height: null,
         age: null,
         sex: "male",
-        neck: null
+        neck: null,
+        targetBodyFat: null
       };
     }
 
@@ -2271,6 +2387,10 @@
       return "слабый";
     }
 
+    function isDeficitInSafeRange(deficit) {
+      return deficit >= 500 && deficit <= 1000;
+    }
+
     function getDailyNotes(entry) {
       const notes = [];
       if ((entry.deficit || 0) > 1200) notes.push("Дефицит слишком высокий. Добавь 200–300 ккал.");
@@ -2303,6 +2423,90 @@
         avgDeficit,
         avgProtein
       };
+    }
+
+    function getGoalForecast(entry, week) {
+      const target = toNumberOrNull(bodyProfile.targetBodyFat);
+      const current = toNumberOrNull(entry.bodyFatPercent);
+      if (!target || !current) {
+        return {
+          target,
+          current,
+          remaining: null,
+          pacePerWeek: null,
+          estimateText: "Поставь цель по % жира и внеси замеры за несколько дней."
+        };
+      }
+
+      const remaining = roundTo(current - target, 1);
+      if (remaining <= 0) {
+        return {
+          target,
+          current,
+          remaining: 0,
+          pacePerWeek: null,
+          estimateText: "Цель уже достигнута или перевыполнена."
+        };
+      }
+
+      const entriesWithFat = week.entries.filter(item => item.bodyFatPercent !== null);
+      if (entriesWithFat.length < 3) {
+        return {
+          target,
+          current,
+          remaining,
+          pacePerWeek: null,
+          estimateText: "Нужно хотя бы 3 дня замеров для прогноза."
+        };
+      }
+
+      const first = entriesWithFat[0];
+      const last = entriesWithFat[entriesWithFat.length - 1];
+      const pace = roundTo(((first.bodyFatPercent || 0) - (last.bodyFatPercent || 0)), 2);
+      if (pace <= 0) {
+        return {
+          target,
+          current,
+          remaining,
+          pacePerWeek: null,
+          estimateText: "Пока нет устойчивого снижения % жира для прогноза."
+        };
+      }
+
+      const weeksNeeded = remaining / pace;
+      const daysNeeded = Math.round(weeksNeeded * 7);
+      const monthsNeeded = roundTo(daysNeeded / 30, 1);
+      return {
+        target,
+        current,
+        remaining,
+        pacePerWeek: pace,
+        estimateText: `До цели примерно ${daysNeeded} дней (${monthsNeeded} мес.) при текущем темпе.`
+      };
+    }
+
+    function renderMiniChart(entries, valueKey, formatter = value => value) {
+      const filtered = entries.filter(item => item[valueKey] !== null && item[valueKey] !== undefined);
+      if (!filtered.length) {
+        return '<div class="muted">Недостаточно данных для графика.</div>';
+      }
+
+      const max = Math.max(...filtered.map(item => Number(item[valueKey]) || 0), 1);
+      return `
+        <div class="mini-chart">
+          ${filtered.map(item => {
+            const value = Number(item[valueKey]) || 0;
+            const width = Math.max(6, Math.round((value / max) * 100));
+            return `
+              <div class="mini-chart-row">
+                <div>${item.date.slice(5)}</div>
+                <div class="mini-chart-bar"><div class="mini-chart-fill" style="width:${width}%"></div></div>
+                <div>${formatter(value)}</div>
+              </div>
+            `;
+          }).join("")}
+        </div>
+      `;
     }
 
     function saveDailyEntry(date, updater) {
@@ -2362,7 +2566,8 @@
         height: toNumberOrNull(document.getElementById("bodyHeightInput").value),
         age: toNumberOrNull(document.getElementById("bodyAgeInput").value),
         sex: document.getElementById("bodySexInput").value || "male",
-        neck: toNumberOrNull(document.getElementById("bodyNeckInput").value)
+        neck: toNumberOrNull(document.getElementById("bodyNeckInput").value),
+        targetBodyFat: toNumberOrNull(document.getElementById("bodyTargetFatInput").value)
       };
 
       Object.keys(dailyMetricsByDate).forEach(date => {
@@ -2402,9 +2607,11 @@
       const entry = getTodayEntry();
       const box = document.getElementById("todaySummaryBox");
       if (box) {
+        const statusClass = isDeficitInSafeRange(entry.deficit || 0) ? "badge-green" : "badge-red";
         box.innerHTML = `
           Вес: ${formatMetric(entry.weight, " кг")} · Талия: ${formatMetric(entry.waist, " см")} · % жира: ${formatMetric(entry.bodyFatPercent, "%")}<br>
-          Калории: ${entry.calories || 0} · Дефицит: ${entry.deficit || 0} · Вода: ${entry.water || 0} мл
+          Калории: ${entry.calories || 0} · Дефицит: ${entry.deficit || 0} <span class="badge ${statusClass}">${getDeficitStatusText(entry.deficit || 0)}</span> · Вода: ${entry.water || 0} мл
+          <div style="margin-top:8px;" class="muted">Данные сохраняются после нажатия кнопок и синхронизируются через Google-профиль.</div>
         `;
       }
       renderTodayForms(entry);
@@ -2415,6 +2622,7 @@
       const targets = getMacroTargets();
       const notes = getDailyNotes(entry);
       const week = getWeeklyDynamics();
+      const goal = getGoalForecast(entry, week);
       const profileNote = document.getElementById("balanceDateNote");
       const bodyCard = document.getElementById("balanceBodyCard");
       const caloriesCard = document.getElementById("balanceCaloriesCard");
@@ -2432,9 +2640,17 @@
         ${bodyProfile.sex === "female" ? `Бедра: ${formatMetric(entry.hips, " см")}<br>` : ""}
         % жира: ${formatMetric(entry.bodyFatPercent, "%")}<br>
         Жировая масса: ${formatMetric(entry.fatMass, " кг")}<br>
-        Безжировая масса: ${formatMetric(entry.leanMass, " кг")}
+        Безжировая масса: ${formatMetric(entry.leanMass, " кг")}<br>
+        Цель: ${formatMetric(goal.target, "%")} · Осталось: ${formatMetric(goal.remaining, "%")}<br>
+        ${escapeHtml(goal.estimateText)}
       `;
       caloriesCard.innerHTML = `
+        <div class="status-panel ${isDeficitInSafeRange(entry.deficit || 0) ? "status-ok" : "status-bad"}">
+          За день: ${entry.deficit || 0} ккал · ${getDeficitStatusText(entry.deficit || 0)}
+        </div>
+        <div class="status-panel ${isDeficitInSafeRange(week.avgDeficit || 0) ? "status-ok" : "status-bad"}">
+          Средний за 7 дней: ${week.avgDeficit || 0} ккал · ${getDeficitStatusText(week.avgDeficit || 0)}
+        </div>
         Расход: ${entry.totalBurn || 0} ккал<br>
         Съедено: ${entry.calories || 0} ккал<br>
         Дефицит: ${entry.deficit || 0} ккал<br>
@@ -2460,6 +2676,9 @@
         Изменение талии: ${formatMetric(week.waistChange, " см")}<br>
         Средний дефицит: ${week.avgDeficit} ккал<br>
         Средний белок: ${week.avgProtein} г
+        ${renderMiniChart(week.entries, "deficit", value => `${Math.round(value)}`)}
+        ${renderMiniChart(week.entries, "weight", value => `${roundTo(value, 1)} кг`)}
+        ${renderMiniChart(week.entries, "waist", value => `${roundTo(value, 1)} см`)}
       `;
     }
 
@@ -5575,8 +5794,9 @@
       document.getElementById("bodyAgeInput").value = bodyProfile.age ?? "";
       document.getElementById("bodySexInput").value = bodyProfile.sex || "male";
       document.getElementById("bodyNeckInput").value = bodyProfile.neck ?? "";
+      document.getElementById("bodyTargetFatInput").value = bodyProfile.targetBodyFat ?? "";
       bodyNote.innerHTML = `
-        Профиль тела: рост ${formatMetric(bodyProfile.height, " см")}, возраст ${formatMetric(bodyProfile.age)}, пол ${bodyProfile.sex === "female" ? "женщина" : "мужчина"}, шея ${formatMetric(bodyProfile.neck, " см")}<br>
+        Профиль тела: рост ${formatMetric(bodyProfile.height, " см")}, возраст ${formatMetric(bodyProfile.age)}, пол ${bodyProfile.sex === "female" ? "женщина" : "мужчина"}, шея ${formatMetric(bodyProfile.neck, " см")}, цель ${formatMetric(bodyProfile.targetBodyFat, "%")}<br>
         Сегодняшний расчет: BMR ${today.bmr || 0} ккал, расход ${today.totalBurn || 0} ккал, дефицит ${today.deficit || 0} ккал.
       `;
 
