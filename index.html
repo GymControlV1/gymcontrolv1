@@ -2332,7 +2332,12 @@
         currentProfileId = profile.id;
         setAuthLoginSuppressed(false);
         saveProfilesMeta();
-        loadData();
+        const localProfileData = localStorage.getItem(getCurrentProfileStorageKey(profile.id));
+        if (localProfileData) {
+          loadData();
+        } else {
+          applyProfileData(getEmptyProfileData());
+        }
         resetBuildersAndSession();
         renderAll();
         await refreshWorkoutHistoryFromCloud(false);
@@ -2975,6 +2980,18 @@
       };
     }
 
+    function isCloudProfileSnapshotEmpty(snapshot) {
+      const safe = snapshot || {};
+      const hasCustomExercises = Object.keys(safe.customExercisesBySplit || {}).some(key => Array.isArray(safe.customExercisesBySplit[key]) && safe.customExercisesBySplit[key].length);
+      const hasScheduledWorkouts = Array.isArray(safe.scheduledWorkouts) && safe.scheduledWorkouts.length > 0;
+      const hasTemplates = Array.isArray(safe.templates) && safe.templates.length > 0;
+      const hasFeedback = Array.isArray(safe.feedbackEntries) && safe.feedbackEntries.length > 0;
+      const hasDailyMetrics = !!(safe.dailyMetricsByDate && Object.keys(safe.dailyMetricsByDate).length > 0);
+      const hasBodyProfile = !!(safe.bodyProfile && Object.values(safe.bodyProfile).some(value => value !== null && value !== "" && value !== "male"));
+      const hasCustomWorkoutSettings = !!(safe.workoutSettings && (safe.workoutSettings.disclaimerAccepted === true || safe.workoutSettings.soundEnabled === false || safe.workoutSettings.vibrationEnabled === false));
+      return !hasCustomExercises && !hasScheduledWorkouts && !hasTemplates && !hasFeedback && !hasDailyMetrics && !hasBodyProfile && !hasCustomWorkoutSettings;
+    }
+
     function scheduleCloudProfileSync() {
       if (!cloudConfig.autoSync || !shouldUseCloudProfileSync()) return;
 
@@ -2994,10 +3011,51 @@
       }
 
       try {
+        const localSnapshot = buildCloudProfileSnapshot();
+        if (isCloudProfileSnapshotEmpty(localSnapshot)) {
+          const remoteCheck = await callCloudApi({
+            action: "getProfileData",
+            user: getCloudUserPayload()
+          });
+
+          if (!remoteCheck.ok) {
+            throw new Error(remoteCheck.error || "Не удалось проверить облачный профиль");
+          }
+
+          if (remoteCheck.profileData && !isCloudProfileSnapshotEmpty(remoteCheck.profileData)) {
+            customExercisesBySplit = remoteCheck.profileData.customExercisesBySplit && typeof remoteCheck.profileData.customExercisesBySplit === "object"
+              ? remoteCheck.profileData.customExercisesBySplit
+              : customExercisesBySplit;
+            scheduledWorkouts = Array.isArray(remoteCheck.profileData.scheduledWorkouts) ? remoteCheck.profileData.scheduledWorkouts : scheduledWorkouts;
+            templates = Array.isArray(remoteCheck.profileData.templates) ? remoteCheck.profileData.templates : templates;
+            feedbackEntries = Array.isArray(remoteCheck.profileData.feedbackEntries) ? remoteCheck.profileData.feedbackEntries : feedbackEntries;
+            dailyMetricsByDate = remoteCheck.profileData.dailyMetricsByDate && typeof remoteCheck.profileData.dailyMetricsByDate === "object"
+              ? remoteCheck.profileData.dailyMetricsByDate
+              : dailyMetricsByDate;
+            bodyProfile = remoteCheck.profileData.bodyProfile && typeof remoteCheck.profileData.bodyProfile === "object"
+              ? {
+                  ...getEmptyBodyProfile(),
+                  ...remoteCheck.profileData.bodyProfile
+                }
+              : bodyProfile;
+            workoutSettings = remoteCheck.profileData.workoutSettings && typeof remoteCheck.profileData.workoutSettings === "object"
+              ? {
+                  ...getEmptyWorkoutSettings(),
+                  ...remoteCheck.profileData.workoutSettings
+                }
+              : workoutSettings;
+            saveData({ skipCloudProfileSync: true });
+            renderAll();
+            renderCloudSyncSettings();
+            if (manual) showToast("Пустой локальный профиль заменен облачными данными");
+            return true;
+          }
+        }
+
         const result = await callCloudApi({
           action: "saveProfileData",
           user: getCloudUserPayload(),
-          profileData: buildCloudProfileSnapshot()
+          profileData: localSnapshot
         });
 
         if (!result.ok) {
