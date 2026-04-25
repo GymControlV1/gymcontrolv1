@@ -1363,15 +1363,7 @@
             <button class="btn-secondary" onclick="goToTrainingHome()">На главную</button>
           </div>
         </div>
-        <div class="chart-controls">
-          <select id="progressExerciseSelect" onchange="renderProgressChart()"></select>
-          <select id="progressMetric" onchange="renderProgressChart()">
-            <option value="best_weight">Лучший расчетный вес</option>
-            <option value="volume">Тоннаж</option>
-            <option value="reps">Лучшие повторы</option>
-            <option value="sets">Количество подходов</option>
-          </select>
-        </div>
+        <div class="muted">График показывает общий тоннаж по тренировкам за разные дни.</div>
         <div class="chart-wrap">
           <div class="chart-box">
             <canvas id="progressChart" width="900" height="320"></canvas>
@@ -1381,12 +1373,7 @@
       </div>
 
       <div class="card">
-        <h2 class="section-title">Сводка по упражнениям</h2>
-        <div id="statsList" class="stats-grid"></div>
-      </div>
-
-      <div class="card">
-        <h2 class="section-title">История тренировок</h2>
+        <h2 class="section-title">Проведенные тренировки</h2>
         <div id="historyList"></div>
       </div>
     </section>
@@ -1533,11 +1520,6 @@
           <button class="btn-primary" onclick="saveBodyProfileSettings()">Сохранить параметры</button>
         </div>
         <div id="profileBodyNote" class="muted" style="margin-top:10px;"></div>
-      </div>
-
-      <div class="card">
-        <h2 class="section-title">Проведенные тренировки</h2>
-        <div id="profileWorkoutHistoryList"></div>
       </div>
 
       <div class="card">
@@ -5622,10 +5604,22 @@
     }
 
     function renderStatsScreen() {
-      renderProgressExerciseOptions();
-      renderProgressChart();
-      renderStatsList();
+      renderWorkoutProgressChart();
       renderHistoryList();
+    }
+
+    function getWorkoutStatsByDay() {
+      return workoutHistory
+        .slice()
+        .sort((a, b) => String(a.date).localeCompare(String(b.date)))
+        .map(workout => ({
+          id: workout.id,
+          date: workout.date,
+          split: workout.split,
+          totalVolume: workout.sets.reduce((sum, set) => sum + (set.volume || 0), 0),
+          totalSets: workout.sets.length,
+          uniqueExercises: new Set(workout.sets.map(set => set.exercise)).size
+        }));
     }
 
     function renderProgressExerciseOptions() {
@@ -5787,6 +5781,26 @@
       hint.textContent = labels.length
         ? `Упражнение: ${exerciseName}. Точек на графике: ${labels.length}.`
         : `По упражнению "${exerciseName}" пока нет данных.`;
+    }
+
+    function renderWorkoutProgressChart() {
+      const canvas = document.getElementById("progressChart");
+      const hint = document.getElementById("progressChartHint");
+      const stats = getWorkoutStatsByDay();
+
+      if (!stats.length) {
+        const ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        hint.textContent = "Нет данных для графика";
+        return;
+      }
+
+      const labels = stats.map(item => item.date);
+      const values = stats.map(item => item.totalVolume);
+      drawLineChart(canvas, labels, values, "Тоннаж по тренировкам");
+
+      const latest = stats[stats.length - 1];
+      hint.textContent = `Тренировок на графике: ${stats.length}. Последняя: ${latest.date} · ${latest.split} · тоннаж ${latest.totalVolume} кг.`;
     }
 
     function renderStatsList() {
