@@ -428,6 +428,12 @@
       color: #166534;
     }
 
+    .status-warn {
+      background: #fef3c7;
+      border-color: #fcd34d;
+      color: #92400e;
+    }
+
     .status-bad {
       background: #fee2e2;
       border-color: #fca5a5;
@@ -848,7 +854,7 @@
           <div class="section-head">
             <h2 class="section-title">Сегодня</h2>
             <div class="section-head-actions">
-              <button class="btn-secondary" onclick="switchScreen('balance')">Баланс</button>
+              <button class="btn-success" onclick="switchScreen('balance')">Баланс</button>
             </div>
           </div>
           <div id="todaySummaryBox" class="muted"></div>
@@ -875,6 +881,27 @@
               <div class="field-label">Бедра/ягодицы, см</div>
               <input id="dailyHipsInput" type="number" min="0" step="0.1" placeholder="Для женщин" />
             </div>
+            <div class="form-field">
+              <div class="field-label">Источник состава тела</div>
+              <select id="dailyBodyCompositionSourceInput">
+                <option value="auto">Авторасчет по замерам</option>
+                <option value="smart_scale">Умные весы</option>
+                <option value="analyzer">Анализатор состава тела</option>
+                <option value="caliper">Калипер/замер</option>
+                <option value="manual">Ручной ввод</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <div class="field-label">% жира вручную</div>
+              <input id="dailyManualBodyFatInput" type="number" min="0" step="0.1" placeholder="Если есть внешний замер" />
+            </div>
+            <div class="form-field">
+              <div class="field-label">Жировая масса, кг</div>
+              <input id="dailyManualFatMassInput" type="number" min="0" step="0.1" placeholder="Необязательно" />
+            </div>
+          </div>
+          <div class="muted" style="margin-top:10px;">
+            Если поля состава тела оставить пустыми, приложение рассчитает % жира по замерам. Внешний замер имеет приоритет над автооценкой.
           </div>
           <div class="actions">
             <button class="btn-primary" onclick="saveTodayBodyEntry()">Сохранить замеры</button>
@@ -956,20 +983,6 @@
             <div class="muted" style="margin-top:10px;">
               Замеры тела: вес лучше утром натощак, талию мерь на расслабленном выдохе, шею чуть ниже кадыка, а для женщин бедра/ягодицы по самой широкой части.
             </div>
-          </div>
-        </div>
-
-        <div class="card">
-          <h2 class="section-title">Настройки тренировки</h2>
-          <div class="settings-row">
-            <label class="setting-chip">
-              <input type="checkbox" id="soundEnabled" checked onchange="toggleSetting('soundEnabled', this.checked)" />
-              <span>Звук таймера</span>
-            </label>
-            <label class="setting-chip">
-              <input type="checkbox" id="vibrationEnabled" checked onchange="toggleSetting('vibrationEnabled', this.checked)" />
-              <span>Вибрация</span>
-            </label>
           </div>
         </div>
 
@@ -1411,6 +1424,9 @@
           <li>После подхода отдыхай по таймеру.</li>
           <li>Прогресс смотри во вкладке «Статистика».</li>
         </ol>
+        <div class="muted" style="margin-top:10px;">
+          Замеры тела: вес лучше утром натощак, талию мерь на расслабленном выдохе, шею чуть ниже кадыка, а для женщин бедра/ягодицы по самой широкой части.
+        </div>
       </div>
 
       <div class="card">
@@ -1724,6 +1740,13 @@
         weight: null,
         waist: null,
         hips: null,
+        bodyCompositionSource: "auto",
+        estimatedBodyFatPercent: null,
+        estimatedFatMass: null,
+        estimatedLeanMass: null,
+        manualBodyFatPercent: null,
+        manualFatMass: null,
+        manualLeanMass: null,
         bodyFatPercent: null,
         fatMass: null,
         leanMass: null,
@@ -1733,6 +1756,7 @@
         carbs: 0,
         water: 0,
         liquids: 0,
+        activityCaloriesRaw: 0,
         activityCalories: 0,
         steps: 0,
         bmr: 0,
@@ -1797,6 +1821,18 @@
       return dailyMetricsByDate[date] || null;
     }
 
+    function getActivityCorrectionMultiplier(rawCalories) {
+      const raw = clampMetricNumber(rawCalories);
+      if (!raw) return 1;
+      if (raw <= 300) return 0.9;
+      if (raw <= 500) return 0.85;
+      return 0.8;
+    }
+
+    function getCorrectedActivityCalories(rawCalories) {
+      return Math.round(clampMetricNumber(rawCalories) * getActivityCorrectionMultiplier(rawCalories));
+    }
+
     function calculateBmrForEntry(entry) {
       const weight = toNumberOrNull(entry.weight);
       const height = toNumberOrNull(bodyProfile.height);
@@ -1815,42 +1851,56 @@
       const hips = toNumberOrNull(entry.hips);
       const sex = bodyProfile.sex || "male";
 
+      entry.estimatedBodyFatPercent = null;
+      entry.estimatedFatMass = null;
+      entry.estimatedLeanMass = null;
+
       if (!weight || !waist || !neck || !height) {
         entry.bodyFatPercent = null;
         entry.fatMass = null;
         entry.leanMass = null;
-        return;
-      }
-
-      let bodyFat = null;
-      if (sex === "female") {
-        if (!hips || waist + hips <= neck || height <= 0) {
-          entry.bodyFatPercent = null;
-          entry.fatMass = null;
-          entry.leanMass = null;
-          return;
-        }
-        bodyFat = 495 / (1.29579 - 0.35004 * Math.log10(waist + hips - neck) + 0.22100 * Math.log10(height)) - 450;
       } else {
-        if (waist <= neck || height <= 0) {
-          entry.bodyFatPercent = null;
-          entry.fatMass = null;
-          entry.leanMass = null;
-          return;
+        let bodyFat = null;
+        if (sex === "female") {
+          if (hips && waist + hips > neck && height > 0) {
+            bodyFat = 495 / (1.29579 - 0.35004 * Math.log10(waist + hips - neck) + 0.22100 * Math.log10(height)) - 450;
+          }
+        } else if (waist > neck && height > 0) {
+          bodyFat = 495 / (1.0324 - 0.19077 * Math.log10(waist - neck) + 0.15456 * Math.log10(height)) - 450;
         }
-        bodyFat = 495 / (1.0324 - 0.19077 * Math.log10(waist - neck) + 0.15456 * Math.log10(height)) - 450;
+
+        if (Number.isFinite(bodyFat) && bodyFat > 0) {
+          entry.estimatedBodyFatPercent = roundTo(bodyFat, 1);
+          entry.estimatedFatMass = roundTo(weight * entry.estimatedBodyFatPercent / 100, 1);
+          entry.estimatedLeanMass = roundTo(weight - entry.estimatedFatMass, 1);
+        }
       }
 
-      if (!Number.isFinite(bodyFat) || bodyFat <= 0) {
-        entry.bodyFatPercent = null;
-        entry.fatMass = null;
-        entry.leanMass = null;
+      const manualBodyFatPercent = toNumberOrNull(entry.manualBodyFatPercent);
+      const manualFatMass = toNumberOrNull(entry.manualFatMass);
+      const manualLeanMass = toNumberOrNull(entry.manualLeanMass);
+      const hasManualBodyComposition = manualBodyFatPercent !== null || manualFatMass !== null || manualLeanMass !== null;
+
+      if (hasManualBodyComposition) {
+        const resolvedBodyFatPercent = manualBodyFatPercent !== null
+          ? roundTo(manualBodyFatPercent, 1)
+          : (weight && manualFatMass !== null ? roundTo(manualFatMass / weight * 100, 1) : null);
+        const resolvedFatMass = manualFatMass !== null
+          ? roundTo(manualFatMass, 1)
+          : (weight && resolvedBodyFatPercent !== null ? roundTo(weight * resolvedBodyFatPercent / 100, 1) : null);
+        const resolvedLeanMass = manualLeanMass !== null
+          ? roundTo(manualLeanMass, 1)
+          : (weight && resolvedFatMass !== null ? roundTo(weight - resolvedFatMass, 1) : null);
+
+        entry.bodyFatPercent = resolvedBodyFatPercent;
+        entry.fatMass = resolvedFatMass;
+        entry.leanMass = resolvedLeanMass;
         return;
       }
 
-      entry.bodyFatPercent = roundTo(bodyFat, 1);
-      entry.fatMass = roundTo(weight * entry.bodyFatPercent / 100, 1);
-      entry.leanMass = roundTo(weight - entry.fatMass, 1);
+      entry.bodyFatPercent = entry.estimatedBodyFatPercent;
+      entry.fatMass = entry.estimatedFatMass;
+      entry.leanMass = entry.estimatedLeanMass;
     }
 
     function recalculateDailyEntry(entry) {
@@ -1861,7 +1911,8 @@
       entry.carbs = clampMetricNumber(entry.carbs);
       entry.water = clampMetricNumber(entry.water);
       entry.liquids = clampMetricNumber(entry.liquids);
-      entry.activityCalories = clampMetricNumber(entry.activityCalories);
+      entry.activityCaloriesRaw = clampMetricNumber(entry.activityCaloriesRaw || entry.activityCalories);
+      entry.activityCalories = getCorrectedActivityCalories(entry.activityCaloriesRaw);
       entry.steps = clampMetricNumber(entry.steps);
       calculateBodyComposition(entry);
       entry.bmr = calculateBmrForEntry(entry);
@@ -2391,6 +2442,53 @@
       return deficit >= 500 && deficit <= 1000;
     }
 
+    function getStatusClassForRange(value, min, max) {
+      const numericValue = clampMetricNumber(value);
+      if (!numericValue) return "status-bad";
+      if (numericValue < min * 0.85) return "status-bad";
+      if (numericValue < min) return "status-warn";
+      if (numericValue <= max) return "status-ok";
+      if (numericValue <= max * 1.15) return "status-warn";
+      return "status-bad";
+    }
+
+    function getStatusTextForRange(value, min, max) {
+      const numericValue = clampMetricNumber(value);
+      if (!numericValue) return "нет данных";
+      if (numericValue < min * 0.85) return "сильный недобор";
+      if (numericValue < min) return "недобор";
+      if (numericValue <= max) return "норма";
+      if (numericValue <= max * 1.15) return "перебор";
+      return "сильный перебор";
+    }
+
+    function getWaterProgress(entry, targets = getMacroTargets()) {
+      const water = clampMetricNumber(entry?.water);
+      const target = targets.waterTarget || 3000;
+      const percent = target ? Math.min(100, Math.round((water / target) * 100)) : 0;
+      return {
+        water,
+        target,
+        percent,
+        remaining: Math.max(0, target - water)
+      };
+    }
+
+    function getBodyCompositionSourceLabel(source) {
+      switch (source) {
+        case "smart_scale":
+          return "умные весы";
+        case "analyzer":
+          return "анализатор";
+        case "caliper":
+          return "замер/калипер";
+        case "manual":
+          return "ручной ввод";
+        default:
+          return "автооценка";
+      }
+    }
+
     function getDailyNotes(entry) {
       const notes = [];
       if ((entry.deficit || 0) > 1200) notes.push("Дефицит слишком высокий. Добавь 200–300 ккал.");
@@ -2416,18 +2514,23 @@
       const lastWithWaist = [...entries].reverse().find(item => item.waist !== null);
       const avgDeficit = entries.length ? Math.round(entries.reduce((sum, item) => sum + (item.deficit || 0), 0) / entries.length) : 0;
       const avgProtein = entries.length ? Math.round(entries.reduce((sum, item) => sum + (item.protein || 0), 0) / entries.length) : 0;
+      const bodyFatEntries = entries.filter(item => item.bodyFatPercent !== null);
+      const avgBodyFat = bodyFatEntries.length
+        ? roundTo(bodyFatEntries.reduce((sum, item) => sum + (item.bodyFatPercent || 0), 0) / bodyFatEntries.length, 1)
+        : null;
       return {
         entries,
         weightChange: firstWithWeight && lastWithWeight ? roundTo(lastWithWeight.weight - firstWithWeight.weight, 1) : null,
         waistChange: firstWithWaist && lastWithWaist ? roundTo(lastWithWaist.waist - firstWithWaist.waist, 1) : null,
         avgDeficit,
-        avgProtein
+        avgProtein,
+        avgBodyFat
       };
     }
 
     function getGoalForecast(entry, week) {
       const target = toNumberOrNull(bodyProfile.targetBodyFat);
-      const current = toNumberOrNull(entry.bodyFatPercent);
+      const current = toNumberOrNull(week.avgBodyFat ?? entry.bodyFatPercent);
       if (!target || !current) {
         return {
           target,
@@ -2521,9 +2624,17 @@
     function saveTodayBodyEntry() {
       const date = getTodayKey();
       saveDailyEntry(date, entry => {
+        const selectedSource = document.getElementById("dailyBodyCompositionSourceInput").value || "auto";
+        const manualBodyFatPercent = toNumberOrNull(document.getElementById("dailyManualBodyFatInput").value);
+        const manualFatMass = toNumberOrNull(document.getElementById("dailyManualFatMassInput").value);
+        const hasManualValues = manualBodyFatPercent !== null || manualFatMass !== null;
         entry.weight = toNumberOrNull(document.getElementById("dailyWeightInput").value);
         entry.waist = toNumberOrNull(document.getElementById("dailyWaistInput").value);
         entry.hips = toNumberOrNull(document.getElementById("dailyHipsInput").value);
+        entry.bodyCompositionSource = hasManualValues ? selectedSource : "auto";
+        entry.manualBodyFatPercent = hasManualValues ? manualBodyFatPercent : null;
+        entry.manualFatMass = hasManualValues ? manualFatMass : null;
+        entry.manualLeanMass = null;
         return entry;
       });
       showToast("Замеры сохранены");
@@ -2544,7 +2655,7 @@
     function saveTodayActivityEntry() {
       const date = getTodayKey();
       saveDailyEntry(date, entry => {
-        entry.activityCalories = clampMetricNumber(document.getElementById("dailyActivityCaloriesInput").value);
+        entry.activityCaloriesRaw = clampMetricNumber(document.getElementById("dailyActivityCaloriesInput").value);
         entry.steps = clampMetricNumber(document.getElementById("dailyStepsInput").value);
         return entry;
       });
@@ -2591,15 +2702,22 @@
       setValue("dailyWeightInput", safe.weight);
       setValue("dailyWaistInput", safe.waist);
       setValue("dailyHipsInput", safe.hips);
+      setValue("dailyManualBodyFatInput", safe.manualBodyFatPercent);
+      setValue("dailyManualFatMassInput", safe.manualFatMass);
       setValue("dailyCaloriesInput", safe.calories);
       setValue("dailyProteinInput", safe.protein);
       setValue("dailyFatInput", safe.fat);
       setValue("dailyCarbsInput", safe.carbs);
-      setValue("dailyActivityCaloriesInput", safe.activityCalories);
+      setValue("dailyActivityCaloriesInput", safe.activityCaloriesRaw || safe.activityCalories);
       setValue("dailyStepsInput", safe.steps);
+      const bodyCompositionSourceSelect = document.getElementById("dailyBodyCompositionSourceInput");
+      if (bodyCompositionSourceSelect) {
+        bodyCompositionSourceSelect.value = safe.bodyCompositionSource || "auto";
+      }
       const waterSummary = document.getElementById("todayWaterSummary");
       if (waterSummary) {
-        waterSummary.textContent = `Чистой воды: ${safe.water || 0} мл · Всего жидкостей: ${safe.liquids || 0} мл`;
+        const progress = getWaterProgress(safe);
+        waterSummary.textContent = `Чистой воды: ${progress.water} / ${progress.target} мл · ${progress.percent}% · осталось ${progress.remaining} мл · всего жидкостей ${safe.liquids || 0} мл`;
       }
     }
 
@@ -2608,9 +2726,10 @@
       const box = document.getElementById("todaySummaryBox");
       if (box) {
         const statusClass = isDeficitInSafeRange(entry.deficit || 0) ? "badge-green" : "badge-red";
+        const water = getWaterProgress(entry);
         box.innerHTML = `
-          Вес: ${formatMetric(entry.weight, " кг")} · Талия: ${formatMetric(entry.waist, " см")} · % жира: ${formatMetric(entry.bodyFatPercent, "%")}<br>
-          Калории: ${entry.calories || 0} · Дефицит: ${entry.deficit || 0} <span class="badge ${statusClass}">${getDeficitStatusText(entry.deficit || 0)}</span> · Вода: ${entry.water || 0} мл
+          Вес: ${formatMetric(entry.weight, " кг")} · Талия: ${formatMetric(entry.waist, " см")} · % жира: ${formatMetric(entry.bodyFatPercent, "%")} (${getBodyCompositionSourceLabel(entry.bodyCompositionSource)})<br>
+          Калории: ${entry.calories || 0} · Дефицит: ${entry.deficit || 0} <span class="badge ${statusClass}">${getDeficitStatusText(entry.deficit || 0)}</span> · Вода: ${water.water} мл (${water.percent}%, осталось ${water.remaining} мл)
           <div style="margin-top:8px;" class="muted">Данные сохраняются после нажатия кнопок и синхронизируются через Google-профиль.</div>
         `;
       }
@@ -2633,14 +2752,18 @@
       const weekCard = document.getElementById("balanceWeekCard");
       if (!profileNote) return;
 
+      const water = getWaterProgress(entry, targets);
+
       profileNote.textContent = `Сегодня: ${entry.date}`;
       bodyCard.innerHTML = `
         Вес: ${formatMetric(entry.weight, " кг")}<br>
         Талия: ${formatMetric(entry.waist, " см")}<br>
         ${bodyProfile.sex === "female" ? `Бедра: ${formatMetric(entry.hips, " см")}<br>` : ""}
-        % жира: ${formatMetric(entry.bodyFatPercent, "%")}<br>
+        % жира: ${formatMetric(entry.bodyFatPercent, "%")} (${getBodyCompositionSourceLabel(entry.bodyCompositionSource)})<br>
         Жировая масса: ${formatMetric(entry.fatMass, " кг")}<br>
         Безжировая масса: ${formatMetric(entry.leanMass, " кг")}<br>
+        Автооценка: ${formatMetric(entry.estimatedBodyFatPercent, "%")}<br>
+        Средний % жира за 7 дней: ${formatMetric(week.avgBodyFat, "%")}<br>
         Цель: ${formatMetric(goal.target, "%")} · Осталось: ${formatMetric(goal.remaining, "%")}<br>
         ${escapeHtml(goal.estimateText)}
       `;
@@ -2657,17 +2780,28 @@
         Статус: ${getDeficitStatusText(entry.deficit || 0)}
       `;
       macrosCard.innerHTML = `
-        Калории: ${entry.calories || 0} / ${targets.caloriesMin}–${targets.caloriesMax}<br>
-        Белок: ${entry.protein || 0} / ${targets.proteinMin}–${targets.proteinMax} г<br>
-        Жиры: ${entry.fat || 0} / ${targets.fatMin}–${targets.fatMax} г<br>
-        Углеводы: ${entry.carbs || 0} / ${targets.carbsMin}–${targets.carbsMax} г
+        <div class="status-panel ${getStatusClassForRange(entry.calories, targets.caloriesMin, targets.caloriesMax)}">
+          Калории: ${entry.calories || 0} / ${targets.caloriesMin}–${targets.caloriesMax} · ${getStatusTextForRange(entry.calories, targets.caloriesMin, targets.caloriesMax)}
+        </div>
+        <div class="status-panel ${getStatusClassForRange(entry.protein, targets.proteinMin, targets.proteinMax)}">
+          Белок: ${entry.protein || 0} / ${targets.proteinMin}–${targets.proteinMax} г · ${getStatusTextForRange(entry.protein, targets.proteinMin, targets.proteinMax)}
+        </div>
+        <div class="status-panel ${getStatusClassForRange(entry.fat, targets.fatMin, targets.fatMax)}">
+          Жиры: ${entry.fat || 0} / ${targets.fatMin}–${targets.fatMax} г · ${getStatusTextForRange(entry.fat, targets.fatMin, targets.fatMax)}
+        </div>
+        <div class="status-panel ${getStatusClassForRange(entry.carbs, targets.carbsMin, targets.carbsMax)}">
+          Углеводы: ${entry.carbs || 0} / ${targets.carbsMin}–${targets.carbsMax} г · ${getStatusTextForRange(entry.carbs, targets.carbsMin, targets.carbsMax)}
+        </div>
       `;
       waterCard.innerHTML = `
-        Вода: ${entry.water || 0} / ${targets.waterTarget} мл<br>
+        <div class="status-panel ${water.remaining === 0 ? "status-ok" : water.percent >= 70 ? "status-warn" : "status-bad"}">
+          Вода: ${water.water} / ${water.target} мл · ${water.percent}% · осталось ${water.remaining} мл
+        </div>
         Жидкости: ${entry.liquids || 0} мл
       `;
       activityCard.innerHTML = `
-        Активные ккал: ${entry.activityCalories || 0}<br>
+        С часов: ${entry.activityCaloriesRaw || 0} ккал<br>
+        После коррекции: ${entry.activityCalories || 0} ккал<br>
         Шаги: ${entry.steps || 0}
       `;
       notesCard.innerHTML = notes.map(note => `• ${escapeHtml(note)}`).join("<br>");
