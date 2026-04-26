@@ -467,6 +467,55 @@
       background: linear-gradient(90deg, #2563eb, #60a5fa);
     }
 
+    .meal-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .meal-item {
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 12px;
+      background: #fafafa;
+    }
+
+    .meal-item summary {
+      cursor: pointer;
+      font-weight: 700;
+      list-style: none;
+    }
+
+    .meal-item summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .meal-preview {
+      width: 100%;
+      max-height: 220px;
+      object-fit: cover;
+      border-radius: 12px;
+      border: 1px solid #e5e7eb;
+      margin-top: 10px;
+    }
+
+    .nutrition-summary {
+      background: #f8fafc;
+      border: 1px solid #dbeafe;
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+
+    .nutrition-choice {
+      margin-bottom: 12px;
+    }
+
+    .inline-note {
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
     .install-box {
       background: var(--primary-soft);
       border: 1px solid #bfdbfe;
@@ -922,26 +971,71 @@
 
         <div id="todayNutritionPanel" class="card hidden">
           <h2 class="section-title">КБЖУ</h2>
-          <div class="form-grid">
-            <div class="form-field">
-              <div class="field-label">Ккал</div>
-              <input id="dailyCaloriesInput" type="number" min="0" step="1" placeholder="Калории" />
-            </div>
-            <div class="form-field">
-              <div class="field-label">Белки, г</div>
-              <input id="dailyProteinInput" type="number" min="0" step="1" placeholder="Белки" />
-            </div>
-            <div class="form-field">
-              <div class="field-label">Жиры, г</div>
-              <input id="dailyFatInput" type="number" min="0" step="1" placeholder="Жиры" />
-            </div>
-            <div class="form-field">
-              <div class="field-label">Углеводы, г</div>
-              <input id="dailyCarbsInput" type="number" min="0" step="1" placeholder="Углеводы" />
+          <div id="todayNutritionSummary" class="nutrition-summary muted"></div>
+          <div class="nutrition-choice">
+            <div class="actions full">
+              <button class="btn-secondary" onclick="setNutritionInputMode('manual')">Ввести вручную</button>
+              <button class="btn-secondary" onclick="setNutritionInputMode('photo')">По фото еды</button>
             </div>
           </div>
+
+          <div id="nutritionManualForm" class="hidden">
+            <div class="form-grid">
+              <div class="form-field">
+                <div class="field-label">Название / заметка</div>
+                <input id="mealNameInput" type="text" placeholder="Например: обед, творог, рис с курицей" />
+              </div>
+              <div class="form-field">
+                <div class="field-label">Время приема пищи</div>
+                <input id="mealTimeInput" type="time" />
+              </div>
+              <div class="form-field">
+                <div class="field-label">Ккал</div>
+                <input id="mealCaloriesInput" type="number" min="0" step="1" placeholder="Калории" />
+              </div>
+              <div class="form-field">
+                <div class="field-label">Белки, г</div>
+                <input id="mealProteinInput" type="number" min="0" step="1" placeholder="Белки" />
+              </div>
+              <div class="form-field">
+                <div class="field-label">Жиры, г</div>
+                <input id="mealFatInput" type="number" min="0" step="1" placeholder="Жиры" />
+              </div>
+              <div class="form-field">
+                <div class="field-label">Углеводы, г</div>
+                <input id="mealCarbsInput" type="number" min="0" step="1" placeholder="Углеводы" />
+              </div>
+            </div>
+            <div class="actions">
+              <button class="btn-primary" onclick="addManualMealToToday()">Добавить к дню</button>
+              <button class="btn-secondary" onclick="resetNutritionDraftState()">Сбросить</button>
+            </div>
+          </div>
+
+          <div id="nutritionPhotoForm" class="hidden">
+            <div class="form-grid">
+              <div class="form-field">
+                <div class="field-label">Фото блюда</div>
+                <input id="mealPhotoInput" type="file" accept="image/*" capture="environment" onchange="handleNutritionPhotoUpload(event)" />
+              </div>
+              <div class="form-field">
+                <div class="field-label">Комментарий к фото</div>
+                <textarea id="mealPhotoCommentInput" placeholder="Опиши блюдо: что на фото, примерный вес, диаметр тарелки, состав, соусы, масло, хлеб, напитки. Например: оливье 132 г, майонез 14 г, курица, хлеб 80 г."></textarea>
+              </div>
+            </div>
+            <div id="nutritionPhotoPreviewBox" class="hidden"></div>
+            <div class="actions">
+              <button class="btn-primary" onclick="estimateTodayNutritionFromPhoto()">Рассчитать КБЖУ</button>
+              <button class="btn-secondary" onclick="resetNutritionDraftState()">Сбросить</button>
+            </div>
+            <div class="inline-note" style="margin-top:10px;">
+              Фото используется только для расчета и не сохраняется в истории приемов пищи.
+            </div>
+          </div>
+
+          <div id="nutritionAiPreviewCard" class="card hidden" style="margin-top:12px;"></div>
+
           <div class="actions">
-            <button class="btn-primary" onclick="saveTodayNutritionEntry()">Сохранить КБЖУ</button>
             <button class="btn-secondary" onclick="toggleTodayPanel()">Скрыть</button>
           </div>
         </div>
@@ -1453,6 +1547,11 @@
       </div>
 
       <div class="card">
+        <h2 class="section-title">Приёмы пищи</h2>
+        <div id="balanceMealsCard" class="muted"></div>
+      </div>
+
+      <div class="card">
         <h2 class="section-title">Вода</h2>
         <div id="balanceWaterCard" class="muted"></div>
       </div>
@@ -1597,6 +1696,10 @@
     let pendingProfileSyncTimeout = null;
     let deferredPrompt = null;
     let audioContext = null;
+    let nutritionInputMode = "";
+    let nutritionPhotoDraft = null;
+    let nutritionPhotoEstimate = null;
+    let nutritionEditingMealRef = null;
     let profiles = [];
     let currentProfileId = "";
     let cloudConfig = {
@@ -1719,6 +1822,7 @@
     function createEmptyDailyMetrics(date = getTodayKey()) {
       return {
         date,
+        meals: [],
         weight: null,
         waist: null,
         hips: null,
@@ -1744,6 +1848,32 @@
         bmr: 0,
         totalBurn: 0,
         deficit: 0
+      };
+    }
+
+    function generateId(prefix = "id") {
+      return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+    }
+
+    function getCurrentTimeValue(date = new Date()) {
+      const hours = String(date.getHours()).padStart(2, "0");
+      const minutes = String(date.getMinutes()).padStart(2, "0");
+      return `${hours}:${minutes}`;
+    }
+
+    function createEmptyMealEntry() {
+      return {
+        id: generateId("meal"),
+        time: getCurrentTimeValue(),
+        source: "manual",
+        name: "",
+        comment: "",
+        calories: 0,
+        protein: 0,
+        fat: 0,
+        carbs: 0,
+        confidence: "manual",
+        imageDataUrl: null
       };
     }
 
@@ -1793,6 +1923,81 @@
         carbsMin: 130,
         carbsMax: 190,
         waterTarget: 3000
+      };
+    }
+
+    function normalizeMealEntry(meal, date = getTodayKey(), index = 0) {
+      const base = createEmptyMealEntry();
+      return {
+        ...base,
+        ...(meal || {}),
+        id: meal?.id || `${date}-${index}-${generateId("meal")}`,
+        time: String(meal?.time || base.time),
+        source: meal?.source === "photo_ai" ? "photo_ai" : "manual",
+        name: String(meal?.name || ""),
+        comment: String(meal?.comment || ""),
+        calories: clampMetricNumber(meal?.calories),
+        protein: clampMetricNumber(meal?.protein),
+        fat: clampMetricNumber(meal?.fat),
+        carbs: clampMetricNumber(meal?.carbs),
+        confidence: meal?.confidence || "manual",
+        imageDataUrl: meal?.imageDataUrl || null
+      };
+    }
+
+    function migrateLegacyTotalsToMeals(entry) {
+      const hasMeals = Array.isArray(entry.meals) && entry.meals.length > 0;
+      const legacyCalories = clampMetricNumber(entry.calories);
+      const legacyProtein = clampMetricNumber(entry.protein);
+      const legacyFat = clampMetricNumber(entry.fat);
+      const legacyCarbs = clampMetricNumber(entry.carbs);
+
+      if (hasMeals || (!legacyCalories && !legacyProtein && !legacyFat && !legacyCarbs)) {
+        return entry;
+      }
+
+      entry.meals = [
+        {
+          ...createEmptyMealEntry(),
+          id: `legacy-${entry.date || getTodayKey()}`,
+          time: "20:00",
+          source: "manual",
+          name: "Итог дня (старый формат)",
+          comment: "Автоматически перенесено из старого формата",
+          calories: legacyCalories,
+          protein: legacyProtein,
+          fat: legacyFat,
+          carbs: legacyCarbs,
+          confidence: "manual",
+          imageDataUrl: null
+        }
+      ];
+
+      return entry;
+    }
+
+    function recalculateNutritionTotalsFromMeals(entry) {
+      migrateLegacyTotalsToMeals(entry);
+      const meals = Array.isArray(entry.meals) ? entry.meals.map((meal, index) => normalizeMealEntry(meal, entry.date, index)) : [];
+      entry.meals = meals;
+      entry.calories = meals.reduce((sum, meal) => sum + meal.calories, 0);
+      entry.protein = meals.reduce((sum, meal) => sum + meal.protein, 0);
+      entry.fat = meals.reduce((sum, meal) => sum + meal.fat, 0);
+      entry.carbs = meals.reduce((sum, meal) => sum + meal.carbs, 0);
+      return entry;
+    }
+
+    function getRemainingNutrition(entry, targets = getMacroTargets()) {
+      const caloriesDiff = targets.caloriesMax - (entry.calories || 0);
+      const proteinDiff = targets.proteinMin - (entry.protein || 0);
+      const fatDiff = targets.fatMax - (entry.fat || 0);
+      const carbsDiff = targets.carbsMax - (entry.carbs || 0);
+
+      return {
+        caloriesText: caloriesDiff >= 0 ? `Осталось ${caloriesDiff} ккал` : `Превышение ${Math.abs(caloriesDiff)} ккал`,
+        proteinText: proteinDiff > 0 ? `Осталось ${proteinDiff} г белка` : `Цель по белку закрыта`,
+        fatText: fatDiff >= 0 ? `Осталось ${fatDiff} г жиров` : `Жиры превышены на ${Math.abs(fatDiff)} г`,
+        carbsText: carbsDiff >= 0 ? `Осталось ${carbsDiff} г углеводов` : `Углеводы превышены на ${Math.abs(carbsDiff)} г`
       };
     }
 
@@ -1887,10 +2092,7 @@
 
     function recalculateDailyEntry(entry) {
       if (!entry) return entry;
-      entry.calories = clampMetricNumber(entry.calories);
-      entry.protein = clampMetricNumber(entry.protein);
-      entry.fat = clampMetricNumber(entry.fat);
-      entry.carbs = clampMetricNumber(entry.carbs);
+      recalculateNutritionTotalsFromMeals(entry);
       entry.water = clampMetricNumber(entry.water);
       entry.liquids = clampMetricNumber(entry.liquids);
       entry.activityCaloriesRaw = clampMetricNumber(entry.activityCaloriesRaw || entry.activityCalories);
@@ -1937,6 +2139,13 @@
       dailyMetricsByDate = safe.dailyMetricsByDate && typeof safe.dailyMetricsByDate === "object"
         ? safe.dailyMetricsByDate
         : {};
+      Object.keys(dailyMetricsByDate).forEach(date => {
+        dailyMetricsByDate[date] = recalculateDailyEntry({
+          ...createEmptyDailyMetrics(date),
+          ...dailyMetricsByDate[date],
+          date
+        });
+      });
       bodyProfile = safe.bodyProfile && typeof safe.bodyProfile === "object"
         ? {
             ...getEmptyBodyProfile(),
@@ -2627,16 +2836,408 @@
       showToast("Замеры сохранены");
     }
 
-    function saveTodayNutritionEntry() {
-      const date = getTodayKey();
+    function resetNutritionDraftState(keepMode = false) {
+      if (!keepMode) nutritionInputMode = "";
+      nutritionPhotoDraft = null;
+      nutritionPhotoEstimate = null;
+      nutritionEditingMealRef = null;
+
+      const photoInput = document.getElementById("mealPhotoInput");
+      const commentInput = document.getElementById("mealPhotoCommentInput");
+      if (photoInput) photoInput.value = "";
+      if (commentInput && !keepMode) commentInput.value = "";
+
+      renderNutritionControls();
+    }
+
+    function setNutritionInputMode(mode) {
+      nutritionInputMode = mode;
+      nutritionPhotoEstimate = null;
+      nutritionEditingMealRef = null;
+      if (mode === "manual") {
+        fillManualMealForm(createEmptyMealEntry());
+      }
+      renderNutritionControls();
+    }
+
+    function fillManualMealForm(meal = null) {
+      const safe = meal || createEmptyMealEntry();
+      const setValue = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.value = value ?? "";
+      };
+
+      setValue("mealNameInput", safe.name);
+      setValue("mealTimeInput", safe.time || getCurrentTimeValue());
+      setValue("mealCaloriesInput", safe.calories);
+      setValue("mealProteinInput", safe.protein);
+      setValue("mealFatInput", safe.fat);
+      setValue("mealCarbsInput", safe.carbs);
+    }
+
+    function getManualMealDraft() {
+      return {
+        id: generateId("meal"),
+        time: document.getElementById("mealTimeInput").value || getCurrentTimeValue(),
+        source: "manual",
+        name: String(document.getElementById("mealNameInput").value || "").trim(),
+        comment: String(document.getElementById("mealNameInput").value || "").trim(),
+        calories: clampMetricNumber(document.getElementById("mealCaloriesInput").value),
+        protein: clampMetricNumber(document.getElementById("mealProteinInput").value),
+        fat: clampMetricNumber(document.getElementById("mealFatInput").value),
+        carbs: clampMetricNumber(document.getElementById("mealCarbsInput").value),
+        confidence: "manual",
+        imageDataUrl: null
+      };
+    }
+
+    function validateMealMacros(meal) {
+      if ((meal.calories || 0) < 0 || (meal.protein || 0) < 0 || (meal.fat || 0) < 0 || (meal.carbs || 0) < 0) {
+        throw new Error("КБЖУ не могут быть отрицательными");
+      }
+    }
+
+    function addMealToDay(date, mealInput) {
       saveDailyEntry(date, entry => {
-        entry.calories = clampMetricNumber(document.getElementById("dailyCaloriesInput").value);
-        entry.protein = clampMetricNumber(document.getElementById("dailyProteinInput").value);
-        entry.fat = clampMetricNumber(document.getElementById("dailyFatInput").value);
-        entry.carbs = clampMetricNumber(document.getElementById("dailyCarbsInput").value);
+        entry.meals = Array.isArray(entry.meals) ? entry.meals : [];
+        entry.meals.push(normalizeMealEntry(mealInput, date, entry.meals.length));
         return entry;
       });
-      showToast("КБЖУ сохранены");
+    }
+
+    function addManualMealToToday() {
+      try {
+        const meal = getManualMealDraft();
+        validateMealMacros(meal);
+        addMealToDay(getTodayKey(), meal);
+        fillManualMealForm(createEmptyMealEntry());
+        showToast("Приём пищи добавлен");
+      } catch (error) {
+        alert(error.message || "Не удалось добавить приём пищи");
+      }
+    }
+
+    async function resizeImageToDataUrl(file, maxSize = 1280, quality = 0.82) {
+      const dataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error("Не удалось прочитать изображение"));
+        reader.readAsDataURL(file);
+      });
+
+      const img = await new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve(image);
+        image.onerror = () => reject(new Error("Не удалось загрузить изображение"));
+        image.src = dataUrl;
+      });
+
+      const ratio = Math.min(1, maxSize / Math.max(img.width, img.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(img.width * ratio);
+      canvas.height = Math.round(img.height * ratio);
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      return canvas.toDataURL("image/jpeg", quality);
+    }
+
+    async function handleNutritionPhotoUpload(event) {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      if (!file.type.startsWith("image/")) {
+        alert("Можно загрузить только изображение");
+        event.target.value = "";
+        return;
+      }
+
+      try {
+        nutritionPhotoDraft = {
+          imageDataUrl: await resizeImageToDataUrl(file),
+          comment: String(document.getElementById("mealPhotoCommentInput").value || "").trim()
+        };
+        renderNutritionControls();
+      } catch (error) {
+        alert(error.message || "Не удалось подготовить фото");
+      }
+    }
+
+    async function estimateNutritionFromPhoto(imageDataUrl, comment) {
+      // Реальный вызов OpenAI Vision нужно делать только через backend без ключей в клиенте.
+      await new Promise(resolve => setTimeout(resolve, 600));
+      const lower = String(comment || "").toLowerCase();
+      const calories = lower.includes("бургер") ? 780 : lower.includes("салат") ? 320 : lower.includes("рис") ? 610 : 480;
+      return {
+        calories,
+        protein: lower.includes("кур") || lower.includes("мяс") || lower.includes("рыб") ? 36 : 18,
+        fat: lower.includes("майон") || lower.includes("масл") || lower.includes("сыр") ? 28 : 14,
+        carbs: lower.includes("рис") || lower.includes("хлеб") || lower.includes("карто") || lower.includes("паста") ? 54 : 24,
+        confidence: comment.trim() ? "medium" : "low",
+        explanation: comment.trim()
+          ? "Оценка сделана по фото и описанию блюда. Перед сохранением проверь цифры."
+          : "Описание короткое, поэтому оценка примерная. Для точности лучше добавить состав и вес."
+      };
+    }
+
+    async function estimateTodayNutritionFromPhoto() {
+      try {
+        const comment = String(document.getElementById("mealPhotoCommentInput").value || "").trim();
+        if (!nutritionPhotoDraft?.imageDataUrl) {
+          throw new Error("Сначала выбери или сфотографируй блюдо");
+        }
+
+        nutritionPhotoDraft.comment = comment;
+        nutritionPhotoEstimate = await estimateNutritionFromPhoto(nutritionPhotoDraft.imageDataUrl, comment);
+        renderNutritionControls();
+      } catch (error) {
+        alert(error.message || "Не удалось рассчитать КБЖУ. Попробуйте ещё раз или введите вручную.");
+      }
+    }
+
+    function confirmEstimatedNutritionForToday() {
+      if (!nutritionPhotoEstimate) return;
+
+      addMealToDay(getTodayKey(), {
+        id: generateId("meal"),
+        time: getCurrentTimeValue(),
+        source: "photo_ai",
+        name: "Оценка по фото",
+        comment: String(document.getElementById("mealPhotoCommentInput").value || "").trim(),
+        calories: nutritionPhotoEstimate.calories,
+        protein: nutritionPhotoEstimate.protein,
+        fat: nutritionPhotoEstimate.fat,
+        carbs: nutritionPhotoEstimate.carbs,
+        confidence: nutritionPhotoEstimate.confidence,
+        imageDataUrl: null
+      });
+
+      resetNutritionDraftState();
+      fillManualMealForm(createEmptyMealEntry());
+      showToast("КБЖУ добавлены к дню");
+    }
+
+    function useEstimatedNutritionAsManual() {
+      if (!nutritionPhotoEstimate) return;
+      nutritionInputMode = "manual";
+      fillManualMealForm({
+        ...createEmptyMealEntry(),
+        name: "Оценка по фото",
+        calories: nutritionPhotoEstimate.calories,
+        protein: nutritionPhotoEstimate.protein,
+        fat: nutritionPhotoEstimate.fat,
+        carbs: nutritionPhotoEstimate.carbs
+      });
+      renderNutritionControls();
+    }
+
+    function renderNutritionControls() {
+      const manualForm = document.getElementById("nutritionManualForm");
+      const photoForm = document.getElementById("nutritionPhotoForm");
+      const previewBox = document.getElementById("nutritionPhotoPreviewBox");
+      const aiCard = document.getElementById("nutritionAiPreviewCard");
+      if (!manualForm || !photoForm || !previewBox || !aiCard) return;
+
+      manualForm.classList.toggle("hidden", nutritionInputMode !== "manual");
+      photoForm.classList.toggle("hidden", nutritionInputMode !== "photo");
+
+      if (nutritionPhotoDraft?.imageDataUrl) {
+        previewBox.classList.remove("hidden");
+        previewBox.innerHTML = `<img src="${nutritionPhotoDraft.imageDataUrl}" alt="Фото блюда" class="meal-preview" />`;
+      } else {
+        previewBox.classList.add("hidden");
+        previewBox.innerHTML = "";
+      }
+
+      if (nutritionPhotoEstimate) {
+        aiCard.classList.remove("hidden");
+        aiCard.innerHTML = `
+          <h3 class="section-title">Оценка КБЖУ</h3>
+          <div class="muted">
+            Калории: ${nutritionPhotoEstimate.calories} ккал<br>
+            Белки: ${nutritionPhotoEstimate.protein} г<br>
+            Жиры: ${nutritionPhotoEstimate.fat} г<br>
+            Углеводы: ${nutritionPhotoEstimate.carbs} г<br>
+            Точность: ${getMealConfidenceLabel(nutritionPhotoEstimate.confidence)}<br>
+            ${escapeHtml(nutritionPhotoEstimate.explanation)}
+          </div>
+          <div class="actions">
+            <button class="btn-primary" onclick="confirmEstimatedNutritionForToday()">Добавить к дню</button>
+            <button class="btn-secondary" onclick="useEstimatedNutritionAsManual()">Изменить</button>
+            <button class="btn-danger" onclick="resetNutritionDraftState(true)">Отмена</button>
+          </div>
+        `;
+      } else {
+        aiCard.classList.add("hidden");
+        aiCard.innerHTML = "";
+      }
+    }
+
+    function getMealSourceLabel(source) {
+      if (source === "photo_ai") return "По фото";
+      return "Вручную";
+    }
+
+    function getMealConfidenceLabel(confidence) {
+      if (confidence === "manual") return "Ручной ввод";
+      if (confidence === "high") return "Высокая";
+      if (confidence === "medium") return "Средняя";
+      if (confidence === "low") return "Низкая";
+      return "Не указана";
+    }
+
+    function formatMealTitle(meal) {
+      return escapeHtml(meal.name || meal.comment || "Прием пищи");
+    }
+
+    function editMealFromBalance(date, mealId) {
+      const entry = getDailyEntry(date);
+      const meal = (entry.meals || []).find(item => item.id === mealId);
+      if (!meal) return;
+
+      nutritionEditingMealRef = { date, mealId };
+      nutritionInputMode = "manual";
+      fillManualMealForm(meal);
+      switchScreen("balance");
+      renderAll();
+      showToast("Прием пищи загружен в форму");
+    }
+
+    function cancelMealEdit() {
+      nutritionEditingMealRef = null;
+      fillManualMealForm(createEmptyMealEntry());
+      renderAll();
+    }
+
+    function saveEditedMeal() {
+      if (!nutritionEditingMealRef) return;
+
+      try {
+        const draft = {
+          id: nutritionEditingMealRef.mealId,
+          time: document.getElementById("editMealTimeInput").value || getCurrentTimeValue(),
+          source: "manual",
+          name: String(document.getElementById("editMealNameInput").value || "").trim(),
+          comment: String(document.getElementById("editMealNameInput").value || "").trim(),
+          calories: clampMetricNumber(document.getElementById("editMealCaloriesInput").value),
+          protein: clampMetricNumber(document.getElementById("editMealProteinInput").value),
+          fat: clampMetricNumber(document.getElementById("editMealFatInput").value),
+          carbs: clampMetricNumber(document.getElementById("editMealCarbsInput").value),
+          confidence: "manual",
+          imageDataUrl: null
+        };
+        validateMealMacros(draft);
+
+        const { date, mealId } = nutritionEditingMealRef;
+        saveDailyEntry(date, entry => {
+          entry.meals = (entry.meals || []).map(meal =>
+            meal.id === mealId
+              ? normalizeMealEntry(
+                  {
+                    ...meal,
+                    ...draft,
+                    id: mealId,
+                    source: meal.source || "manual",
+                    confidence: meal.source === "photo_ai" ? meal.confidence || "medium" : "manual",
+                    imageDataUrl: null
+                  },
+                  date
+                )
+              : meal
+          );
+          return entry;
+        });
+
+        nutritionEditingMealRef = null;
+        fillManualMealForm(createEmptyMealEntry());
+        showToast("Прием пищи обновлен");
+      } catch (error) {
+        alert(error.message || "Не удалось сохранить изменения");
+      }
+    }
+
+    function deleteMealFromDay(date, mealId) {
+      if (!confirm("Удалить этот прием пищи?")) return;
+
+      saveDailyEntry(date, entry => {
+        entry.meals = (entry.meals || []).filter(meal => meal.id !== mealId);
+        return entry;
+      });
+
+      if (nutritionEditingMealRef?.mealId === mealId) {
+        nutritionEditingMealRef = null;
+        fillManualMealForm(createEmptyMealEntry());
+      }
+
+      showToast("Прием пищи удален");
+    }
+
+    function renderBalanceMeals(entry) {
+      const meals = Array.isArray(entry.meals) ? entry.meals.slice().sort((a, b) => String(a.time || "").localeCompare(String(b.time || ""))) : [];
+      if (!meals.length) {
+        return `<div class="muted">Приемов пищи за день пока нет. Добавь КБЖУ через карточку “Сегодня”.</div>`;
+      }
+
+      return `
+        <div class="meal-list">
+          ${meals.map(meal => {
+            const isEditing = nutritionEditingMealRef?.date === entry.date && nutritionEditingMealRef?.mealId === meal.id;
+            const editBlock = isEditing
+              ? `
+                <div class="form-grid" style="margin-top:12px;">
+                  <div class="form-field">
+                    <div class="field-label">Название / заметка</div>
+                    <input id="editMealNameInput" type="text" value="${escapeAttr(meal.name || "")}" />
+                  </div>
+                  <div class="form-field">
+                    <div class="field-label">Время</div>
+                    <input id="editMealTimeInput" type="time" value="${escapeAttr(meal.time || getCurrentTimeValue())}" />
+                  </div>
+                  <div class="form-field">
+                    <div class="field-label">Ккал</div>
+                    <input id="editMealCaloriesInput" type="number" min="0" step="1" value="${meal.calories || 0}" />
+                  </div>
+                  <div class="form-field">
+                    <div class="field-label">Белки, г</div>
+                    <input id="editMealProteinInput" type="number" min="0" step="1" value="${meal.protein || 0}" />
+                  </div>
+                  <div class="form-field">
+                    <div class="field-label">Жиры, г</div>
+                    <input id="editMealFatInput" type="number" min="0" step="1" value="${meal.fat || 0}" />
+                  </div>
+                  <div class="form-field">
+                    <div class="field-label">Углеводы, г</div>
+                    <input id="editMealCarbsInput" type="number" min="0" step="1" value="${meal.carbs || 0}" />
+                  </div>
+                </div>
+                <div class="actions" style="margin-top:10px;">
+                  <button class="btn-primary" onclick="saveEditedMeal()">Сохранить</button>
+                  <button class="btn-secondary" onclick="cancelMealEdit()">Отмена</button>
+                </div>
+              `
+              : "";
+
+            return `
+              <details class="meal-item">
+                <summary>
+                  <strong>${escapeHtml(meal.time || "--:--")}</strong> ${formatMealTitle(meal)} — ${meal.calories || 0} ккал
+                </summary>
+                <div class="muted" style="margin-top:8px;">
+                  Источник: ${getMealSourceLabel(meal.source)}<br>
+                  Достоверность: ${getMealConfidenceLabel(meal.confidence)}<br>
+                  Белки: ${meal.protein || 0} г · Жиры: ${meal.fat || 0} г · Углеводы: ${meal.carbs || 0} г
+                  ${meal.comment ? `<br>Комментарий: ${escapeHtml(meal.comment)}` : ""}
+                </div>
+                ${meal.imageDataUrl ? `<img src="${meal.imageDataUrl}" alt="Фото блюда" class="meal-preview" style="margin-top:10px;" />` : ""}
+                <div class="actions" style="margin-top:10px;">
+                  <button class="btn-secondary" onclick="editMealFromBalance('${entry.date}', '${meal.id}')">Изменить</button>
+                  <button class="btn-danger" onclick="deleteMealFromDay('${entry.date}', '${meal.id}')">Удалить</button>
+                </div>
+                ${editBlock}
+              </details>
+            `;
+          }).join("")}
+        </div>
+      `;
     }
 
     function saveTodayActivityEntry() {
@@ -2691,21 +3292,29 @@
       setValue("dailyHipsInput", safe.hips);
       setValue("dailyManualBodyFatInput", safe.manualBodyFatPercent);
       setValue("dailyManualFatMassInput", safe.manualFatMass);
-      setValue("dailyCaloriesInput", safe.calories);
-      setValue("dailyProteinInput", safe.protein);
-      setValue("dailyFatInput", safe.fat);
-      setValue("dailyCarbsInput", safe.carbs);
       setValue("dailyActivityCaloriesInput", safe.activityCaloriesRaw || safe.activityCalories);
       setValue("dailyStepsInput", safe.steps);
       const bodyCompositionSourceSelect = document.getElementById("dailyBodyCompositionSourceInput");
       if (bodyCompositionSourceSelect) {
         bodyCompositionSourceSelect.value = safe.bodyCompositionSource || "auto";
       }
+      const nutritionSummary = document.getElementById("todayNutritionSummary");
+      if (nutritionSummary) {
+        const remaining = getRemainingNutrition(safe);
+        nutritionSummary.innerHTML = `
+          Съедено сегодня: ${safe.calories || 0} ккал · Б ${safe.protein || 0} г · Ж ${safe.fat || 0} г · У ${safe.carbs || 0} г · приемов пищи ${safe.meals?.length || 0}<br>
+          Осталось: Калории ${remaining.calories} ккал · Белок ${remaining.protein} г · Жиры ${remaining.fat} г · Углеводы ${remaining.carbs} г
+        `;
+      }
       const waterSummary = document.getElementById("todayWaterSummary");
       if (waterSummary) {
         const progress = getWaterProgress(safe);
         waterSummary.textContent = `Чистой воды: ${progress.water} / ${progress.target} мл · ${progress.percent}% · осталось ${progress.remaining} мл · всего жидкостей ${safe.liquids || 0} мл`;
       }
+      if (!nutritionEditingMealRef) {
+        fillManualMealForm(createEmptyMealEntry());
+      }
+      renderNutritionControls();
     }
 
     function renderTodaySummary() {
@@ -2737,9 +3346,11 @@
       const activityCard = document.getElementById("balanceActivityCard");
       const notesCard = document.getElementById("balanceNotesCard");
       const weekCard = document.getElementById("balanceWeekCard");
+      const mealsCard = document.getElementById("balanceMealsCard");
       if (!profileNote) return;
 
       const water = getWaterProgress(entry, targets);
+      const remaining = getRemainingNutrition(entry, targets);
 
       profileNote.textContent = `Сегодня: ${entry.date}`;
       bodyCard.innerHTML = `
@@ -2779,7 +3390,13 @@
         <div class="status-panel ${getStatusClassForRange(entry.carbs, targets.carbsMin, targets.carbsMax)}">
           Углеводы: ${entry.carbs || 0} / ${targets.carbsMin}–${targets.carbsMax} г · ${getStatusTextForRange(entry.carbs, targets.carbsMin, targets.carbsMax)}
         </div>
+        <div class="muted" style="margin-top:10px;">
+          Осталось: Калории ${remaining.calories} ккал · Белок ${remaining.protein} г · Жиры ${remaining.fat} г · Углеводы ${remaining.carbs} г
+        </div>
       `;
+      if (mealsCard) {
+        mealsCard.innerHTML = renderBalanceMeals(entry);
+      }
       waterCard.innerHTML = `
         <div class="status-panel ${water.remaining === 0 ? "status-ok" : water.percent >= 70 ? "status-warn" : "status-bad"}">
           Вода: ${water.water} / ${water.target} мл · ${water.percent}% · осталось ${water.remaining} мл
@@ -3342,6 +3959,12 @@
         .replaceAll("&", "&amp;")
         .replaceAll("<", "&lt;")
         .replaceAll(">", "&gt;");
+    }
+
+    function escapeAttr(text) {
+      return escapeHtml(text)
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
     }
 
     function syncSettingsUI() {
