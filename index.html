@@ -972,14 +972,8 @@
         <div id="todayNutritionPanel" class="card hidden">
           <h2 class="section-title">КБЖУ</h2>
           <div id="todayNutritionSummary" class="nutrition-summary muted"></div>
-          <div class="nutrition-choice">
-            <div class="actions full">
-              <button class="btn-secondary" onclick="setNutritionInputMode('manual')">Ввести вручную</button>
-              <button class="btn-secondary" onclick="setNutritionInputMode('photo')">По фото еды</button>
-            </div>
-          </div>
 
-          <div id="nutritionManualForm" class="hidden">
+          <div id="nutritionManualForm">
             <div class="form-grid">
               <div class="form-field">
                 <div class="field-label">Название / заметка</div>
@@ -1011,29 +1005,6 @@
               <button class="btn-secondary" onclick="resetNutritionDraftState()">Сбросить</button>
             </div>
           </div>
-
-          <div id="nutritionPhotoForm" class="hidden">
-            <div class="form-grid">
-              <div class="form-field">
-                <div class="field-label">Фото блюда</div>
-                <input id="mealPhotoInput" type="file" accept="image/*" capture="environment" onchange="handleNutritionPhotoUpload(event)" />
-              </div>
-              <div class="form-field">
-                <div class="field-label">Комментарий к фото</div>
-                <textarea id="mealPhotoCommentInput" placeholder="Опиши блюдо: что на фото, примерный вес, диаметр тарелки, состав, соусы, масло, хлеб, напитки. Например: оливье 132 г, майонез 14 г, курица, хлеб 80 г."></textarea>
-              </div>
-            </div>
-            <div id="nutritionPhotoPreviewBox" class="hidden"></div>
-            <div class="actions">
-              <button class="btn-primary" onclick="estimateTodayNutritionFromPhoto()">Рассчитать КБЖУ</button>
-              <button class="btn-secondary" onclick="resetNutritionDraftState()">Сбросить</button>
-            </div>
-            <div class="inline-note" style="margin-top:10px;">
-              Фото используется только для расчета и не сохраняется в истории приемов пищи.
-            </div>
-          </div>
-
-          <div id="nutritionAiPreviewCard" class="card hidden" style="margin-top:12px;"></div>
 
           <div class="actions">
             <button class="btn-secondary" onclick="toggleTodayPanel()">Скрыть</button>
@@ -1696,9 +1667,6 @@
     let pendingProfileSyncTimeout = null;
     let deferredPrompt = null;
     let audioContext = null;
-    let nutritionInputMode = "";
-    let nutritionPhotoDraft = null;
-    let nutritionPhotoEstimate = null;
     let nutritionEditingMealRef = null;
     let profiles = [];
     let currentProfileId = "";
@@ -1933,15 +1901,15 @@
         ...(meal || {}),
         id: meal?.id || `${date}-${index}-${generateId("meal")}`,
         time: String(meal?.time || base.time),
-        source: meal?.source === "photo_ai" ? "photo_ai" : "manual",
+        source: "manual",
         name: String(meal?.name || ""),
         comment: String(meal?.comment || ""),
         calories: clampMetricNumber(meal?.calories),
         protein: clampMetricNumber(meal?.protein),
         fat: clampMetricNumber(meal?.fat),
         carbs: clampMetricNumber(meal?.carbs),
-        confidence: meal?.confidence || "manual",
-        imageDataUrl: meal?.imageDataUrl || null
+        confidence: "manual",
+        imageDataUrl: null
       };
     }
 
@@ -2837,26 +2805,16 @@
     }
 
     function resetNutritionDraftState(keepMode = false) {
-      if (!keepMode) nutritionInputMode = "";
-      nutritionPhotoDraft = null;
-      nutritionPhotoEstimate = null;
       nutritionEditingMealRef = null;
-
-      const photoInput = document.getElementById("mealPhotoInput");
-      const commentInput = document.getElementById("mealPhotoCommentInput");
-      if (photoInput) photoInput.value = "";
-      if (commentInput && !keepMode) commentInput.value = "";
-
+      if (!keepMode) {
+        fillManualMealForm(createEmptyMealEntry());
+      }
       renderNutritionControls();
     }
 
     function setNutritionInputMode(mode) {
-      nutritionInputMode = mode;
-      nutritionPhotoEstimate = null;
       nutritionEditingMealRef = null;
-      if (mode === "manual") {
-        fillManualMealForm(createEmptyMealEntry());
-      }
+      fillManualMealForm(createEmptyMealEntry());
       renderNutritionControls();
     }
 
@@ -2917,163 +2875,13 @@
       }
     }
 
-    async function resizeImageToDataUrl(file, maxSize = 1280, quality = 0.82) {
-      const dataUrl = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = () => reject(new Error("Не удалось прочитать изображение"));
-        reader.readAsDataURL(file);
-      });
-
-      const img = await new Promise((resolve, reject) => {
-        const image = new Image();
-        image.onload = () => resolve(image);
-        image.onerror = () => reject(new Error("Не удалось загрузить изображение"));
-        image.src = dataUrl;
-      });
-
-      const ratio = Math.min(1, maxSize / Math.max(img.width, img.height));
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.round(img.width * ratio);
-      canvas.height = Math.round(img.height * ratio);
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      return canvas.toDataURL("image/jpeg", quality);
-    }
-
-    async function handleNutritionPhotoUpload(event) {
-      const file = event.target.files?.[0];
-      if (!file) return;
-
-      if (!file.type.startsWith("image/")) {
-        alert("Можно загрузить только изображение");
-        event.target.value = "";
-        return;
-      }
-
-      try {
-        nutritionPhotoDraft = {
-          imageDataUrl: await resizeImageToDataUrl(file),
-          comment: String(document.getElementById("mealPhotoCommentInput").value || "").trim()
-        };
-        renderNutritionControls();
-      } catch (error) {
-        alert(error.message || "Не удалось подготовить фото");
-      }
-    }
-
-    async function estimateNutritionFromPhoto(imageDataUrl, comment) {
-      // Реальный вызов OpenAI Vision нужно делать только через backend без ключей в клиенте.
-      await new Promise(resolve => setTimeout(resolve, 600));
-      const lower = String(comment || "").toLowerCase();
-      const calories = lower.includes("бургер") ? 780 : lower.includes("салат") ? 320 : lower.includes("рис") ? 610 : 480;
-      return {
-        calories,
-        protein: lower.includes("кур") || lower.includes("мяс") || lower.includes("рыб") ? 36 : 18,
-        fat: lower.includes("майон") || lower.includes("масл") || lower.includes("сыр") ? 28 : 14,
-        carbs: lower.includes("рис") || lower.includes("хлеб") || lower.includes("карто") || lower.includes("паста") ? 54 : 24,
-        confidence: comment.trim() ? "medium" : "low",
-        explanation: comment.trim()
-          ? "Оценка сделана по фото и описанию блюда. Перед сохранением проверь цифры."
-          : "Описание короткое, поэтому оценка примерная. Для точности лучше добавить состав и вес."
-      };
-    }
-
-    async function estimateTodayNutritionFromPhoto() {
-      try {
-        const comment = String(document.getElementById("mealPhotoCommentInput").value || "").trim();
-        if (!nutritionPhotoDraft?.imageDataUrl) {
-          throw new Error("Сначала выбери или сфотографируй блюдо");
-        }
-
-        nutritionPhotoDraft.comment = comment;
-        nutritionPhotoEstimate = await estimateNutritionFromPhoto(nutritionPhotoDraft.imageDataUrl, comment);
-        renderNutritionControls();
-      } catch (error) {
-        alert(error.message || "Не удалось рассчитать КБЖУ. Попробуйте ещё раз или введите вручную.");
-      }
-    }
-
-    function confirmEstimatedNutritionForToday() {
-      if (!nutritionPhotoEstimate) return;
-
-      addMealToDay(getTodayKey(), {
-        id: generateId("meal"),
-        time: getCurrentTimeValue(),
-        source: "photo_ai",
-        name: "Оценка по фото",
-        comment: String(document.getElementById("mealPhotoCommentInput").value || "").trim(),
-        calories: nutritionPhotoEstimate.calories,
-        protein: nutritionPhotoEstimate.protein,
-        fat: nutritionPhotoEstimate.fat,
-        carbs: nutritionPhotoEstimate.carbs,
-        confidence: nutritionPhotoEstimate.confidence,
-        imageDataUrl: null
-      });
-
-      resetNutritionDraftState();
-      fillManualMealForm(createEmptyMealEntry());
-      showToast("КБЖУ добавлены к дню");
-    }
-
-    function useEstimatedNutritionAsManual() {
-      if (!nutritionPhotoEstimate) return;
-      nutritionInputMode = "manual";
-      fillManualMealForm({
-        ...createEmptyMealEntry(),
-        name: "Оценка по фото",
-        calories: nutritionPhotoEstimate.calories,
-        protein: nutritionPhotoEstimate.protein,
-        fat: nutritionPhotoEstimate.fat,
-        carbs: nutritionPhotoEstimate.carbs
-      });
-      renderNutritionControls();
-    }
-
     function renderNutritionControls() {
       const manualForm = document.getElementById("nutritionManualForm");
-      const photoForm = document.getElementById("nutritionPhotoForm");
-      const previewBox = document.getElementById("nutritionPhotoPreviewBox");
-      const aiCard = document.getElementById("nutritionAiPreviewCard");
-      if (!manualForm || !photoForm || !previewBox || !aiCard) return;
-
-      manualForm.classList.toggle("hidden", nutritionInputMode !== "manual");
-      photoForm.classList.toggle("hidden", nutritionInputMode !== "photo");
-
-      if (nutritionPhotoDraft?.imageDataUrl) {
-        previewBox.classList.remove("hidden");
-        previewBox.innerHTML = `<img src="${nutritionPhotoDraft.imageDataUrl}" alt="Фото блюда" class="meal-preview" />`;
-      } else {
-        previewBox.classList.add("hidden");
-        previewBox.innerHTML = "";
-      }
-
-      if (nutritionPhotoEstimate) {
-        aiCard.classList.remove("hidden");
-        aiCard.innerHTML = `
-          <h3 class="section-title">Оценка КБЖУ</h3>
-          <div class="muted">
-            Калории: ${nutritionPhotoEstimate.calories} ккал<br>
-            Белки: ${nutritionPhotoEstimate.protein} г<br>
-            Жиры: ${nutritionPhotoEstimate.fat} г<br>
-            Углеводы: ${nutritionPhotoEstimate.carbs} г<br>
-            Точность: ${getMealConfidenceLabel(nutritionPhotoEstimate.confidence)}<br>
-            ${escapeHtml(nutritionPhotoEstimate.explanation)}
-          </div>
-          <div class="actions">
-            <button class="btn-primary" onclick="confirmEstimatedNutritionForToday()">Добавить к дню</button>
-            <button class="btn-secondary" onclick="useEstimatedNutritionAsManual()">Изменить</button>
-            <button class="btn-danger" onclick="resetNutritionDraftState(true)">Отмена</button>
-          </div>
-        `;
-      } else {
-        aiCard.classList.add("hidden");
-        aiCard.innerHTML = "";
-      }
+      if (!manualForm) return;
+      manualForm.classList.remove("hidden");
     }
 
     function getMealSourceLabel(source) {
-      if (source === "photo_ai") return "По фото";
       return "Вручную";
     }
 
@@ -3095,7 +2903,6 @@
       if (!meal) return;
 
       nutritionEditingMealRef = { date, mealId };
-      nutritionInputMode = "manual";
       fillManualMealForm(meal);
       switchScreen("balance");
       renderAll();
@@ -3137,7 +2944,7 @@
                     ...draft,
                     id: mealId,
                     source: meal.source || "manual",
-                    confidence: meal.source === "photo_ai" ? meal.confidence || "medium" : "manual",
+                    confidence: "manual",
                     imageDataUrl: null
                   },
                   date
