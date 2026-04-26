@@ -2718,6 +2718,8 @@
     }
 
     function getDeficitStatusText(deficit) {
+      if (deficit < 0) return "профицит";
+      if (Math.abs(deficit) < 50) return "баланс";
       if (deficit > 1200) return "слишком высокий";
       if (deficit > 1000) return "высокий";
       if (deficit >= 700) return "идеал";
@@ -2727,6 +2729,15 @@
 
     function isDeficitInSafeRange(deficit) {
       return deficit >= 500 && deficit <= 1000;
+    }
+
+    function getEnergyBalanceLabel(deficit) {
+      if (Math.abs(deficit || 0) < 50) return "Баланс";
+      return (deficit || 0) >= 0 ? "Дефицит" : "Профицит";
+    }
+
+    function getEnergyBalanceValue(deficit) {
+      return Math.abs(Math.round(deficit || 0));
     }
 
     function getStatusClassForRange(value, min, max) {
@@ -3261,7 +3272,7 @@
         const water = getWaterProgress(entry);
         box.innerHTML = `
           Вес: ${formatMetric(entry.weight, " кг")} · Талия: ${formatMetric(entry.waist, " см")} · % жира: ${formatMetric(entry.bodyFatPercent, "%")} (${getBodyCompositionSourceLabel(entry.bodyCompositionSource)})<br>
-          Калории: ${entry.calories || 0} · Дефицит: ${entry.deficit || 0} <span class="badge ${statusClass}">${getDeficitStatusText(entry.deficit || 0)}</span> · Вода: ${water.water} мл (${water.percent}%, осталось ${water.remaining} мл)
+          Калории: ${entry.calories || 0} · ${getEnergyBalanceLabel(entry.deficit || 0)}: ${getEnergyBalanceValue(entry.deficit || 0)} <span class="badge ${statusClass}">${getDeficitStatusText(entry.deficit || 0)}</span> · Вода: ${water.water} мл (${water.percent}%, осталось ${water.remaining} мл)
           <div style="margin-top:8px;" class="muted">Данные сохраняются после нажатия кнопок и синхронизируются через Google-профиль.</div>
         `;
       }
@@ -3303,14 +3314,14 @@
       `;
       caloriesCard.innerHTML = `
         <div class="status-panel ${isDeficitInSafeRange(entry.deficit || 0) ? "status-ok" : "status-bad"}">
-          За день: ${entry.deficit || 0} ккал · ${getDeficitStatusText(entry.deficit || 0)}
+          За день: ${getEnergyBalanceLabel(entry.deficit || 0)} ${getEnergyBalanceValue(entry.deficit || 0)} ккал · ${getDeficitStatusText(entry.deficit || 0)}
         </div>
         <div class="status-panel ${isDeficitInSafeRange(week.avgDeficit || 0) ? "status-ok" : "status-bad"}">
-          Средний за 7 дней: ${week.avgDeficit || 0} ккал · ${getDeficitStatusText(week.avgDeficit || 0)}
+          Средний за 7 дней: ${getEnergyBalanceLabel(week.avgDeficit || 0)} ${getEnergyBalanceValue(week.avgDeficit || 0)} ккал · ${getDeficitStatusText(week.avgDeficit || 0)}
         </div>
         Расход: ${entry.totalBurn || 0} ккал<br>
         Съедено: ${entry.calories || 0} ккал<br>
-        Дефицит: ${entry.deficit || 0} ккал<br>
+        ${getEnergyBalanceLabel(entry.deficit || 0)}: ${getEnergyBalanceValue(entry.deficit || 0)} ккал<br>
         Статус: ${getDeficitStatusText(entry.deficit || 0)}
       `;
       macrosCard.innerHTML = `
@@ -6534,7 +6545,7 @@
       document.getElementById("bodyTargetFatInput").value = bodyProfile.targetBodyFat ?? "";
       bodyNote.innerHTML = `
         Профиль тела: рост ${formatMetric(bodyProfile.height, " см")}, возраст ${formatMetric(bodyProfile.age)}, пол ${bodyProfile.sex === "female" ? "женщина" : "мужчина"}, шея ${formatMetric(bodyProfile.neck, " см")}, цель ${formatMetric(bodyProfile.targetBodyFat, "%")}<br>
-        Сегодняшний расчет: BMR ${today.bmr || 0} ккал, расход ${today.totalBurn || 0} ккал, дефицит ${today.deficit || 0} ккал.
+        Сегодняшний расчет: BMR ${today.bmr || 0} ккал, расход ${today.totalBurn || 0} ккал, ${getEnergyBalanceLabel(today.deficit || 0).toLowerCase()} ${getEnergyBalanceValue(today.deficit || 0)} ккал.
       `;
 
       renderProfileWorkoutHistoryList();
