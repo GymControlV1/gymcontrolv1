@@ -1895,6 +1895,10 @@
       };
     }
 
+    function getAverageDailyActivityCalories() {
+      return 300;
+    }
+
     function normalizeMealEntry(meal, date = getTodayKey(), index = 0) {
       const base = createEmptyMealEntry();
       return {
@@ -2198,7 +2202,7 @@
       entry.steps = clampMetricNumber(entry.steps);
       calculateBodyComposition(entry);
       entry.bmr = calculateBmrForEntry(entry);
-      entry.totalBurn = Math.round((entry.bmr || 0) + (entry.activityCalories || 0));
+      entry.totalBurn = Math.round((entry.bmr || 0) + getAverageDailyActivityCalories() + (entry.activityCalories || 0));
       entry.deficit = Math.round((entry.totalBurn || 0) - (entry.calories || 0));
       return entry;
     }
@@ -3351,9 +3355,12 @@
         Жидкости: ${entry.liquids || 0} мл
       `;
       activityCard.innerHTML = `
+        BMR: ${entry.bmr || 0} ккал<br>
+        Средняя дневная активность: ${getAverageDailyActivityCalories()} ккал<br>
         С часов: ${entry.activityCaloriesRaw || 0} ккал<br>
         После коррекции: ${entry.activityCalories || 0} ккал<br>
-        Шаги: ${entry.steps || 0}
+        Шаги: ${entry.steps || 0}<br>
+        Итоговый расход: ${entry.totalBurn || 0} ккал
       `;
       notesCard.innerHTML = notes.map(note => `• ${escapeHtml(note)}`).join("<br>");
       weekCard.innerHTML = `
@@ -6545,7 +6552,7 @@
       document.getElementById("bodyTargetFatInput").value = bodyProfile.targetBodyFat ?? "";
       bodyNote.innerHTML = `
         Профиль тела: рост ${formatMetric(bodyProfile.height, " см")}, возраст ${formatMetric(bodyProfile.age)}, пол ${bodyProfile.sex === "female" ? "женщина" : "мужчина"}, шея ${formatMetric(bodyProfile.neck, " см")}, цель ${formatMetric(bodyProfile.targetBodyFat, "%")}<br>
-        Сегодняшний расчет: BMR ${today.bmr || 0} ккал, расход ${today.totalBurn || 0} ккал, ${getEnergyBalanceLabel(today.deficit || 0).toLowerCase()} ${getEnergyBalanceValue(today.deficit || 0)} ккал.
+        Сегодняшний расчет: BMR ${today.bmr || 0} ккал, средняя дневная активность ${getAverageDailyActivityCalories()} ккал, расход ${today.totalBurn || 0} ккал, ${getEnergyBalanceLabel(today.deficit || 0).toLowerCase()} ${getEnergyBalanceValue(today.deficit || 0)} ккал.
       `;
 
       renderProfileWorkoutHistoryList();
