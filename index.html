@@ -1790,6 +1790,7 @@
     function createEmptyDailyMetrics(date = getTodayKey()) {
       return {
         date,
+        updatedAt: "",
         meals: [],
         weight: null,
         waist: null,
@@ -1910,6 +1911,135 @@
         carbs: clampMetricNumber(meal?.carbs),
         confidence: "manual",
         imageDataUrl: null
+      };
+    }
+
+    function isMeaningfulDailyEntry(entry) {
+      const safe = entry || {};
+      return (
+        Array.isArray(safe.meals) && safe.meals.length > 0 ||
+        toNumberOrNull(safe.weight) !== null ||
+        toNumberOrNull(safe.waist) !== null ||
+        toNumberOrNull(safe.hips) !== null ||
+        toNumberOrNull(safe.manualBodyFatPercent) !== null ||
+        toNumberOrNull(safe.manualFatMass) !== null ||
+        clampMetricNumber(safe.calories) > 0 ||
+        clampMetricNumber(safe.protein) > 0 ||
+        clampMetricNumber(safe.fat) > 0 ||
+        clampMetricNumber(safe.carbs) > 0 ||
+        clampMetricNumber(safe.water) > 0 ||
+        clampMetricNumber(safe.liquids) > 0 ||
+        clampMetricNumber(safe.activityCaloriesRaw || safe.activityCalories) > 0 ||
+        clampMetricNumber(safe.steps) > 0
+      );
+    }
+
+    function countDailyEntrySignals(entry) {
+      const safe = entry || {};
+      let score = 0;
+      if (Array.isArray(safe.meals) && safe.meals.length) score += safe.meals.length * 3;
+      if (toNumberOrNull(safe.weight) !== null) score += 2;
+      if (toNumberOrNull(safe.waist) !== null) score += 2;
+      if (toNumberOrNull(safe.hips) !== null) score += 1;
+      if (toNumberOrNull(safe.manualBodyFatPercent) !== null) score += 2;
+      if (toNumberOrNull(safe.manualFatMass) !== null) score += 2;
+      if (clampMetricNumber(safe.calories) > 0) score += 2;
+      if (clampMetricNumber(safe.protein) > 0) score += 1;
+      if (clampMetricNumber(safe.fat) > 0) score += 1;
+      if (clampMetricNumber(safe.carbs) > 0) score += 1;
+      if (clampMetricNumber(safe.water) > 0) score += 1;
+      if (clampMetricNumber(safe.liquids) > 0) score += 1;
+      if (clampMetricNumber(safe.activityCaloriesRaw || safe.activityCalories) > 0) score += 2;
+      if (clampMetricNumber(safe.steps) > 0) score += 1;
+      return score;
+    }
+
+    function normalizeDailyEntry(entry, date) {
+      return recalculateDailyEntry({
+        ...createEmptyDailyMetrics(date || entry?.date || getTodayKey()),
+        ...(entry || {}),
+        date: date || entry?.date || getTodayKey()
+      });
+    }
+
+    function normalizeDailyMetricsMap(map) {
+      const safe = map && typeof map === "object" ? map : {};
+      const normalized = {};
+      Object.keys(safe).forEach(date => {
+        const entry = normalizeDailyEntry(safe[date], date);
+        if (isMeaningfulDailyEntry(entry)) {
+          normalized[date] = entry;
+        }
+      });
+      return normalized;
+    }
+
+    function mergeDailyEntries(localEntry, remoteEntry, date) {
+      const local = localEntry ? normalizeDailyEntry(localEntry, date) : null;
+      const remote = remoteEntry ? normalizeDailyEntry(remoteEntry, date) : null;
+
+      if (!local && !remote) return null;
+      if (!local) return isMeaningfulDailyEntry(remote) ? remote : null;
+      if (!remote) return isMeaningfulDailyEntry(local) ? local : null;
+
+      const localMeaningful = isMeaningfulDailyEntry(local);
+      const remoteMeaningful = isMeaningfulDailyEntry(remote);
+
+      if (!localMeaningful && !remoteMeaningful) return null;
+      if (localMeaningful && !remoteMeaningful) return local;
+      if (!localMeaningful && remoteMeaningful) return remote;
+
+      const localTime = Date.parse(local.updatedAt || "");
+      const remoteTime = Date.parse(remote.updatedAt || "");
+      if (Number.isFinite(localTime) && Number.isFinite(remoteTime) && localTime !== remoteTime) {
+        return localTime > remoteTime ? local : remote;
+      }
+
+      return countDailyEntrySignals(local) >= countDailyEntrySignals(remote) ? local : remote;
+    }
+
+    function mergeDailyMetricsMaps(localMap, remoteMap) {
+      const local = normalizeDailyMetricsMap(localMap);
+      const remote = normalizeDailyMetricsMap(remoteMap);
+      const merged = {};
+      const dates = new Set([...Object.keys(local), ...Object.keys(remote)]);
+      dates.forEach(date => {
+        const entry = mergeDailyEntries(local[date], remote[date], date);
+        if (entry) merged[date] = entry;
+      });
+      return merged;
+    }
+
+    function isMeaningfulBodyProfile(profile) {
+      const safe = profile || {};
+      return Object.keys(getEmptyBodyProfile()).some(key => safe[key] !== null && safe[key] !== "" && safe[key] !== "male");
+    }
+
+    function mergeCloudProfileSnapshots(localSnapshot, remoteSnapshot) {
+      const local = localSnapshot || {};
+      const remote = remoteSnapshot || {};
+      const mergedCustomExercises = {
+        ...(remote.customExercisesBySplit && typeof remote.customExercisesBySplit === "object" ? remote.customExercisesBySplit : {})
+      };
+      const localExercises = local.customExercisesBySplit && typeof local.customExercisesBySplit === "object" ? local.customExercisesBySplit : {};
+      Object.keys(localExercises).forEach(split => {
+        mergedCustomExercises[split] = Array.from(new Set([...(mergedCustomExercises[split] || []), ...(localExercises[split] || [])]));
+      });
+
+      return {
+        customExercisesBySplit: mergedCustomExercises,
+        scheduledWorkouts: Array.isArray(local.scheduledWorkouts) && local.scheduledWorkouts.length ? local.scheduledWorkouts : (Array.isArray(remote.scheduledWorkouts) ? remote.scheduledWorkouts : []),
+        templates: Array.isArray(local.templates) && local.templates.length ? local.templates : (Array.isArray(remote.templates) ? remote.templates : []),
+        feedbackEntries: Array.isArray(local.feedbackEntries) && local.feedbackEntries.length ? local.feedbackEntries : (Array.isArray(remote.feedbackEntries) ? remote.feedbackEntries : []),
+        dailyMetricsByDate: mergeDailyMetricsMaps(local.dailyMetricsByDate, remote.dailyMetricsByDate),
+        bodyProfile: isMeaningfulBodyProfile(local.bodyProfile)
+          ? { ...getEmptyBodyProfile(), ...local.bodyProfile }
+          : { ...getEmptyBodyProfile(), ...(remote.bodyProfile || {}) },
+        workoutSettings: {
+          ...getEmptyWorkoutSettings(),
+          ...(remote.workoutSettings || {}),
+          ...(local.workoutSettings || {})
+        }
       };
     }
 
@@ -2105,15 +2235,8 @@
       pendingCloudWorkouts = Array.isArray(safe.pendingCloudWorkouts) ? safe.pendingCloudWorkouts : [];
       pendingCloudDeletedWorkoutIds = Array.isArray(safe.pendingCloudDeletedWorkoutIds) ? safe.pendingCloudDeletedWorkoutIds : [];
       dailyMetricsByDate = safe.dailyMetricsByDate && typeof safe.dailyMetricsByDate === "object"
-        ? safe.dailyMetricsByDate
+        ? normalizeDailyMetricsMap(safe.dailyMetricsByDate)
         : {};
-      Object.keys(dailyMetricsByDate).forEach(date => {
-        dailyMetricsByDate[date] = recalculateDailyEntry({
-          ...createEmptyDailyMetrics(date),
-          ...dailyMetricsByDate[date],
-          date
-        });
-      });
       bodyProfile = safe.bodyProfile && typeof safe.bodyProfile === "object"
         ? {
             ...getEmptyBodyProfile(),
@@ -2779,10 +2902,16 @@
     function saveDailyEntry(date, updater) {
       const base = { ...createEmptyDailyMetrics(date), ...(getDailyMetrics(date) || {}) };
       const updated = updater(base) || base;
-      dailyMetricsByDate[date] = recalculateDailyEntry(updated);
+      updated.updatedAt = new Date().toISOString();
+      const normalized = recalculateDailyEntry(updated);
+      if (isMeaningfulDailyEntry(normalized)) {
+        dailyMetricsByDate[date] = normalized;
+      } else {
+        delete dailyMetricsByDate[date];
+      }
       saveData();
       renderAll();
-      return dailyMetricsByDate[date];
+      return dailyMetricsByDate[date] || null;
     }
 
     function saveTodayBodyEntry() {
@@ -3392,10 +3521,15 @@
       const hasScheduledWorkouts = Array.isArray(safe.scheduledWorkouts) && safe.scheduledWorkouts.length > 0;
       const hasTemplates = Array.isArray(safe.templates) && safe.templates.length > 0;
       const hasFeedback = Array.isArray(safe.feedbackEntries) && safe.feedbackEntries.length > 0;
-      const hasDailyMetrics = !!(safe.dailyMetricsByDate && Object.keys(safe.dailyMetricsByDate).length > 0);
-      const hasBodyProfile = !!(safe.bodyProfile && Object.values(safe.bodyProfile).some(value => value !== null && value !== "" && value !== "male"));
+      const hasDailyMetrics = hasMeaningfulDailyMetrics_(safe.dailyMetricsByDate);
+      const hasBodyProfile = isMeaningfulBodyProfile(safe.bodyProfile);
       const hasCustomWorkoutSettings = !!(safe.workoutSettings && (safe.workoutSettings.disclaimerAccepted === true || safe.workoutSettings.soundEnabled === false || safe.workoutSettings.vibrationEnabled === false));
       return !hasCustomExercises && !hasScheduledWorkouts && !hasTemplates && !hasFeedback && !hasDailyMetrics && !hasBodyProfile && !hasCustomWorkoutSettings;
+    }
+
+    function hasMeaningfulDailyMetrics_(dailyMetrics) {
+      const safe = dailyMetrics && typeof dailyMetrics === "object" ? dailyMetrics : {};
+      return Object.keys(safe).some(date => isMeaningfulDailyEntry(safe[date]));
     }
 
     function scheduleCloudProfileSync() {
@@ -3418,50 +3552,28 @@
 
       try {
         const localSnapshot = buildCloudProfileSnapshot();
-        if (isCloudProfileSnapshotEmpty(localSnapshot)) {
-          const remoteCheck = await callCloudApi({
-            action: "getProfileData",
-            user: getCloudUserPayload()
-          });
+        const remoteCheck = await callCloudApi({
+          action: "getProfileData",
+          user: getCloudUserPayload()
+        });
 
-          if (!remoteCheck.ok) {
-            throw new Error(remoteCheck.error || "Не удалось проверить облачный профиль");
-          }
-
-          if (remoteCheck.profileData && !isCloudProfileSnapshotEmpty(remoteCheck.profileData)) {
-            customExercisesBySplit = remoteCheck.profileData.customExercisesBySplit && typeof remoteCheck.profileData.customExercisesBySplit === "object"
-              ? remoteCheck.profileData.customExercisesBySplit
-              : customExercisesBySplit;
-            scheduledWorkouts = Array.isArray(remoteCheck.profileData.scheduledWorkouts) ? remoteCheck.profileData.scheduledWorkouts : scheduledWorkouts;
-            templates = Array.isArray(remoteCheck.profileData.templates) ? remoteCheck.profileData.templates : templates;
-            feedbackEntries = Array.isArray(remoteCheck.profileData.feedbackEntries) ? remoteCheck.profileData.feedbackEntries : feedbackEntries;
-            dailyMetricsByDate = remoteCheck.profileData.dailyMetricsByDate && typeof remoteCheck.profileData.dailyMetricsByDate === "object"
-              ? remoteCheck.profileData.dailyMetricsByDate
-              : dailyMetricsByDate;
-            bodyProfile = remoteCheck.profileData.bodyProfile && typeof remoteCheck.profileData.bodyProfile === "object"
-              ? {
-                  ...getEmptyBodyProfile(),
-                  ...remoteCheck.profileData.bodyProfile
-                }
-              : bodyProfile;
-            workoutSettings = remoteCheck.profileData.workoutSettings && typeof remoteCheck.profileData.workoutSettings === "object"
-              ? {
-                  ...getEmptyWorkoutSettings(),
-                  ...remoteCheck.profileData.workoutSettings
-                }
-              : workoutSettings;
-            saveData({ skipCloudProfileSync: true });
-            renderAll();
-            renderCloudSyncSettings();
-            if (manual) showToast("Пустой локальный профиль заменен облачными данными");
-            return true;
-          }
+        if (!remoteCheck.ok) {
+          throw new Error(remoteCheck.error || "Не удалось проверить облачный профиль");
         }
+
+        const mergedSnapshot = mergeCloudProfileSnapshots(localSnapshot, remoteCheck.profileData || null);
+        customExercisesBySplit = mergedSnapshot.customExercisesBySplit;
+        scheduledWorkouts = mergedSnapshot.scheduledWorkouts;
+        templates = mergedSnapshot.templates;
+        feedbackEntries = mergedSnapshot.feedbackEntries;
+        dailyMetricsByDate = mergedSnapshot.dailyMetricsByDate;
+        bodyProfile = mergedSnapshot.bodyProfile;
+        workoutSettings = mergedSnapshot.workoutSettings;
 
         const result = await callCloudApi({
           action: "saveProfileData",
           user: getCloudUserPayload(),
-          profileData: localSnapshot
+          profileData: mergedSnapshot
         });
 
         if (!result.ok) {
@@ -3471,6 +3583,8 @@
         cloudConfig.lastSyncAt = new Date().toLocaleString("ru-RU");
         cloudConfig.lastSyncError = "";
         saveCloudConfig();
+        saveData({ skipCloudProfileSync: true });
+        renderAll();
         renderCloudSyncSettings();
         if (manual) showToast("Профиль синхронизирован");
         return true;
@@ -3504,27 +3618,14 @@
           return true;
         }
 
-        customExercisesBySplit = remote.customExercisesBySplit && typeof remote.customExercisesBySplit === "object"
-          ? remote.customExercisesBySplit
-          : customExercisesBySplit;
-        scheduledWorkouts = Array.isArray(remote.scheduledWorkouts) ? remote.scheduledWorkouts : scheduledWorkouts;
-        templates = Array.isArray(remote.templates) ? remote.templates : templates;
-        feedbackEntries = Array.isArray(remote.feedbackEntries) ? remote.feedbackEntries : feedbackEntries;
-        dailyMetricsByDate = remote.dailyMetricsByDate && typeof remote.dailyMetricsByDate === "object"
-          ? remote.dailyMetricsByDate
-          : dailyMetricsByDate;
-        bodyProfile = remote.bodyProfile && typeof remote.bodyProfile === "object"
-          ? {
-              ...getEmptyBodyProfile(),
-              ...remote.bodyProfile
-            }
-          : bodyProfile;
-        workoutSettings = remote.workoutSettings && typeof remote.workoutSettings === "object"
-          ? {
-              ...getEmptyWorkoutSettings(),
-              ...remote.workoutSettings
-            }
-          : workoutSettings;
+        const mergedSnapshot = mergeCloudProfileSnapshots(buildCloudProfileSnapshot(), remote);
+        customExercisesBySplit = mergedSnapshot.customExercisesBySplit;
+        scheduledWorkouts = mergedSnapshot.scheduledWorkouts;
+        templates = mergedSnapshot.templates;
+        feedbackEntries = mergedSnapshot.feedbackEntries;
+        dailyMetricsByDate = mergedSnapshot.dailyMetricsByDate;
+        bodyProfile = mergedSnapshot.bodyProfile;
+        workoutSettings = mergedSnapshot.workoutSettings;
 
         cloudConfig.lastSyncAt = new Date().toLocaleString("ru-RU");
         cloudConfig.lastSyncError = "";
