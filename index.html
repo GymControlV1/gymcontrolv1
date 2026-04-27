@@ -961,11 +961,26 @@
         <div id="todayWaterPanel" class="card hidden">
           <h2 class="section-title">Вода</h2>
           <div class="muted" id="todayWaterSummary" style="margin-bottom:10px;"></div>
+          <div class="form-grid" style="margin-bottom:10px;">
+            <div class="form-field">
+              <div class="field-label">Время записи</div>
+              <input id="waterTimeInput" type="time" />
+            </div>
+            <div class="form-field">
+              <div class="field-label">Заметка</div>
+              <input id="waterNoteInput" type="text" placeholder="Например: бутылка, стакан, чай" />
+            </div>
+          </div>
           <div class="actions full">
             <button class="btn-secondary" onclick="addWaterQuick(100)">+100 мл</button>
             <button class="btn-secondary" onclick="addWaterQuick(150)">+150 мл</button>
             <button class="btn-secondary" onclick="addWaterQuick(300)">+300 мл</button>
             <button class="btn-secondary" onclick="addWaterQuick(500)">+500 мл</button>
+          </div>
+          <div id="todayWaterEntriesBox" style="margin-top:12px;"></div>
+          <div class="actions">
+            <button class="btn-secondary" onclick="resetWaterDraftState()">Сбросить</button>
+            <button class="btn-secondary" onclick="toggleTodayPanel()">Скрыть</button>
           </div>
         </div>
 
@@ -1015,6 +1030,10 @@
           <h2 class="section-title">Активность</h2>
           <div class="form-grid">
             <div class="form-field">
+              <div class="field-label">Время записи</div>
+              <input id="dailyActivityTimeInput" type="time" />
+            </div>
+            <div class="form-field">
               <div class="field-label">Сожжено ккал</div>
               <input id="dailyActivityCaloriesInput" type="number" min="0" step="1" placeholder="Активные ккал" />
             </div>
@@ -1022,11 +1041,18 @@
               <div class="field-label">Шаги</div>
               <input id="dailyStepsInput" type="number" min="0" step="1" placeholder="Шаги" />
             </div>
+            <div class="form-field">
+              <div class="field-label">Заметка</div>
+              <input id="dailyActivityNoteInput" type="text" placeholder="Например: силовая, кардио, прогулка" />
+            </div>
           </div>
+          <div id="todayActivitySummary" class="muted" style="margin-bottom:10px;"></div>
           <div class="actions">
             <button class="btn-primary" onclick="saveTodayActivityEntry()">Сохранить активность</button>
+            <button class="btn-secondary" onclick="resetActivityDraftState()">Сбросить</button>
             <button class="btn-secondary" onclick="toggleTodayPanel()">Скрыть</button>
           </div>
+          <div id="todayActivityEntriesBox" style="margin-top:12px;"></div>
         </div>
 
         <div class="card">
@@ -1668,6 +1694,8 @@
     let deferredPrompt = null;
     let audioContext = null;
     let nutritionEditingMealRef = null;
+    let waterEditingEntryRef = null;
+    let activityEditingEntryRef = null;
     let profiles = [];
     let currentProfileId = "";
     let cloudConfig = {
@@ -1792,6 +1820,8 @@
         date,
         updatedAt: "",
         meals: [],
+        waterEntries: [],
+        activityEntries: [],
         weight: null,
         waist: null,
         hips: null,
@@ -1843,6 +1873,26 @@
         carbs: 0,
         confidence: "manual",
         imageDataUrl: null
+      };
+    }
+
+    function createEmptyWaterEntry() {
+      return {
+        id: generateId("water"),
+        time: getCurrentTimeValue(),
+        water: 0,
+        liquids: 0,
+        note: ""
+      };
+    }
+
+    function createEmptyActivityEntry() {
+      return {
+        id: generateId("activity"),
+        time: getCurrentTimeValue(),
+        caloriesRaw: 0,
+        steps: 0,
+        note: ""
       };
     }
 
@@ -1918,10 +1968,38 @@
       };
     }
 
+    function normalizeWaterEntry(entry, date = getTodayKey(), index = 0) {
+      const base = createEmptyWaterEntry();
+      return {
+        ...base,
+        ...(entry || {}),
+        id: entry?.id || `${date}-${index}-${generateId("water")}`,
+        time: String(entry?.time || base.time),
+        water: clampMetricNumber(entry?.water),
+        liquids: clampMetricNumber(entry?.liquids ?? entry?.water),
+        note: String(entry?.note || "")
+      };
+    }
+
+    function normalizeActivityEntry(entry, date = getTodayKey(), index = 0) {
+      const base = createEmptyActivityEntry();
+      return {
+        ...base,
+        ...(entry || {}),
+        id: entry?.id || `${date}-${index}-${generateId("activity")}`,
+        time: String(entry?.time || base.time),
+        caloriesRaw: clampMetricNumber(entry?.caloriesRaw ?? entry?.activityCaloriesRaw ?? entry?.activityCalories),
+        steps: clampMetricNumber(entry?.steps),
+        note: String(entry?.note || "")
+      };
+    }
+
     function isMeaningfulDailyEntry(entry) {
       const safe = entry || {};
       return (
         Array.isArray(safe.meals) && safe.meals.length > 0 ||
+        Array.isArray(safe.waterEntries) && safe.waterEntries.length > 0 ||
+        Array.isArray(safe.activityEntries) && safe.activityEntries.length > 0 ||
         toNumberOrNull(safe.weight) !== null ||
         toNumberOrNull(safe.waist) !== null ||
         toNumberOrNull(safe.hips) !== null ||
@@ -1942,6 +2020,8 @@
       const safe = entry || {};
       let score = 0;
       if (Array.isArray(safe.meals) && safe.meals.length) score += safe.meals.length * 3;
+      if (Array.isArray(safe.waterEntries) && safe.waterEntries.length) score += safe.waterEntries.length;
+      if (Array.isArray(safe.activityEntries) && safe.activityEntries.length) score += safe.activityEntries.length * 2;
       if (toNumberOrNull(safe.weight) !== null) score += 2;
       if (toNumberOrNull(safe.waist) !== null) score += 2;
       if (toNumberOrNull(safe.hips) !== null) score += 1;
@@ -2078,6 +2158,52 @@
       return entry;
     }
 
+    function migrateLegacyWaterToEntries(entry) {
+      const hasEntries = Array.isArray(entry.waterEntries) && entry.waterEntries.length > 0;
+      const legacyWater = clampMetricNumber(entry.water);
+      const legacyLiquids = clampMetricNumber(entry.liquids);
+
+      if (hasEntries || (!legacyWater && !legacyLiquids)) {
+        return entry;
+      }
+
+      entry.waterEntries = [
+        {
+          ...createEmptyWaterEntry(),
+          id: `legacy-water-${entry.date || getTodayKey()}`,
+          time: "12:00",
+          water: legacyWater,
+          liquids: legacyLiquids || legacyWater,
+          note: "Автоматически перенесено из старого формата"
+        }
+      ];
+
+      return entry;
+    }
+
+    function migrateLegacyActivityToEntries(entry) {
+      const hasEntries = Array.isArray(entry.activityEntries) && entry.activityEntries.length > 0;
+      const legacyCaloriesRaw = clampMetricNumber(entry.activityCaloriesRaw || entry.activityCalories);
+      const legacySteps = clampMetricNumber(entry.steps);
+
+      if (hasEntries || (!legacyCaloriesRaw && !legacySteps)) {
+        return entry;
+      }
+
+      entry.activityEntries = [
+        {
+          ...createEmptyActivityEntry(),
+          id: `legacy-activity-${entry.date || getTodayKey()}`,
+          time: "18:00",
+          caloriesRaw: legacyCaloriesRaw,
+          steps: legacySteps,
+          note: "Автоматически перенесено из старого формата"
+        }
+      ];
+
+      return entry;
+    }
+
     function recalculateNutritionTotalsFromMeals(entry) {
       migrateLegacyTotalsToMeals(entry);
       const meals = Array.isArray(entry.meals) ? entry.meals.map((meal, index) => normalizeMealEntry(meal, entry.date, index)) : [];
@@ -2086,6 +2212,28 @@
       entry.protein = meals.reduce((sum, meal) => sum + meal.protein, 0);
       entry.fat = meals.reduce((sum, meal) => sum + meal.fat, 0);
       entry.carbs = meals.reduce((sum, meal) => sum + meal.carbs, 0);
+      return entry;
+    }
+
+    function recalculateWaterTotalsFromEntries(entry) {
+      migrateLegacyWaterToEntries(entry);
+      const waterEntries = Array.isArray(entry.waterEntries)
+        ? entry.waterEntries.map((item, index) => normalizeWaterEntry(item, entry.date, index))
+        : [];
+      entry.waterEntries = waterEntries;
+      entry.water = waterEntries.reduce((sum, item) => sum + item.water, 0);
+      entry.liquids = waterEntries.reduce((sum, item) => sum + item.liquids, 0);
+      return entry;
+    }
+
+    function recalculateActivityTotalsFromEntries(entry) {
+      migrateLegacyActivityToEntries(entry);
+      const activityEntries = Array.isArray(entry.activityEntries)
+        ? entry.activityEntries.map((item, index) => normalizeActivityEntry(item, entry.date, index))
+        : [];
+      entry.activityEntries = activityEntries;
+      entry.activityCaloriesRaw = activityEntries.reduce((sum, item) => sum + item.caloriesRaw, 0);
+      entry.steps = activityEntries.reduce((sum, item) => sum + item.steps, 0);
       return entry;
     }
 
@@ -2195,6 +2343,8 @@
     function recalculateDailyEntry(entry) {
       if (!entry) return entry;
       recalculateNutritionTotalsFromMeals(entry);
+      recalculateWaterTotalsFromEntries(entry);
+      recalculateActivityTotalsFromEntries(entry);
       entry.water = clampMetricNumber(entry.water);
       entry.liquids = clampMetricNumber(entry.liquids);
       entry.activityCaloriesRaw = clampMetricNumber(entry.activityCaloriesRaw || entry.activityCalories);
@@ -2697,6 +2847,10 @@
       return ensureTodayEntry();
     }
 
+    function getDailyEntry(date = getTodayKey()) {
+      return getDailyMetrics(date, true) || createEmptyDailyMetrics(date);
+    }
+
     function toggleTodayPanel(panel = "") {
       const names = ["Body", "Water", "Nutrition", "Activity"];
       if (!panel) {
@@ -3191,24 +3345,284 @@
       `;
     }
 
+    function resetWaterDraftState() {
+      waterEditingEntryRef = null;
+      const timeInput = document.getElementById("waterTimeInput");
+      const noteInput = document.getElementById("waterNoteInput");
+      if (timeInput) timeInput.value = getCurrentTimeValue();
+      if (noteInput) noteInput.value = "";
+      renderAll();
+    }
+
+    function resetActivityDraftState() {
+      activityEditingEntryRef = null;
+      const timeInput = document.getElementById("dailyActivityTimeInput");
+      const caloriesInput = document.getElementById("dailyActivityCaloriesInput");
+      const stepsInput = document.getElementById("dailyStepsInput");
+      const noteInput = document.getElementById("dailyActivityNoteInput");
+      if (timeInput) timeInput.value = getCurrentTimeValue();
+      if (caloriesInput) caloriesInput.value = "";
+      if (stepsInput) stepsInput.value = "";
+      if (noteInput) noteInput.value = "";
+      renderAll();
+    }
+
+    function renderWaterEntries(date, entries, compact = false) {
+      const sortedEntries = Array.isArray(entries) ? entries.slice().sort((a, b) => String(a.time || "").localeCompare(String(b.time || ""))) : [];
+      if (!sortedEntries.length) {
+        return `<div class="muted">Записей по воде пока нет.</div>`;
+      }
+
+      return `
+        <div class="meal-list">
+          ${sortedEntries.map(item => {
+            const isEditing = waterEditingEntryRef?.date === date && waterEditingEntryRef?.entryId === item.id;
+            return `
+              <details class="meal-item">
+                <summary>
+                  <strong>${escapeHtml(item.time || "--:--")}</strong> Вода — ${item.water || 0} мл
+                </summary>
+                <div class="muted" style="margin-top:8px;">
+                  Чистая вода: ${item.water || 0} мл · Всего жидкостей: ${item.liquids || 0} мл
+                  ${item.note ? `<br>Комментарий: ${escapeHtml(item.note)}` : ""}
+                </div>
+                <div class="actions" style="margin-top:10px;">
+                  <button class="btn-secondary" onclick="editWaterEntry('${date}', '${item.id}')">Изменить</button>
+                  <button class="btn-danger" onclick="deleteWaterEntry('${date}', '${item.id}')">Удалить</button>
+                </div>
+                ${isEditing ? `
+                  <div class="form-grid" style="margin-top:12px;">
+                    <div class="form-field">
+                      <div class="field-label">Время</div>
+                      <input id="editWaterTimeInput" type="time" value="${escapeAttr(item.time || getCurrentTimeValue())}" />
+                    </div>
+                    <div class="form-field">
+                      <div class="field-label">Вода, мл</div>
+                      <input id="editWaterAmountInput" type="number" min="0" step="10" value="${item.water || 0}" />
+                    </div>
+                    <div class="form-field">
+                      <div class="field-label">Жидкости, мл</div>
+                      <input id="editWaterLiquidsInput" type="number" min="0" step="10" value="${item.liquids || 0}" />
+                    </div>
+                    <div class="form-field">
+                      <div class="field-label">Заметка</div>
+                      <input id="editWaterNoteInput" type="text" value="${escapeAttr(item.note || "")}" />
+                    </div>
+                  </div>
+                  <div class="actions" style="margin-top:10px;">
+                    <button class="btn-primary" onclick="saveEditedWaterEntry()">Сохранить</button>
+                    <button class="btn-secondary" onclick="cancelWaterEdit()">Отмена</button>
+                  </div>
+                ` : ""}
+              </details>
+            `;
+          }).join("")}
+        </div>
+      `;
+    }
+
+    function renderActivityEntries(date, entries, compact = false) {
+      const sortedEntries = Array.isArray(entries) ? entries.slice().sort((a, b) => String(a.time || "").localeCompare(String(b.time || ""))) : [];
+      if (!sortedEntries.length) {
+        return `<div class="muted">Записей активности пока нет.</div>`;
+      }
+
+      return `
+        <div class="meal-list">
+          ${sortedEntries.map(item => {
+            const corrected = getCorrectedActivityCalories(item.caloriesRaw || 0);
+            const isEditing = activityEditingEntryRef?.date === date && activityEditingEntryRef?.entryId === item.id;
+            return `
+              <details class="meal-item">
+                <summary>
+                  <strong>${escapeHtml(item.time || "--:--")}</strong> Активность — ${item.caloriesRaw || 0} ккал
+                </summary>
+                <div class="muted" style="margin-top:8px;">
+                  До коррекции: ${item.caloriesRaw || 0} ккал · После коррекции: ${corrected} ккал · Шаги: ${item.steps || 0}
+                  ${item.note ? `<br>Комментарий: ${escapeHtml(item.note)}` : ""}
+                </div>
+                <div class="actions" style="margin-top:10px;">
+                  <button class="btn-secondary" onclick="editActivityEntry('${date}', '${item.id}')">Изменить</button>
+                  <button class="btn-danger" onclick="deleteActivityEntry('${date}', '${item.id}')">Удалить</button>
+                </div>
+                ${isEditing ? `
+                  <div class="form-grid" style="margin-top:12px;">
+                    <div class="form-field">
+                      <div class="field-label">Время</div>
+                      <input id="editActivityTimeInput" type="time" value="${escapeAttr(item.time || getCurrentTimeValue())}" />
+                    </div>
+                    <div class="form-field">
+                      <div class="field-label">Сожжено ккал</div>
+                      <input id="editActivityCaloriesInput" type="number" min="0" step="1" value="${item.caloriesRaw || 0}" />
+                    </div>
+                    <div class="form-field">
+                      <div class="field-label">Шаги</div>
+                      <input id="editActivityStepsInput" type="number" min="0" step="1" value="${item.steps || 0}" />
+                    </div>
+                    <div class="form-field">
+                      <div class="field-label">Заметка</div>
+                      <input id="editActivityNoteInput" type="text" value="${escapeAttr(item.note || "")}" />
+                    </div>
+                  </div>
+                  <div class="actions" style="margin-top:10px;">
+                    <button class="btn-primary" onclick="saveEditedActivityEntry()">Сохранить</button>
+                    <button class="btn-secondary" onclick="cancelActivityEdit()">Отмена</button>
+                  </div>
+                ` : ""}
+              </details>
+            `;
+          }).join("")}
+        </div>
+      `;
+    }
+
     function saveTodayActivityEntry() {
       const date = getTodayKey();
+      const draft = normalizeActivityEntry({
+        id: activityEditingEntryRef?.entryId || generateId("activity"),
+        time: document.getElementById("dailyActivityTimeInput").value || getCurrentTimeValue(),
+        caloriesRaw: document.getElementById("dailyActivityCaloriesInput").value,
+        steps: document.getElementById("dailyStepsInput").value,
+        note: String(document.getElementById("dailyActivityNoteInput").value || "").trim()
+      }, date);
+
+      if (!(draft.caloriesRaw > 0 || draft.steps > 0)) {
+        alert("Добавь хотя бы ккал или шаги для активности.");
+        return;
+      }
+
       saveDailyEntry(date, entry => {
-        entry.activityCaloriesRaw = clampMetricNumber(document.getElementById("dailyActivityCaloriesInput").value);
-        entry.steps = clampMetricNumber(document.getElementById("dailyStepsInput").value);
+        entry.activityEntries = Array.isArray(entry.activityEntries) ? entry.activityEntries : [];
+        if (activityEditingEntryRef?.entryId) {
+          entry.activityEntries = entry.activityEntries.map(item => item.id === activityEditingEntryRef.entryId ? draft : item);
+        } else {
+          entry.activityEntries.push(draft);
+        }
         return entry;
       });
-      showToast("Активность сохранена");
+
+      const message = activityEditingEntryRef?.entryId ? "Активность обновлена" : "Активность добавлена";
+      resetActivityDraftState();
+      showToast(message);
+    }
+
+    function editActivityEntry(date, entryId) {
+      const entry = getDailyEntry(date);
+      const item = (entry.activityEntries || []).find(activity => activity.id === entryId);
+      if (!item) return;
+
+      activityEditingEntryRef = { date, entryId };
+      document.getElementById("dailyActivityTimeInput").value = item.time || getCurrentTimeValue();
+      document.getElementById("dailyActivityCaloriesInput").value = item.caloriesRaw || "";
+      document.getElementById("dailyStepsInput").value = item.steps || "";
+      document.getElementById("dailyActivityNoteInput").value = item.note || "";
+      switchScreen("training");
+      toggleTodayPanel("activity");
+      renderAll();
+      showToast("Активность загружена в форму");
+    }
+
+    function cancelActivityEdit() {
+      resetActivityDraftState();
+    }
+
+    function saveEditedActivityEntry() {
+      saveTodayActivityEntry();
+    }
+
+    function deleteActivityEntry(date, entryId) {
+      if (!confirm("Удалить эту запись активности?")) return;
+
+      saveDailyEntry(date, entry => {
+        entry.activityEntries = (entry.activityEntries || []).filter(activity => activity.id !== entryId);
+        return entry;
+      });
+
+      if (activityEditingEntryRef?.entryId === entryId) {
+        resetActivityDraftState();
+      } else {
+        renderAll();
+      }
+
+      showToast("Запись активности удалена");
     }
 
     function addWaterQuick(amount) {
       const date = getTodayKey();
+      const waterTime = document.getElementById("waterTimeInput")?.value || getCurrentTimeValue();
+      const waterNote = String(document.getElementById("waterNoteInput")?.value || "").trim();
       saveDailyEntry(date, entry => {
-        entry.water = clampMetricNumber(entry.water) + amount;
-        entry.liquids = clampMetricNumber(entry.liquids) + amount;
+        entry.waterEntries = Array.isArray(entry.waterEntries) ? entry.waterEntries : [];
+        entry.waterEntries.push(normalizeWaterEntry({
+          time: waterTime,
+          water: amount,
+          liquids: amount,
+          note: waterNote
+        }, date, entry.waterEntries.length));
         return entry;
       });
+      resetWaterDraftState();
       showToast(`Добавлено ${amount} мл`);
+    }
+
+    function editWaterEntry(date, entryId) {
+      const entry = getDailyEntry(date);
+      const item = (entry.waterEntries || []).find(water => water.id === entryId);
+      if (!item) return;
+
+      waterEditingEntryRef = { date, entryId };
+      document.getElementById("waterTimeInput").value = item.time || getCurrentTimeValue();
+      document.getElementById("waterNoteInput").value = item.note || "";
+      switchScreen("training");
+      toggleTodayPanel("water");
+      renderAll();
+      showToast("Запись воды открыта");
+    }
+
+    function cancelWaterEdit() {
+      resetWaterDraftState();
+    }
+
+    function saveEditedWaterEntry() {
+      if (!waterEditingEntryRef) return;
+
+      const updated = normalizeWaterEntry({
+        id: waterEditingEntryRef.entryId,
+        time: document.getElementById("editWaterTimeInput").value || getCurrentTimeValue(),
+        water: document.getElementById("editWaterAmountInput").value,
+        liquids: document.getElementById("editWaterLiquidsInput").value,
+        note: String(document.getElementById("editWaterNoteInput").value || "").trim()
+      }, waterEditingEntryRef.date);
+
+      if (!(updated.water > 0 || updated.liquids > 0)) {
+        alert("Введи объем воды или жидкостей.");
+        return;
+      }
+
+      saveDailyEntry(waterEditingEntryRef.date, entry => {
+        entry.waterEntries = (entry.waterEntries || []).map(item => item.id === waterEditingEntryRef.entryId ? updated : item);
+        return entry;
+      });
+
+      resetWaterDraftState();
+      showToast("Запись воды обновлена");
+    }
+
+    function deleteWaterEntry(date, entryId) {
+      if (!confirm("Удалить эту запись воды?")) return;
+
+      saveDailyEntry(date, entry => {
+        entry.waterEntries = (entry.waterEntries || []).filter(item => item.id !== entryId);
+        return entry;
+      });
+
+      if (waterEditingEntryRef?.entryId === entryId) {
+        resetWaterDraftState();
+      } else {
+        renderAll();
+      }
+
+      showToast("Запись воды удалена");
     }
 
     function saveBodyProfileSettings() {
@@ -3245,6 +3659,10 @@
       setValue("dailyManualFatMassInput", safe.manualFatMass);
       setValue("dailyActivityCaloriesInput", safe.activityCaloriesRaw || safe.activityCalories);
       setValue("dailyStepsInput", safe.steps);
+      setValue("dailyActivityTimeInput", activityEditingEntryRef?.date === safe.date ? document.getElementById("dailyActivityTimeInput")?.value : getCurrentTimeValue());
+      setValue("dailyActivityNoteInput", activityEditingEntryRef?.date === safe.date ? document.getElementById("dailyActivityNoteInput")?.value : "");
+      setValue("waterTimeInput", waterEditingEntryRef?.date === safe.date ? document.getElementById("waterTimeInput")?.value : getCurrentTimeValue());
+      setValue("waterNoteInput", waterEditingEntryRef?.date === safe.date ? document.getElementById("waterNoteInput")?.value : "");
       const bodyCompositionSourceSelect = document.getElementById("dailyBodyCompositionSourceInput");
       if (bodyCompositionSourceSelect) {
         bodyCompositionSourceSelect.value = safe.bodyCompositionSource || "auto";
@@ -3260,7 +3678,19 @@
       const waterSummary = document.getElementById("todayWaterSummary");
       if (waterSummary) {
         const progress = getWaterProgress(safe);
-        waterSummary.textContent = `Чистой воды: ${progress.water} / ${progress.target} мл · ${progress.percent}% · осталось ${progress.remaining} мл · всего жидкостей ${safe.liquids || 0} мл`;
+        waterSummary.textContent = `Чистой воды: ${progress.water} / ${progress.target} мл · ${progress.percent}% · осталось ${progress.remaining} мл · всего жидкостей ${safe.liquids || 0} мл · записей ${safe.waterEntries?.length || 0}`;
+      }
+      const waterEntriesBox = document.getElementById("todayWaterEntriesBox");
+      if (waterEntriesBox) {
+        waterEntriesBox.innerHTML = renderWaterEntries(safe.date, safe.waterEntries || []);
+      }
+      const activitySummary = document.getElementById("todayActivitySummary");
+      if (activitySummary) {
+        activitySummary.textContent = `Активность за день: ${safe.activityCaloriesRaw || 0} ккал до коррекции · ${safe.activityCalories || 0} ккал после коррекции · шаги ${safe.steps || 0} · записей ${safe.activityEntries?.length || 0}`;
+      }
+      const activityEntriesBox = document.getElementById("todayActivityEntriesBox");
+      if (activityEntriesBox) {
+        activityEntriesBox.innerHTML = renderActivityEntries(safe.date, safe.activityEntries || []);
       }
       if (!nutritionEditingMealRef) {
         fillManualMealForm(createEmptyMealEntry());
@@ -3353,6 +3783,9 @@
           Вода: ${water.water} / ${water.target} мл · ${water.percent}% · осталось ${water.remaining} мл
         </div>
         Жидкости: ${entry.liquids || 0} мл
+        <div style="margin-top:10px;">
+          ${renderWaterEntries(entry.date, entry.waterEntries || [])}
+        </div>
       `;
       activityCard.innerHTML = `
         BMR: ${entry.bmr || 0} ккал<br>
@@ -3361,6 +3794,9 @@
         После коррекции: ${entry.activityCalories || 0} ккал<br>
         Шаги: ${entry.steps || 0}<br>
         Итоговый расход: ${entry.totalBurn || 0} ккал
+        <div style="margin-top:10px;">
+          ${renderActivityEntries(entry.date, entry.activityEntries || [])}
+        </div>
       `;
       notesCard.innerHTML = notes.map(note => `• ${escapeHtml(note)}`).join("<br>");
       weekCard.innerHTML = `
