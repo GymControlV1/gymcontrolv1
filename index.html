@@ -932,6 +932,146 @@
       color: var(--dark);
     }
 
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px;
+    }
+
+    .metric-tile {
+      background: linear-gradient(180deg, #ffffff 0%, #f6faff 100%);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 14px;
+      box-shadow: var(--shadow-soft);
+    }
+
+    .metric-label {
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .metric-value {
+      font-size: 26px;
+      line-height: 1.05;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: var(--dark);
+    }
+
+    .metric-subvalue {
+      margin-top: 6px;
+      font-size: 13px;
+      color: var(--muted);
+      font-weight: 700;
+      line-height: 1.45;
+    }
+
+    .metric-tile.emphasis {
+      background: linear-gradient(145deg, #eef5ff 0%, #ffffff 100%);
+      border-color: #c8dbff;
+    }
+
+    .metric-tile.green {
+      background: linear-gradient(145deg, #eefcf2 0%, #ffffff 100%);
+      border-color: #b9e8c6;
+    }
+
+    .metric-tile.red .metric-value,
+    .metric-tile.red .metric-subvalue {
+      color: #991b1b;
+    }
+
+    .metric-tile.green .metric-value {
+      color: #166534;
+    }
+
+    .metric-tile.blue .metric-value {
+      color: var(--primary-dark);
+    }
+
+    .progress-strip {
+      margin-top: 10px;
+      height: 10px;
+      background: #dfe8f4;
+      border-radius: 999px;
+      overflow: hidden;
+      box-shadow: inset 0 1px 2px rgba(18, 37, 63, 0.08);
+    }
+
+    .progress-strip > span {
+      display: block;
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #1d4ed8 0%, #60a5fa 70%, #34d399 100%);
+    }
+
+    .progress-strip.green > span {
+      background: linear-gradient(90deg, #16934a 0%, #34d399 100%);
+    }
+
+    .progress-strip.orange > span {
+      background: linear-gradient(90deg, #d67a0d 0%, #f59e0b 100%);
+    }
+
+    .progress-strip.red > span {
+      background: linear-gradient(90deg, #d63a3a 0%, #ef4444 100%);
+    }
+
+    .metric-row-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .metric-row {
+      background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 14px;
+      box-shadow: var(--shadow-soft);
+    }
+
+    .metric-row-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+
+    .metric-row-title {
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--dark);
+    }
+
+    .metric-row-value {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--primary-dark);
+    }
+
+    .note-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .note-item {
+      background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 12px 14px;
+      box-shadow: var(--shadow-soft);
+      line-height: 1.5;
+      font-weight: 700;
+      color: #334155;
+    }
+
     @media (max-width: 700px) {
       .container { padding: 12px 12px 20px; }
       input, select, button, textarea { font-size: 16px; }
@@ -946,6 +1086,8 @@
       .title-block h1 { font-size: 24px; }
       .chart-box { padding: 10px; }
       .mini-chart-row { grid-template-columns: 72px 1fr 66px; font-size: 12px; }
+      .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .metric-value { font-size: 22px; }
       #todaySummaryBox,
       #todayWaterSummary,
       #todayActivitySummary,
@@ -3068,6 +3210,20 @@
       };
     }
 
+    function getProgressWidth(value, target) {
+      const numericValue = clampMetricNumber(value);
+      const numericTarget = clampMetricNumber(target);
+      if (!numericTarget) return 0;
+      return Math.max(0, Math.min(100, Math.round((numericValue / numericTarget) * 100)));
+    }
+
+    function getProgressToneByRange(value, min, max) {
+      const status = getStatusClassForRange(value, min, max);
+      if (status === "status-ok") return "green";
+      if (status === "status-warn") return "orange";
+      return "red";
+    }
+
     function getBodyCompositionSourceLabel(source) {
       switch (source) {
         case "smart_scale":
@@ -3842,10 +3998,33 @@
       if (box) {
         const statusClass = isDeficitInSafeRange(entry.deficit || 0) ? "badge-green" : "badge-red";
         const water = getWaterProgress(entry);
+        const balanceLabel = getEnergyBalanceLabel(entry.deficit || 0);
+        const balanceTone = balanceLabel === "Профицит" ? "red" : balanceLabel === "Баланс" ? "blue" : isDeficitInSafeRange(entry.deficit || 0) ? "green" : "red";
         box.innerHTML = `
-          Вес: ${formatMetric(entry.weight, " кг")} · Талия: ${formatMetric(entry.waist, " см")} · % жира: ${formatMetric(entry.bodyFatPercent, "%")} (${getBodyCompositionSourceLabel(entry.bodyCompositionSource)})<br>
-          Калории: ${entry.calories || 0} · ${getEnergyBalanceLabel(entry.deficit || 0)}: ${getEnergyBalanceValue(entry.deficit || 0)} <span class="badge ${statusClass}">${getDeficitStatusText(entry.deficit || 0)}</span> · Вода: ${water.water} мл (${water.percent}%, осталось ${water.remaining} мл)
-          <div style="margin-top:8px;" class="muted">Данные сохраняются после нажатия кнопок и синхронизируются через Google-профиль.</div>
+          <div class="metric-grid">
+            <div class="metric-tile blue">
+              <div class="metric-label">Вес</div>
+              <div class="metric-value">${formatMetric(entry.weight, " кг")}</div>
+              <div class="metric-subvalue">Талия: ${formatMetric(entry.waist, " см")}</div>
+            </div>
+            <div class="metric-tile emphasis">
+              <div class="metric-label">% жира</div>
+              <div class="metric-value">${formatMetric(entry.bodyFatPercent, "%")}</div>
+              <div class="metric-subvalue">${getBodyCompositionSourceLabel(entry.bodyCompositionSource)}</div>
+            </div>
+            <div class="metric-tile ${balanceTone}">
+              <div class="metric-label">${balanceLabel}</div>
+              <div class="metric-value">${getEnergyBalanceValue(entry.deficit || 0)} ккал</div>
+              <div class="metric-subvalue"><span class="badge ${statusClass}">${getDeficitStatusText(entry.deficit || 0)}</span></div>
+            </div>
+            <div class="metric-tile green">
+              <div class="metric-label">Вода</div>
+              <div class="metric-value">${water.percent}%</div>
+              <div class="metric-subvalue">${water.water} / ${water.target} мл · осталось ${water.remaining} мл</div>
+              <div class="progress-strip green"><span style="width:${water.percent}%;"></span></div>
+            </div>
+          </div>
+          <div style="margin-top:10px;" class="muted">Данные сохраняются после нажатия кнопок и синхронизируются через Google-профиль.</div>
         `;
       }
       renderTodayForms(entry);
@@ -3870,19 +4049,51 @@
 
       const water = getWaterProgress(entry, targets);
       const remaining = getRemainingNutrition(entry, targets);
+      const caloriesProgress = getProgressWidth(entry.calories, targets.caloriesMax);
+      const proteinProgress = getProgressWidth(entry.protein, targets.proteinMax);
+      const fatProgress = getProgressWidth(entry.fat, targets.fatMax);
+      const carbsProgress = getProgressWidth(entry.carbs, targets.carbsMax);
 
       profileNote.textContent = `Сегодня: ${entry.date}`;
       bodyCard.innerHTML = `
-        Вес: ${formatMetric(entry.weight, " кг")}<br>
-        Талия: ${formatMetric(entry.waist, " см")}<br>
-        ${bodyProfile.sex === "female" ? `Бедра: ${formatMetric(entry.hips, " см")}<br>` : ""}
-        % жира: ${formatMetric(entry.bodyFatPercent, "%")} (${getBodyCompositionSourceLabel(entry.bodyCompositionSource)})<br>
-        Жировая масса: ${formatMetric(entry.fatMass, " кг")}<br>
-        Безжировая масса: ${formatMetric(entry.leanMass, " кг")}<br>
-        Автооценка: ${formatMetric(entry.estimatedBodyFatPercent, "%")}<br>
-        Средний % жира за 7 дней: ${formatMetric(week.avgBodyFat, "%")}<br>
-        Цель: ${formatMetric(goal.target, "%")} · Осталось: ${formatMetric(goal.remaining, "%")}<br>
-        ${escapeHtml(goal.estimateText)}
+        <div class="metric-grid">
+          <div class="metric-tile blue">
+            <div class="metric-label">Вес</div>
+            <div class="metric-value">${formatMetric(entry.weight, " кг")}</div>
+            <div class="metric-subvalue">Талия: ${formatMetric(entry.waist, " см")}</div>
+          </div>
+          <div class="metric-tile emphasis">
+            <div class="metric-label">% жира</div>
+            <div class="metric-value">${formatMetric(entry.bodyFatPercent, "%")}</div>
+            <div class="metric-subvalue">${getBodyCompositionSourceLabel(entry.bodyCompositionSource)}</div>
+          </div>
+          <div class="metric-tile">
+            <div class="metric-label">Жировая масса</div>
+            <div class="metric-value">${formatMetric(entry.fatMass, " кг")}</div>
+            <div class="metric-subvalue">Без жира: ${formatMetric(entry.leanMass, " кг")}</div>
+          </div>
+          <div class="metric-tile green">
+            <div class="metric-label">Цель</div>
+            <div class="metric-value">${formatMetric(goal.target, "%")}</div>
+            <div class="metric-subvalue">Осталось: ${formatMetric(goal.remaining, "%")}</div>
+          </div>
+        </div>
+        <div class="metric-row-list" style="margin-top:10px;">
+          ${bodyProfile.sex === "female" ? `<div class="metric-row"><div class="metric-row-top"><div class="metric-row-title">Бедра / ягодицы</div><div class="metric-row-value">${formatMetric(entry.hips, " см")}</div></div></div>` : ""}
+          <div class="metric-row">
+            <div class="metric-row-top">
+              <div class="metric-row-title">Автооценка и среднее</div>
+              <div class="metric-row-value">${formatMetric(entry.estimatedBodyFatPercent, "%")} / ${formatMetric(week.avgBodyFat, "%")}</div>
+            </div>
+            <div class="muted">Автооценка: ${formatMetric(entry.estimatedBodyFatPercent, "%")} · средний % жира за 7 дней: ${formatMetric(week.avgBodyFat, "%")}</div>
+          </div>
+          <div class="metric-row">
+            <div class="metric-row-top">
+              <div class="metric-row-title">Прогноз до цели</div>
+              <div class="metric-row-value">${escapeHtml(goal.estimateText)}</div>
+            </div>
+          </div>
+        </div>
       `;
       caloriesCard.innerHTML = `
         <div class="status-panel ${isDeficitInSafeRange(entry.deficit || 0) ? "status-ok" : "status-bad"}">
@@ -3891,23 +4102,40 @@
         <div class="status-panel ${isDeficitInSafeRange(week.avgDeficit || 0) ? "status-ok" : "status-bad"}">
           Средний за 7 дней: ${getEnergyBalanceLabel(week.avgDeficit || 0)} ${getEnergyBalanceValue(week.avgDeficit || 0)} ккал · ${getDeficitStatusText(week.avgDeficit || 0)}
         </div>
-        Расход: ${entry.totalBurn || 0} ккал<br>
-        Съедено: ${entry.calories || 0} ккал<br>
-        ${getEnergyBalanceLabel(entry.deficit || 0)}: ${getEnergyBalanceValue(entry.deficit || 0)} ккал<br>
-        Статус: ${getDeficitStatusText(entry.deficit || 0)}
+        <div class="metric-grid">
+          <div class="metric-tile blue">
+            <div class="metric-label">Расход</div>
+            <div class="metric-value">${entry.totalBurn || 0}</div>
+            <div class="metric-subvalue">ккал за день</div>
+          </div>
+          <div class="metric-tile emphasis">
+            <div class="metric-label">Съедено</div>
+            <div class="metric-value">${entry.calories || 0}</div>
+            <div class="metric-subvalue">ккал за день</div>
+          </div>
+          <div class="metric-tile ${getEnergyBalanceLabel(entry.deficit || 0) === "Профицит" ? "red" : isDeficitInSafeRange(entry.deficit || 0) ? "green" : "blue"}">
+            <div class="metric-label">${getEnergyBalanceLabel(entry.deficit || 0)}</div>
+            <div class="metric-value">${getEnergyBalanceValue(entry.deficit || 0)}</div>
+            <div class="metric-subvalue">${getDeficitStatusText(entry.deficit || 0)}</div>
+          </div>
+        </div>
       `;
       macrosCard.innerHTML = `
         <div class="status-panel ${getStatusClassForRange(entry.calories, targets.caloriesMin, targets.caloriesMax)}">
           Калории: ${entry.calories || 0} / ${targets.caloriesMin}–${targets.caloriesMax} · ${getStatusTextForRange(entry.calories, targets.caloriesMin, targets.caloriesMax)}
+          <div class="progress-strip ${getProgressToneByRange(entry.calories, targets.caloriesMin, targets.caloriesMax)}"><span style="width:${caloriesProgress}%;"></span></div>
         </div>
         <div class="status-panel ${getStatusClassForRange(entry.protein, targets.proteinMin, targets.proteinMax)}">
           Белок: ${entry.protein || 0} / ${targets.proteinMin}–${targets.proteinMax} г · ${getStatusTextForRange(entry.protein, targets.proteinMin, targets.proteinMax)}
+          <div class="progress-strip ${getProgressToneByRange(entry.protein, targets.proteinMin, targets.proteinMax)}"><span style="width:${proteinProgress}%;"></span></div>
         </div>
         <div class="status-panel ${getStatusClassForRange(entry.fat, targets.fatMin, targets.fatMax)}">
           Жиры: ${entry.fat || 0} / ${targets.fatMin}–${targets.fatMax} г · ${getStatusTextForRange(entry.fat, targets.fatMin, targets.fatMax)}
+          <div class="progress-strip ${getProgressToneByRange(entry.fat, targets.fatMin, targets.fatMax)}"><span style="width:${fatProgress}%;"></span></div>
         </div>
         <div class="status-panel ${getStatusClassForRange(entry.carbs, targets.carbsMin, targets.carbsMax)}">
           Углеводы: ${entry.carbs || 0} / ${targets.carbsMin}–${targets.carbsMax} г · ${getStatusTextForRange(entry.carbs, targets.carbsMin, targets.carbsMax)}
+          <div class="progress-strip ${getProgressToneByRange(entry.carbs, targets.carbsMin, targets.carbsMax)}"><span style="width:${carbsProgress}%;"></span></div>
         </div>
         <div class="muted" style="margin-top:10px;">
           Осталось: Калории ${remaining.calories} ккал · Белок ${remaining.protein} г · Жиры ${remaining.fat} г · Углеводы ${remaining.carbs} г
@@ -3919,6 +4147,7 @@
       waterCard.innerHTML = `
         <div class="status-panel ${water.remaining === 0 ? "status-ok" : water.percent >= 70 ? "status-warn" : "status-bad"}">
           Вода: ${water.water} / ${water.target} мл · ${water.percent}% · осталось ${water.remaining} мл
+          <div class="progress-strip green"><span style="width:${water.percent}%;"></span></div>
         </div>
         Жидкости: ${entry.liquids || 0} мл
         <div style="margin-top:10px;">
@@ -3926,22 +4155,51 @@
         </div>
       `;
       activityCard.innerHTML = `
-        BMR: ${entry.bmr || 0} ккал<br>
-        Средняя дневная активность: ${getAverageDailyActivityCalories()} ккал<br>
-        С часов: ${entry.activityCaloriesRaw || 0} ккал<br>
-        После коррекции: ${entry.activityCalories || 0} ккал<br>
-        Шаги: ${entry.steps || 0}<br>
-        Итоговый расход: ${entry.totalBurn || 0} ккал
+        <div class="metric-grid">
+          <div class="metric-tile blue">
+            <div class="metric-label">BMR</div>
+            <div class="metric-value">${entry.bmr || 0}</div>
+            <div class="metric-subvalue">ккал в покое</div>
+          </div>
+          <div class="metric-tile">
+            <div class="metric-label">Средняя активность</div>
+            <div class="metric-value">${getAverageDailyActivityCalories()}</div>
+            <div class="metric-subvalue">ккал в день</div>
+          </div>
+          <div class="metric-tile emphasis">
+            <div class="metric-label">С часов</div>
+            <div class="metric-value">${entry.activityCalories || 0}</div>
+            <div class="metric-subvalue">${entry.activityCaloriesRaw || 0} до коррекции · ${entry.steps || 0} шагов</div>
+          </div>
+        </div>
         <div style="margin-top:10px;">
           ${renderActivityEntries(entry.date, entry.activityEntries || [])}
         </div>
       `;
-      notesCard.innerHTML = notes.map(note => `• ${escapeHtml(note)}`).join("<br>");
+      notesCard.innerHTML = `<div class="note-list">${notes.map(note => `<div class="note-item">${escapeHtml(note)}</div>`).join("")}</div>`;
       weekCard.innerHTML = `
-        Изменение веса: ${formatMetric(week.weightChange, " кг")}<br>
-        Изменение талии: ${formatMetric(week.waistChange, " см")}<br>
-        Средний дефицит: ${week.avgDeficit} ккал<br>
-        Средний белок: ${week.avgProtein} г
+        <div class="metric-grid">
+          <div class="metric-tile blue">
+            <div class="metric-label">Вес</div>
+            <div class="metric-value">${formatMetric(week.weightChange, " кг")}</div>
+            <div class="metric-subvalue">изменение за 7 дней</div>
+          </div>
+          <div class="metric-tile blue">
+            <div class="metric-label">Талия</div>
+            <div class="metric-value">${formatMetric(week.waistChange, " см")}</div>
+            <div class="metric-subvalue">изменение за 7 дней</div>
+          </div>
+          <div class="metric-tile ${isDeficitInSafeRange(week.avgDeficit || 0) ? "green" : "red"}">
+            <div class="metric-label">Средний ${getEnergyBalanceLabel(week.avgDeficit || 0).toLowerCase()}</div>
+            <div class="metric-value">${Math.abs(week.avgDeficit || 0)}</div>
+            <div class="metric-subvalue">ккал</div>
+          </div>
+          <div class="metric-tile emphasis">
+            <div class="metric-label">Средний белок</div>
+            <div class="metric-value">${week.avgProtein}</div>
+            <div class="metric-subvalue">г в день</div>
+          </div>
+        </div>
         ${renderMiniChart(week.entries, "deficit", value => `${Math.round(value)}`)}
         ${renderMiniChart(week.entries, "weight", value => `${roundTo(value, 1)} кг`)}
         ${renderMiniChart(week.entries, "waist", value => `${roundTo(value, 1)} см`)}
