@@ -1395,6 +1395,7 @@
             <select id="setupWorkoutMode">
               <option value="regular">Обычная тренировка</option>
               <option value="circuit">Круговая тренировка</option>
+              <option value="cardio">Кардио тренировка</option>
             </select>
             <select id="setupSplit" onchange="updateCircuitExerciseOptions()">
               <option value="Full Body">Full Body</option>
@@ -1607,6 +1608,48 @@
         <div class="card">
           <h2 class="section-title">Текущие подходы</h2>
           <div id="currentWorkoutMiniList"></div>
+        </div>
+      </div>
+
+      <div id="cardioWorkoutView" class="hidden">
+        <div class="card">
+          <div class="section-head">
+            <h2 class="section-title">Кардио тренировка</h2>
+            <div class="section-head-actions">
+              <button class="btn-secondary" onclick="goBackFromTrainingState()">Назад</button>
+              <button class="btn-danger" onclick="confirmAbandonWorkout()">На главную</button>
+            </div>
+          </div>
+          <div id="cardioWorkoutMeta" class="muted" style="margin-bottom:10px;"></div>
+          <div class="form-grid">
+            <select id="cardioType">
+              <option value="treadmill">Беговая дорожка</option>
+              <option value="bike_machine">Велотренажер</option>
+              <option value="elliptical">Эллипс</option>
+              <option value="walking_outdoor">Ходьба на улице</option>
+              <option value="running_outdoor">Бег на улице</option>
+              <option value="cycling_outdoor">Велосипед</option>
+              <option value="other">Другое кардио</option>
+            </select>
+            <select id="cardioLocationType">
+              <option value="machine">Тренажер</option>
+              <option value="outdoor">Улица</option>
+            </select>
+            <input id="cardioTime" type="time" />
+            <input id="cardioDurationMinutes" type="number" min="1" step="1" placeholder="Длительность, мин" />
+            <input id="cardioDistanceKm" type="number" min="0" step="0.1" placeholder="Расстояние, км" />
+            <input id="cardioAverageHeartRate" type="number" min="0" step="1" placeholder="Средний пульс" />
+            <input id="cardioMaxHeartRate" type="number" min="0" step="1" placeholder="Макс. пульс" />
+            <input id="cardioCaloriesBurned" type="number" min="0" step="1" placeholder="Потраченные ккал" />
+            <input id="cardioAveragePace" type="text" placeholder="Средний темп, например 6:20/км" />
+            <input id="cardioNote" type="text" placeholder="Заметка (необязательно)" />
+          </div>
+          <div class="muted" style="margin-top:10px;">
+            Обязательно укажи длительность и потраченные ккал. Остальные параметры помогут отслеживать прогресс в кардио.
+          </div>
+          <div class="actions full" style="margin-top:14px;">
+            <button class="btn-success full-width-btn" onclick="saveCardioWorkout()">Сохранить кардио</button>
+          </div>
         </div>
       </div>
 
@@ -2074,6 +2117,7 @@
       date: "",
       split: "",
       workoutMode: "regular",
+      workoutType: "strength",
       fromScheduledWorkoutId: null,
       planExercises: [],
       currentExerciseIndex: 0,
@@ -2081,6 +2125,7 @@
       currentCircuitBlockIndex: 0,
       currentCircuitRoundIndex: 0,
       sets: [],
+      cardioDraft: null,
       state: "idle",
       pendingSummary: null,
       editingSetIndex: -1,
@@ -2442,6 +2487,10 @@
       return new Date().toISOString().slice(0, 10);
     }
 
+    function getCurrentTimeValue() {
+      return new Date().toTimeString().slice(0, 5);
+    }
+
     function toNumberOrNull(value) {
       if (value === "" || value === null || value === undefined) return null;
       const num = Number(value);
@@ -2474,6 +2523,113 @@
 
     function getAverageDailyActivityCalories() {
       return 300;
+    }
+
+    function createEmptyCardioWorkoutData() {
+      return {
+        cardioType: "walking_outdoor",
+        locationType: "outdoor",
+        time: getCurrentTimeValue(),
+        durationMinutes: 0,
+        distanceKm: null,
+        averageHeartRate: 0,
+        maxHeartRate: 0,
+        caloriesBurned: 0,
+        averagePace: "",
+        note: ""
+      };
+    }
+
+    function normalizeCardioWorkoutData(data) {
+      const base = createEmptyCardioWorkoutData();
+      return {
+        ...base,
+        ...(data || {}),
+        cardioType: String(data?.cardioType || base.cardioType),
+        locationType: String(data?.locationType || base.locationType),
+        time: String(data?.time || base.time),
+        durationMinutes: clampMetricNumber(data?.durationMinutes),
+        distanceKm: toNumberOrNull(data?.distanceKm),
+        averageHeartRate: clampMetricNumber(data?.averageHeartRate),
+        maxHeartRate: clampMetricNumber(data?.maxHeartRate),
+        caloriesBurned: clampMetricNumber(data?.caloriesBurned),
+        averagePace: String(data?.averagePace || ""),
+        note: String(data?.note || "")
+      };
+    }
+
+    function getWorkoutType(workout) {
+      if (workout?.workoutType === "cardio") return "cardio";
+      if (workout?.workoutMode === "cardio") return "cardio";
+      if (workout?.cardio) return "cardio";
+      return "strength";
+    }
+
+    function isCardioWorkoutRecord(workout) {
+      return getWorkoutType(workout) === "cardio";
+    }
+
+    function normalizeWorkoutRecord(workout) {
+      const safe = workout || {};
+      const workoutType = getWorkoutType(safe);
+      return {
+        ...safe,
+        split: workoutType === "cardio" ? "Кардио" : String(safe.split || ""),
+        workoutMode: workoutType === "cardio" ? "cardio" : String(safe.workoutMode || "regular"),
+        workoutType,
+        circuitBlocks: Array.isArray(safe.circuitBlocks) ? safe.circuitBlocks : [],
+        sets: Array.isArray(safe.sets) ? safe.sets : [],
+        cardio: workoutType === "cardio" ? normalizeCardioWorkoutData(safe.cardio) : null
+      };
+    }
+
+    function normalizeWorkoutHistory(items) {
+      return (Array.isArray(items) ? items : []).map(normalizeWorkoutRecord);
+    }
+
+    function getStrengthWorkoutHistory() {
+      return workoutHistory.filter(workout => !isCardioWorkoutRecord(workout));
+    }
+
+    function getCardioWorkoutHistory() {
+      return workoutHistory.filter(workout => isCardioWorkoutRecord(workout));
+    }
+
+    function getMostRecentStrengthWorkout() {
+      return getStrengthWorkoutHistory()[0] || null;
+    }
+
+    function getCardioTypeLabel(type) {
+      const labels = {
+        treadmill: "Беговая дорожка",
+        bike_machine: "Велотренажер",
+        elliptical: "Эллипс",
+        walking_outdoor: "Ходьба на улице",
+        running_outdoor: "Бег на улице",
+        cycling_outdoor: "Велосипед",
+        other: "Другое кардио"
+      };
+      return labels[type] || "Кардио";
+    }
+
+    function getCardioLocationLabel(type) {
+      return type === "machine" ? "Тренажер" : "Улица";
+    }
+
+    function getCardioWorkoutLine(workout) {
+      const cardio = normalizeCardioWorkoutData(workout?.cardio);
+      return getCardioSummaryLine(cardio);
+    }
+
+    function getCardioSummaryLine(cardioData) {
+      const cardio = normalizeCardioWorkoutData(cardioData);
+      const parts = [
+        `${cardio.durationMinutes || 0} мин`,
+        cardio.distanceKm !== null ? `${cardio.distanceKm} км` : "",
+        cardio.averageHeartRate ? `ср. пульс ${cardio.averageHeartRate}` : "",
+        cardio.caloriesBurned ? `${cardio.caloriesBurned} ккал` : ""
+      ].filter(Boolean);
+      return parts.join(" · ");
     }
 
     function normalizeMealEntry(meal, date = getTodayKey(), index = 0) {
@@ -2892,7 +3048,7 @@
 
     function applyProfileData(data) {
       const safe = data || {};
-      workoutHistory = Array.isArray(safe.workoutHistory) ? safe.workoutHistory : [];
+      workoutHistory = Array.isArray(safe.workoutHistory) ? normalizeWorkoutHistory(safe.workoutHistory) : [];
       const legacyExercises = safe.customExercisesBySplit && typeof safe.customExercisesBySplit === "object"
         ? safe.customExercisesBySplit
         : {};
@@ -3067,6 +3223,7 @@
         date: "",
         split: "",
         workoutMode: "regular",
+        workoutType: "strength",
         fromScheduledWorkoutId: null,
         planExercises: [],
         currentExerciseIndex: 0,
@@ -3074,6 +3231,7 @@
         currentCircuitBlockIndex: 0,
         currentCircuitRoundIndex: 0,
         sets: [],
+        cardioDraft: null,
         state: "idle",
         pendingSummary: null,
         editingSetIndex: -1,
@@ -4986,7 +5144,7 @@
 
     function mergeWorkoutHistory(localItems, remoteItems) {
       const map = new Map();
-      [...remoteItems, ...localItems].forEach(item => {
+      [...normalizeWorkoutHistory(remoteItems), ...normalizeWorkoutHistory(localItems)].forEach(item => {
         if (!item || item.id === undefined || item.id === null) return;
         map.set(String(item.id), item);
       });
@@ -5419,6 +5577,10 @@
     }
 
     function getWorkoutDateTimeText(workout) {
+      if (isCardioWorkoutRecord(workout) && workout?.date && workout?.cardio?.time) {
+        return `${workout.date} ${workout.cardio.time}`;
+      }
+
       if (workout?.createdAt) {
         const date = new Date(workout.createdAt);
         if (!Number.isNaN(date.getTime())) {
@@ -5439,13 +5601,13 @@
 
     function getAllSets() {
       const allSets = [];
-      workoutHistory.forEach(workout => workout.sets.forEach(set => allSets.push(set)));
+      getStrengthWorkoutHistory().forEach(workout => workout.sets.forEach(set => allSets.push(set)));
       currentSession.sets.forEach(set => allSets.push(set));
       return allSets;
     }
 
     function getHistoricalSetsForExercise(exerciseName) {
-      return workoutHistory
+      return getStrengthWorkoutHistory()
         .flatMap(workout => workout.sets)
         .filter(set => set.exercise.toLowerCase() === exerciseName.toLowerCase());
     }
@@ -5724,6 +5886,7 @@
       document.getElementById("trainingSetupView").classList.add("hidden");
       document.getElementById("circuitBuilderView").classList.add("hidden");
       document.getElementById("warmupView").classList.add("hidden");
+      document.getElementById("cardioWorkoutView").classList.add("hidden");
       document.getElementById("gymWorkoutView").classList.add("hidden");
       document.getElementById("timerView").classList.add("hidden");
       document.getElementById("cooldownView").classList.add("hidden");
@@ -5740,6 +5903,10 @@
         case "circuit-builder":
           document.getElementById("circuitBuilderView").classList.remove("hidden");
           renderCircuitBuilder();
+          break;
+        case "cardio-entry":
+          document.getElementById("cardioWorkoutView").classList.remove("hidden");
+          renderCardioWorkoutView();
           break;
         case "workout":
           document.getElementById("gymWorkoutView").classList.remove("hidden");
@@ -5830,6 +5997,12 @@
         return;
       }
 
+      if (currentSession.state === "cardio-entry") {
+        currentSession.state = "setup";
+        renderTrainingScreen();
+        return;
+      }
+
       if (currentSession.state === "workout") {
         if (currentSession.editingSetIndex >= 0) {
           currentSession.editingSetIndex = -1;
@@ -5861,8 +6034,11 @@
 
     function continueToWarmup() {
       currentSession.date = document.getElementById("setupDate").value;
-      currentSession.split = document.getElementById("setupSplit").value;
       currentSession.workoutMode = document.getElementById("setupWorkoutMode").value;
+      currentSession.workoutType = currentSession.workoutMode === "cardio" ? "cardio" : "strength";
+      currentSession.split = currentSession.workoutMode === "cardio"
+        ? "Кардио"
+        : document.getElementById("setupSplit").value;
       currentSession.fromScheduledWorkoutId = null;
       currentSession.planExercises = [];
       currentSession.currentExerciseIndex = 0;
@@ -5870,6 +6046,7 @@
       currentSession.currentCircuitBlockIndex = 0;
       currentSession.currentCircuitRoundIndex = 0;
       currentSession.sets = [];
+      currentSession.cardioDraft = null;
       currentSession.pendingSummary = null;
       currentSession.editingSetIndex = -1;
       currentSession.active = true;
@@ -5881,6 +6058,8 @@
         circuitBlockBuilderExercises = [];
         updateCircuitExerciseOptions();
         currentSession.state = "circuit-builder";
+      } else if (currentSession.workoutMode === "cardio") {
+        currentSession.state = "cardio-entry";
       } else {
         currentSession.state = "warmup";
       }
@@ -5944,10 +6123,12 @@
       currentSession.date = plan.date;
       currentSession.split = plan.split;
       currentSession.workoutMode = "regular";
+      currentSession.workoutType = "strength";
       currentSession.fromScheduledWorkoutId = plan.id;
       currentSession.planExercises = plan.exercises.map(item => ({ ...item }));
       currentSession.currentExerciseIndex = 0;
       currentSession.sets = [];
+      currentSession.cardioDraft = null;
       currentSession.pendingSummary = null;
       currentSession.editingSetIndex = -1;
       currentSession.active = true;
@@ -5969,7 +6150,11 @@
         return;
       }
 
-      const lastWorkout = workoutHistory[0];
+      const lastWorkout = getMostRecentStrengthWorkout();
+      if (!lastWorkout) {
+        alert("В истории пока нет силовой тренировки для быстрого повтора");
+        return;
+      }
       const grouped = {};
 
       lastWorkout.sets.forEach(set => {
@@ -5989,10 +6174,12 @@
       currentSession.date = new Date().toISOString().slice(0, 10);
       currentSession.split = lastWorkout.split;
       currentSession.workoutMode = "regular";
+      currentSession.workoutType = "strength";
       currentSession.fromScheduledWorkoutId = null;
       currentSession.planExercises = Object.values(grouped);
       currentSession.currentExerciseIndex = 0;
       currentSession.sets = [];
+      currentSession.cardioDraft = null;
       currentSession.pendingSummary = null;
       currentSession.editingSetIndex = -1;
       currentSession.active = true;
@@ -6007,6 +6194,83 @@
       currentSession.state = "workout";
       renderTrainingScreen();
       fillGymFormDefaults();
+    }
+
+    function renderCardioWorkoutView() {
+      const meta = document.getElementById("cardioWorkoutMeta");
+      const timeInput = document.getElementById("cardioTime");
+      if (meta) {
+        meta.textContent = `${currentSession.date || getTodayKey()} · Кардио тренировка`;
+      }
+      if (timeInput && !timeInput.value) {
+        timeInput.value = getCurrentTimeValue();
+      }
+    }
+
+    function collectCardioFormData() {
+      return normalizeCardioWorkoutData({
+        cardioType: document.getElementById("cardioType")?.value || "walking_outdoor",
+        locationType: document.getElementById("cardioLocationType")?.value || "outdoor",
+        time: document.getElementById("cardioTime")?.value || getCurrentTimeValue(),
+        durationMinutes: document.getElementById("cardioDurationMinutes")?.value,
+        distanceKm: document.getElementById("cardioDistanceKm")?.value,
+        averageHeartRate: document.getElementById("cardioAverageHeartRate")?.value,
+        maxHeartRate: document.getElementById("cardioMaxHeartRate")?.value,
+        caloriesBurned: document.getElementById("cardioCaloriesBurned")?.value,
+        averagePace: document.getElementById("cardioAveragePace")?.value || "",
+        note: document.getElementById("cardioNote")?.value || ""
+      });
+    }
+
+    function getCardioSummaryMotivation(cardioType) {
+      return `Кардио ${getCardioTypeLabel(cardioType).toLowerCase()} сохранено. Хорошая работа — выносливость тоже часть прогресса.`;
+    }
+
+    function saveCardioWorkout(goHomeAfter = false) {
+      const cardio = collectCardioFormData();
+      if (!cardio.durationMinutes) {
+        alert("Укажи длительность кардио в минутах.");
+        return;
+      }
+      if (!cardio.caloriesBurned) {
+        alert("Укажи потраченные ккал.");
+        return;
+      }
+
+      const historyItem = normalizeWorkoutRecord({
+        id: Date.now(),
+        createdAt: new Date().toISOString(),
+        date: currentSession.date || getTodayKey(),
+        split: "Кардио",
+        workoutMode: "cardio",
+        workoutType: "cardio",
+        cardio,
+        sets: []
+      });
+
+      workoutHistory.unshift(historyItem);
+      queueWorkoutForCloud(historyItem);
+      currentSession.pendingSummary = {
+        date: historyItem.date,
+        workoutType: "cardio",
+        cardio,
+        motivation: getCardioSummaryMotivation(cardio.cardioType)
+      };
+
+      saveData();
+      if (cloudConfig.autoSync) {
+        syncPendingWorkouts(false);
+      }
+
+      if (goHomeAfter) {
+        resetTrainingSessionState();
+        switchScreen("training");
+        showToast("Кардио сохранено");
+        return;
+      }
+
+      currentSession.state = "summary";
+      renderTrainingScreen();
     }
 
     function updateGymExerciseOptions() {
@@ -6736,6 +7000,11 @@
     }
 
     function finishWorkoutFinal(goHomeAfter = false) {
+      if (currentSession.workoutType === "cardio" || currentSession.workoutMode === "cardio") {
+        saveCardioWorkout(goHomeAfter);
+        return;
+      }
+
       const totalVolume = currentSession.sets.reduce((sum, set) => sum + set.volume, 0);
       const exercises = [...new Set(currentSession.sets.map(set => set.exercise))];
 
@@ -6745,6 +7014,7 @@
         date: currentSession.date,
         split: currentSession.split,
         workoutMode: currentSession.workoutMode,
+        workoutType: "strength",
         circuitBlocks: currentSession.workoutMode === "circuit" ? currentSession.circuitBlocks.map(block => ({
           name: block.name,
           rounds: block.rounds,
@@ -6815,6 +7085,20 @@
         return;
       }
 
+      if (data.workoutType === "cardio") {
+        box.innerHTML = `
+          <div class="summary-box">
+            ${data.date} · ${getCardioTypeLabel(data.cardio.cardioType)}
+          </div>
+          <div class="muted">
+            ${getCardioSummaryLine(data.cardio).replaceAll(" · ", "<br>")}<br>
+            ${escapeHtml(getCardioLocationLabel(data.cardio.locationType))}${data.cardio.note ? `<br>Заметка: ${escapeHtml(data.cardio.note)}` : ""}
+          </div>
+        `;
+        motivationBox.textContent = data.motivation;
+        return;
+      }
+
       box.innerHTML = `
         <div class="summary-box">
           ${data.date} · ${data.split}${data.workoutMode === "circuit" ? " · Круговая тренировка" : ""}
@@ -6848,6 +7132,7 @@
         date: "",
         split: "",
         workoutMode: "regular",
+        workoutType: "strength",
         fromScheduledWorkoutId: null,
         planExercises: [],
         currentExerciseIndex: 0,
@@ -6855,6 +7140,7 @@
         currentCircuitBlockIndex: 0,
         currentCircuitRoundIndex: 0,
         sets: [],
+        cardioDraft: null,
         state: "idle",
         pendingSummary: null,
         editingSetIndex: -1,
@@ -7222,7 +7508,11 @@
         return;
       }
 
-      const lastWorkout = workoutHistory[0];
+      const lastWorkout = getMostRecentStrengthWorkout();
+      if (!lastWorkout) {
+        alert("В истории пока нет силовой тренировки для создания плана");
+        return;
+      }
       const grouped = {};
 
       lastWorkout.sets.forEach(set => {
@@ -7392,7 +7682,7 @@
     }
 
     function getWorkoutStatsByDay() {
-      return workoutHistory
+      return getStrengthWorkoutHistory()
         .slice()
         .sort((a, b) => String(a.date).localeCompare(String(b.date)))
         .map(workout => ({
@@ -7570,20 +7860,38 @@
       const canvas = document.getElementById("progressChart");
       const hint = document.getElementById("progressChartHint");
       const stats = getWorkoutStatsByDay();
+      const cardioWorkouts = getCardioWorkoutHistory()
+        .slice()
+        .sort((a, b) => String(a.date).localeCompare(String(b.date)))
+        .map(workout => ({
+          date: workout.date,
+          label: getCardioTypeLabel(workout.cardio?.cardioType),
+          caloriesBurned: workout.cardio?.caloriesBurned || 0,
+          durationMinutes: workout.cardio?.durationMinutes || 0
+        }));
 
-      if (!stats.length) {
+      if (!stats.length && !cardioWorkouts.length) {
         const ctx = canvas.getContext("2d");
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         hint.textContent = "Нет данных для графика";
         return;
       }
 
-      const labels = stats.map(item => item.date);
-      const values = stats.map(item => item.totalVolume);
-      drawLineChart(canvas, labels, values, "Тоннаж по тренировкам");
+      if (stats.length) {
+        const labels = stats.map(item => item.date);
+        const values = stats.map(item => item.totalVolume);
+        drawLineChart(canvas, labels, values, "Тоннаж по силовым тренировкам");
 
-      const latest = stats[stats.length - 1];
-      hint.textContent = `Тренировок на графике: ${stats.length}. Последняя: ${latest.date} · ${latest.split} · тоннаж ${latest.totalVolume} кг.`;
+        const latest = stats[stats.length - 1];
+        hint.textContent = `Силовых тренировок на графике: ${stats.length}. Последняя: ${latest.date} · ${latest.split} · тоннаж ${latest.totalVolume} кг.${cardioWorkouts.length ? ` Кардио-сессий в истории: ${cardioWorkouts.length}.` : ""}`;
+        return;
+      }
+
+      const labels = cardioWorkouts.map(item => item.date);
+      const values = cardioWorkouts.map(item => item.caloriesBurned);
+      drawLineChart(canvas, labels, values, "Ккал по кардио-сессиям");
+      const latest = cardioWorkouts[cardioWorkouts.length - 1];
+      hint.textContent = `Кардио-сессий на графике: ${cardioWorkouts.length}. Последняя: ${latest.date} · ${latest.label} · ${latest.caloriesBurned} ккал за ${latest.durationMinutes} мин.`;
     }
 
     function renderStatsList() {
@@ -7647,6 +7955,31 @@
       }
 
       workoutHistory.forEach(workout => {
+        if (isCardioWorkoutRecord(workout)) {
+          const cardio = normalizeCardioWorkoutData(workout.cardio);
+          const div = document.createElement("div");
+          div.className = "list-item";
+          div.innerHTML = `
+            <div class="list-top">
+              <div>
+                <strong>${workout.date}</strong>
+                <div style="margin-top:6px;"><span class="badge">Кардио</span></div>
+                <div style="margin-top:6px;"><span class="badge">${escapeHtml(getCardioTypeLabel(cardio.cardioType))}</span></div>
+                <div class="muted" style="margin-top:8px;">
+                  ${escapeHtml(getCardioSummaryLine(cardio))}<br>
+                  ${escapeHtml(getCardioLocationLabel(cardio.locationType))}${cardio.averagePace ? ` · темп ${escapeHtml(cardio.averagePace)}` : ""}${cardio.maxHeartRate ? ` · макс. пульс ${cardio.maxHeartRate}` : ""}
+                </div>
+                ${cardio.note ? `<div class="muted" style="margin-top:8px;">${escapeHtml(cardio.note)}</div>` : ""}
+              </div>
+              <div class="inline-actions">
+                <button class="btn-danger" onclick="deleteHistoryWorkout(${workout.id})">Удалить</button>
+              </div>
+            </div>
+          `;
+          box.appendChild(div);
+          return;
+        }
+
         const totalVolume = workout.sets.reduce((sum, set) => sum + set.volume, 0);
         const uniqueExercises = [...new Set(workout.sets.map(set => set.exercise))];
         const div = document.createElement("div");
@@ -7709,6 +8042,29 @@
       }
 
       workoutHistory.forEach(workout => {
+        if (isCardioWorkoutRecord(workout)) {
+          const cardio = normalizeCardioWorkoutData(workout.cardio);
+          const div = document.createElement("div");
+          div.className = "list-item";
+          div.innerHTML = `
+            <details>
+              <summary style="cursor:pointer; font-weight:bold;">
+                ${workout.date} · ${escapeHtml(getCardioTypeLabel(cardio.cardioType))} · ${cardio.durationMinutes} мин
+              </summary>
+              <div style="margin-top:10px;">
+                <div class="muted" style="margin-bottom:10px;">
+                  Дата и время: ${getWorkoutDateTimeText(workout)}<br>
+                  Где: ${escapeHtml(getCardioLocationLabel(cardio.locationType))}<br>
+                  ${escapeHtml(getCardioSummaryLine(cardio))}${cardio.averagePace ? `<br>Средний темп: ${escapeHtml(cardio.averagePace)}` : ""}${cardio.maxHeartRate ? `<br>Макс. пульс: ${cardio.maxHeartRate}` : ""}
+                </div>
+                ${cardio.note ? `<div class="muted">${escapeHtml(cardio.note)}</div>` : ""}
+              </div>
+            </details>
+          `;
+          box.appendChild(div);
+          return;
+        }
+
         const totalVolume = workout.sets.reduce((sum, set) => sum + set.volume, 0);
         const uniqueExercises = [...new Set(workout.sets.map(set => set.exercise))];
         const details = workout.sets.map((set, index) => `
@@ -7878,7 +8234,9 @@
         : "Сейчас это локальный профиль. Для синхронизации между устройствами нужен вход через Google.";
 
       summary.innerHTML = `
-        Последняя тренировка: ${lastWorkout ? `${lastWorkout.date} · ${escapeHtml(lastWorkout.split)} · ${lastWorkout.sets.length} подходов` : "пока нет тренировок"}<br>
+        Последняя тренировка: ${lastWorkout ? (isCardioWorkoutRecord(lastWorkout)
+          ? `${lastWorkout.date} · ${escapeHtml(getCardioTypeLabel(lastWorkout.cardio?.cardioType))} · ${escapeHtml(getCardioSummaryLine(lastWorkout.cardio))}`
+          : `${lastWorkout.date} · ${escapeHtml(lastWorkout.split)} · ${lastWorkout.sets.length} подходов`) : "пока нет тренировок"}<br>
         Ближайший план: ${nextPlan ? `${nextPlan.date} · ${escapeHtml(nextPlan.title || nextPlan.split)}` : "пока ничего не запланировано"}<br>
         Пользовательских упражнений: ${getCustomExerciseCount()}
       `;
