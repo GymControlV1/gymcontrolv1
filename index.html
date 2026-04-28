@@ -1434,6 +1434,7 @@
             <input id="circuitBlockName" type="text" placeholder="Название блока (необязательно)" />
             <input id="circuitBlockRounds" type="number" min="1" step="1" placeholder="Кругов в блоке" />
             <input id="circuitBlockRest" type="number" min="0" step="5" placeholder="Отдых между кругами, сек" />
+            <input id="circuitExerciseSearch" type="text" placeholder="Быстрый поиск упражнения" oninput="updateCircuitExerciseOptions()" />
             <select id="circuitExerciseSelect"></select>
             <input id="circuitCustomExercise" type="text" placeholder="Свое упражнение" />
             <select id="circuitExerciseMetric">
@@ -1535,6 +1536,7 @@
           </div>
 
           <div class="form-grid" style="margin-top:14px;">
+            <input id="gymExerciseSearch" type="text" placeholder="Быстрый поиск упражнения" oninput="updateGymExerciseOptions()" />
             <select id="gymExerciseSelect" onchange="changeManualExercise()"></select>
             <input id="gymCustomExercise" type="text" placeholder="Свое упражнение" />
             <select id="gymLoadType">
@@ -1708,6 +1710,7 @@
             <option value="Pull">Pull</option>
             <option value="Legs">Legs</option>
           </select>
+          <input id="planExerciseSearch" type="text" placeholder="Быстрый поиск упражнения" oninput="updatePlanExerciseOptions()" />
           <select id="planExerciseSelect"></select>
           <input id="planCustomExercise" type="text" placeholder="Или свое упражнение" />
           <input id="planTargetSets" type="number" min="1" step="1" placeholder="Подходы" />
@@ -1764,15 +1767,6 @@
     </section>
 
     <section id="screen-more" class="screen">
-      <div class="card">
-        <h2 class="section-title">Резервная копия</h2>
-        <div class="actions">
-          <button class="btn-primary" onclick="exportData()">Экспорт JSON</button>
-          <button class="btn-secondary" onclick="document.getElementById('importFile').click()">Импорт JSON</button>
-        </div>
-        <input id="importFile" class="file-input" type="file" accept=".json,application/json" onchange="importData(event)" />
-      </div>
-
       <div class="card">
         <h2 class="section-title">Настройки</h2>
         <div class="settings-row">
@@ -1950,11 +1944,7 @@
           Профиль нужен для управления облаком, доступа к статистике и планам тренировок.
         </div>
         <div id="profileCabinetHeader" class="info-box"></div>
-      </div>
-
-      <div class="card">
-        <h2 class="section-title">Краткая сводка</h2>
-        <div id="profileCabinetSummary" class="muted"></div>
+        <div id="profileCabinetSummary" class="muted" style="margin-top:12px;"></div>
       </div>
 
       <div class="card">
@@ -1962,6 +1952,8 @@
         <div class="actions full">
           <button class="btn-secondary" onclick="showProfileStats()">Открыть статистику</button>
           <button class="btn-secondary" onclick="showProfilePlans()">Открыть планы</button>
+          <button class="btn-secondary" onclick="scrollToProfileSection('profileCustomExercisesCard')">Мои упражнения</button>
+          <button class="btn-secondary" onclick="scrollToProfileSection('profileBackupCard')">Резервные копии</button>
           <button class="btn-danger" onclick="logoutProfile()">Выйти из профиля</button>
         </div>
       </div>
@@ -1972,6 +1964,81 @@
         <div class="actions full">
           <button class="btn-primary" onclick="syncAllCloudData(true)">Синхронизировать сейчас</button>
           <button class="btn-secondary" onclick="refreshAllCloudData(true)">Обновить из облака</button>
+        </div>
+      </div>
+
+      <div id="profileBackupCard" class="card">
+        <div class="section-head">
+          <h2 class="section-title">Резервные копии и импорт</h2>
+          <div class="section-head-actions">
+            <button class="btn-secondary" onclick="toggleProfileSection('backups')">Показать / скрыть</button>
+          </div>
+        </div>
+        <div id="profileBackupSummary" class="muted" style="margin-bottom:10px;"></div>
+        <div id="profileBackupsPanel" class="collapsible-panel hidden">
+          <div class="actions full">
+            <button class="btn-primary" onclick="exportData()">Сохранить все</button>
+            <button class="btn-secondary" onclick="exportWorkoutsData()">Только тренировки</button>
+            <button class="btn-secondary" onclick="exportPlansData()">Только планы</button>
+            <button class="btn-secondary" onclick="exportNutritionData()">Только КБЖУ</button>
+            <button class="btn-secondary" onclick="exportActivityData()">Только активность</button>
+            <button class="btn-secondary" onclick="exportBodyData()">Только параметры тела</button>
+            <button class="btn-secondary" onclick="exportWaterData()">Только вода</button>
+            <button class="btn-secondary" onclick="exportCustomExercisesData()">Пользовательские упражнения</button>
+            <button class="btn-secondary" onclick="document.getElementById('importFile').click()">Импорт JSON</button>
+          </div>
+        </div>
+        <input id="importFile" class="file-input" type="file" accept=".json,application/json" onchange="importData(event)" />
+      </div>
+
+      <div id="profileCustomExercisesCard" class="card">
+        <div class="section-head">
+          <h2 class="section-title">Мои упражнения</h2>
+          <div class="section-head-actions">
+            <button class="btn-secondary" onclick="toggleProfileSection('customExercises')">Показать / скрыть</button>
+          </div>
+        </div>
+        <div id="profileCustomExercisesSummary" class="muted" style="margin-bottom:10px;"></div>
+        <div id="profileCustomExercisesPanel" class="collapsible-panel hidden">
+          <div class="form-grid">
+            <select id="profileExerciseSplit">
+              <option value="Full Body">Full Body</option>
+              <option value="Грудь + Трицепс">Грудь + Трицепс</option>
+              <option value="Спина + Бицепс">Спина + Бицепс</option>
+              <option value="Плечи + Ноги">Плечи + Ноги</option>
+              <option value="Грудь + Бицепс">Грудь + Бицепс</option>
+              <option value="Спина + Трицепс">Спина + Трицепс</option>
+              <option value="Ноги">Ноги</option>
+              <option value="Плечи">Плечи</option>
+              <option value="Руки">Руки</option>
+              <option value="Верх тела">Верх тела</option>
+              <option value="Низ тела">Низ тела</option>
+              <option value="Push">Push</option>
+              <option value="Pull">Pull</option>
+              <option value="Legs">Legs</option>
+            </select>
+            <input id="profileExerciseName" type="text" placeholder="Название упражнения" />
+            <select id="profileExerciseLoadType">
+              <option value="barbell">Штанга / общий вес</option>
+              <option value="machine">Тренажер / общий вес</option>
+              <option value="dumbbell_one">1 гантель</option>
+              <option value="dumbbell_two">2 гантели</option>
+              <option value="bodyweight">Собственный вес / без веса</option>
+            </select>
+            <select id="profileExerciseMetric">
+              <option value="reps">На повторы</option>
+              <option value="time">На время</option>
+            </select>
+          </div>
+          <div class="actions">
+            <button class="btn-primary" onclick="saveProfileCustomExercise()">Добавить упражнение</button>
+            <button class="btn-secondary" onclick="resetProfileCustomExerciseForm()">Сбросить</button>
+          </div>
+          <div class="form-field" style="margin-top:12px;">
+            <div class="field-label">Быстрый поиск по своим упражнениям</div>
+            <input id="profileExerciseSearch" type="text" placeholder="Например: тяга, присед, жим" oninput="renderProfileCustomExerciseList()" />
+          </div>
+          <div id="profileCustomExercisesList" style="margin-top:12px;"></div>
         </div>
       </div>
     </section>
@@ -1988,6 +2055,7 @@
   <script>
     let workoutHistory = [];
     let customExercisesBySplit = {};
+    let customExerciseCatalog = [];
     let scheduledWorkouts = [];
     let templates = [];
     let feedbackEntries = [];
@@ -2041,6 +2109,10 @@
       meals: false,
       water: false,
       activity: false
+    };
+    const profileSectionState = {
+      backups: false,
+      customExercises: false
     };
     let profiles = [];
     let currentProfileId = "";
@@ -2242,10 +2314,119 @@
       };
     }
 
+    function normalizeCustomExerciseLoadType(value) {
+      const allowed = ["barbell", "machine", "dumbbell_one", "dumbbell_two", "bodyweight"];
+      return allowed.includes(value) ? value : "machine";
+    }
+
+    function normalizeCustomExerciseMetric(value) {
+      return value === "time" ? "time" : "reps";
+    }
+
+    function createCustomExerciseRecord(data = {}, fallbackSplit = "") {
+      const name = normalizeExerciseName(data.name || data.exercise || "");
+      const split = String(data.split || fallbackSplit || "").trim();
+      if (!name || !split) return null;
+
+      return {
+        id: String(data.id || generateId("custom-exercise")),
+        split,
+        name,
+        loadType: normalizeCustomExerciseLoadType(data.loadType),
+        metric: normalizeCustomExerciseMetric(data.metric),
+        createdAt: String(data.createdAt || new Date().toISOString())
+      };
+    }
+
+    function normalizeCustomExerciseCatalog(catalog = [], legacyBySplit = {}) {
+      const merged = {};
+
+      const upsert = (rawItem, fallbackSplit = "") => {
+        const item = createCustomExerciseRecord(rawItem, fallbackSplit);
+        if (!item) return;
+        const key = `${item.split}::${item.name.toLowerCase()}`;
+        if (!merged[key]) {
+          merged[key] = item;
+          return;
+        }
+        merged[key] = {
+          ...merged[key],
+          ...item,
+          id: merged[key].id || item.id,
+          createdAt: merged[key].createdAt || item.createdAt
+        };
+      };
+
+      (Array.isArray(catalog) ? catalog : []).forEach(item => upsert(item));
+      Object.keys(legacyBySplit || {}).forEach(split => {
+        const names = Array.isArray(legacyBySplit[split]) ? legacyBySplit[split] : [];
+        names.forEach(name => upsert({ split, name, loadType: "machine", metric: "reps" }));
+      });
+
+      return Object.values(merged).sort((a, b) => {
+        const splitCompare = a.split.localeCompare(b.split, "ru");
+        if (splitCompare !== 0) return splitCompare;
+        return a.name.localeCompare(b.name, "ru");
+      });
+    }
+
+    function buildCustomExercisesBySplit(catalog = [], legacyBySplit = {}) {
+      const merged = {};
+      Object.keys(legacyBySplit || {}).forEach(split => {
+        const names = Array.isArray(legacyBySplit[split]) ? legacyBySplit[split] : [];
+        merged[split] = Array.from(new Set(names.map(normalizeExerciseName).filter(Boolean)));
+      });
+      (Array.isArray(catalog) ? catalog : []).forEach(item => {
+        if (!item?.split || !item?.name) return;
+        if (!merged[item.split]) merged[item.split] = [];
+        if (!merged[item.split].some(name => name.toLowerCase() === item.name.toLowerCase())) {
+          merged[item.split].push(item.name);
+        }
+      });
+      Object.keys(merged).forEach(split => {
+        merged[split].sort((a, b) => a.localeCompare(b, "ru"));
+      });
+      return merged;
+    }
+
+    function mergeCustomExerciseCatalogs(localCatalog, remoteCatalog, localLegacyBySplit = {}, remoteLegacyBySplit = {}) {
+      const legacyCombined = {};
+      [remoteLegacyBySplit || {}, localLegacyBySplit || {}].forEach(source => {
+        Object.keys(source).forEach(split => {
+          if (!legacyCombined[split]) legacyCombined[split] = [];
+          const names = Array.isArray(source[split]) ? source[split] : [];
+          names.forEach(name => {
+            const cleanName = normalizeExerciseName(name);
+            if (cleanName && !legacyCombined[split].some(item => item.toLowerCase() === cleanName.toLowerCase())) {
+              legacyCombined[split].push(cleanName);
+            }
+          });
+        });
+      });
+      return normalizeCustomExerciseCatalog([...(Array.isArray(remoteCatalog) ? remoteCatalog : []), ...(Array.isArray(localCatalog) ? localCatalog : [])], legacyCombined);
+    }
+
+    function filterExercisesBySearch(exercises, query) {
+      const safeExercises = Array.isArray(exercises) ? exercises : [];
+      const cleanQuery = String(query || "").trim().toLowerCase();
+      if (!cleanQuery) return safeExercises;
+      return safeExercises.filter(exercise => exercise.toLowerCase().includes(cleanQuery));
+    }
+
+    function ensureExerciseVisible(exercises, pinnedExercise) {
+      const list = Array.isArray(exercises) ? exercises.slice() : [];
+      const pinned = normalizeExerciseName(pinnedExercise || "");
+      if (pinned && !list.some(item => item.toLowerCase() === pinned.toLowerCase())) {
+        list.unshift(pinned);
+      }
+      return list;
+    }
+
     function getEmptyProfileData() {
       return {
         workoutHistory: [],
         customExercisesBySplit: {},
+        customExerciseCatalog: [],
         scheduledWorkouts: [],
         templates: [],
         feedbackEntries: [],
@@ -2448,16 +2629,17 @@
     function mergeCloudProfileSnapshots(localSnapshot, remoteSnapshot) {
       const local = localSnapshot || {};
       const remote = remoteSnapshot || {};
-      const mergedCustomExercises = {
-        ...(remote.customExercisesBySplit && typeof remote.customExercisesBySplit === "object" ? remote.customExercisesBySplit : {})
-      };
-      const localExercises = local.customExercisesBySplit && typeof local.customExercisesBySplit === "object" ? local.customExercisesBySplit : {};
-      Object.keys(localExercises).forEach(split => {
-        mergedCustomExercises[split] = Array.from(new Set([...(mergedCustomExercises[split] || []), ...(localExercises[split] || [])]));
+      const remoteLegacyExercises = remote.customExercisesBySplit && typeof remote.customExercisesBySplit === "object" ? remote.customExercisesBySplit : {};
+      const localLegacyExercises = local.customExercisesBySplit && typeof local.customExercisesBySplit === "object" ? local.customExercisesBySplit : {};
+      const mergedCatalog = mergeCustomExerciseCatalogs(local.customExerciseCatalog, remote.customExerciseCatalog, localLegacyExercises, remoteLegacyExercises);
+      const mergedCustomExercises = buildCustomExercisesBySplit(mergedCatalog, {
+        ...remoteLegacyExercises,
+        ...localLegacyExercises
       });
 
       return {
         customExercisesBySplit: mergedCustomExercises,
+        customExerciseCatalog: mergedCatalog,
         scheduledWorkouts: Array.isArray(local.scheduledWorkouts) && local.scheduledWorkouts.length ? local.scheduledWorkouts : (Array.isArray(remote.scheduledWorkouts) ? remote.scheduledWorkouts : []),
         templates: Array.isArray(local.templates) && local.templates.length ? local.templates : (Array.isArray(remote.templates) ? remote.templates : []),
         feedbackEntries: Array.isArray(local.feedbackEntries) && local.feedbackEntries.length ? local.feedbackEntries : (Array.isArray(remote.feedbackEntries) ? remote.feedbackEntries : []),
@@ -2711,9 +2893,11 @@
     function applyProfileData(data) {
       const safe = data || {};
       workoutHistory = Array.isArray(safe.workoutHistory) ? safe.workoutHistory : [];
-      customExercisesBySplit = safe.customExercisesBySplit && typeof safe.customExercisesBySplit === "object"
+      const legacyExercises = safe.customExercisesBySplit && typeof safe.customExercisesBySplit === "object"
         ? safe.customExercisesBySplit
         : {};
+      customExerciseCatalog = normalizeCustomExerciseCatalog(safe.customExerciseCatalog, legacyExercises);
+      customExercisesBySplit = buildCustomExercisesBySplit(customExerciseCatalog, legacyExercises);
       scheduledWorkouts = Array.isArray(safe.scheduledWorkouts)
         ? safe.scheduledWorkouts
         : Array.isArray(safe.plannedWorkouts)
@@ -2806,6 +2990,7 @@
       return {
         workoutHistory: JSON.parse(localStorage.getItem("workoutHistory") || "[]"),
         customExercisesBySplit: JSON.parse(localStorage.getItem("customExercisesBySplit") || "{}"),
+        customExerciseCatalog: JSON.parse(localStorage.getItem("customExerciseCatalog") || "[]"),
         plannedWorkouts: JSON.parse(localStorage.getItem("plannedWorkouts") || "[]"),
         templates: JSON.parse(localStorage.getItem("templates") || "[]"),
         feedbackEntries: JSON.parse(localStorage.getItem("feedbackEntries") || "[]"),
@@ -2912,6 +3097,18 @@
       if (!Object.prototype.hasOwnProperty.call(balanceSectionState, sectionName)) return;
       balanceSectionState[sectionName] = !balanceSectionState[sectionName];
       renderBalanceScreen();
+    }
+
+    function toggleProfileSection(sectionName) {
+      if (!Object.prototype.hasOwnProperty.call(profileSectionState, sectionName)) return;
+      profileSectionState[sectionName] = !profileSectionState[sectionName];
+      renderProfileScreen();
+    }
+
+    function scrollToProfileSection(id) {
+      const target = document.getElementById(id);
+      if (!target) return;
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
     }
 
     function getCurrentAccountDisplayName() {
@@ -4361,6 +4558,7 @@
         JSON.stringify({
           workoutHistory,
           customExercisesBySplit,
+          customExerciseCatalog,
           scheduledWorkouts,
           templates,
           feedbackEntries,
@@ -4492,6 +4690,7 @@
     function buildCloudProfileSnapshot() {
       return {
         customExercisesBySplit,
+        customExerciseCatalog,
         scheduledWorkouts,
         templates,
         feedbackEntries,
@@ -4503,7 +4702,8 @@
 
     function isCloudProfileSnapshotEmpty(snapshot) {
       const safe = snapshot || {};
-      const hasCustomExercises = Object.keys(safe.customExercisesBySplit || {}).some(key => Array.isArray(safe.customExercisesBySplit[key]) && safe.customExercisesBySplit[key].length);
+      const hasCustomExercises = Object.keys(safe.customExercisesBySplit || {}).some(key => Array.isArray(safe.customExercisesBySplit[key]) && safe.customExercisesBySplit[key].length)
+        || (Array.isArray(safe.customExerciseCatalog) && safe.customExerciseCatalog.length > 0);
       const hasScheduledWorkouts = Array.isArray(safe.scheduledWorkouts) && safe.scheduledWorkouts.length > 0;
       const hasTemplates = Array.isArray(safe.templates) && safe.templates.length > 0;
       const hasFeedback = Array.isArray(safe.feedbackEntries) && safe.feedbackEntries.length > 0;
@@ -4549,6 +4749,7 @@
 
         const mergedSnapshot = mergeCloudProfileSnapshots(localSnapshot, remoteCheck.profileData || null);
         customExercisesBySplit = mergedSnapshot.customExercisesBySplit;
+        customExerciseCatalog = mergedSnapshot.customExerciseCatalog || [];
         scheduledWorkouts = mergedSnapshot.scheduledWorkouts;
         templates = mergedSnapshot.templates;
         feedbackEntries = mergedSnapshot.feedbackEntries;
@@ -4606,6 +4807,7 @@
 
         const mergedSnapshot = mergeCloudProfileSnapshots(buildCloudProfileSnapshot(), remote);
         customExercisesBySplit = mergedSnapshot.customExercisesBySplit;
+        customExerciseCatalog = mergedSnapshot.customExerciseCatalog || [];
         scheduledWorkouts = mergedSnapshot.scheduledWorkouts;
         templates = mergedSnapshot.templates;
         feedbackEntries = mergedSnapshot.feedbackEntries;
@@ -4969,8 +5171,21 @@
       const splitSelect = document.getElementById("setupSplit");
       if (!select || !splitSelect) return;
 
-      const exercises = getMergedExercises(splitSelect.value);
+      const query = document.getElementById("circuitExerciseSearch")?.value || "";
+      const previous = select.value;
+      const exercises = ensureExerciseVisible(
+        filterExercisesBySearch(getMergedExercises(splitSelect.value), query),
+        previous
+      );
       select.innerHTML = "";
+
+      if (!exercises.length) {
+        const option = document.createElement("option");
+        option.value = "";
+        option.textContent = "Ничего не найдено";
+        select.appendChild(option);
+        return;
+      }
 
       exercises.forEach(exercise => {
         const option = document.createElement("option");
@@ -4978,6 +5193,10 @@
         option.textContent = exercise;
         select.appendChild(option);
       });
+
+      if (previous && exercises.includes(previous)) {
+        select.value = previous;
+      }
     }
 
     function clearCircuitBlockBuilder() {
@@ -5064,7 +5283,7 @@
       }
 
       if (custom) {
-        saveCustomExercise(split, custom);
+        saveCustomExercise(split, custom, { loadType, metric });
         updateCircuitExerciseOptions();
         updatePlanExerciseOptions();
       }
@@ -5141,21 +5360,35 @@
       showToast("Круговая тренировка готова к началу");
     }
 
-    function saveCustomExercise(split, exerciseName) {
+    function saveCustomExercise(split, exerciseName, meta = {}) {
       const cleanName = normalizeExerciseName(exerciseName);
       if (!cleanName) return;
+      const record = createCustomExerciseRecord({
+        split,
+        name: cleanName,
+        loadType: meta.loadType,
+        metric: meta.metric
+      }, split);
+      if (!record) return null;
 
-      if (!customExercisesBySplit[split]) customExercisesBySplit[split] = [];
-
-      const exists = getMergedExercises(split).some(
-        item => item.toLowerCase() === cleanName.toLowerCase()
+      const existingIndex = customExerciseCatalog.findIndex(item =>
+        item.split === split && item.name.toLowerCase() === cleanName.toLowerCase()
       );
 
-      if (!exists) {
-        customExercisesBySplit[split].push(cleanName);
-        customExercisesBySplit[split].sort((a, b) => a.localeCompare(b, "ru"));
-        saveData();
+      if (existingIndex >= 0) {
+        customExerciseCatalog[existingIndex] = {
+          ...customExerciseCatalog[existingIndex],
+          loadType: record.loadType || customExerciseCatalog[existingIndex].loadType,
+          metric: record.metric || customExerciseCatalog[existingIndex].metric
+        };
+      } else {
+        customExerciseCatalog.push(record);
       }
+
+      customExerciseCatalog = normalizeCustomExerciseCatalog(customExerciseCatalog, customExercisesBySplit);
+      customExercisesBySplit = buildCustomExercisesBySplit(customExerciseCatalog, customExercisesBySplit);
+      saveData();
+      return record;
     }
 
     function getLoadTypeLabel(loadType) {
@@ -5778,23 +6011,36 @@
 
     function updateGymExerciseOptions() {
       const select = document.getElementById("gymExerciseSelect");
+      if (!select) return;
       const selectedExercise = select.value;
+      const query = document.getElementById("gymExerciseSearch")?.value || "";
       const all = currentSession.planExercises.length
         ? currentSession.planExercises.map(item => item.exercise)
         : getMergedExercises(currentSession.split);
+      const current = getCurrentExerciseObject();
+      const currentName = current ? current.exercise : selectedExercise;
+      const filtered = ensureExerciseVisible(filterExercisesBySearch([...new Set(all)], query), currentName);
 
       select.innerHTML = "";
-      [...new Set(all)].forEach(exercise => {
+
+      if (!filtered.length) {
+        const option = document.createElement("option");
+        option.value = "";
+        option.textContent = "Ничего не найдено";
+        select.appendChild(option);
+        return;
+      }
+
+      filtered.forEach(exercise => {
         const option = document.createElement("option");
         option.value = exercise;
         option.textContent = exercise;
         select.appendChild(option);
       });
 
-      const current = getCurrentExerciseObject();
       if (current) {
         select.value = current.exercise;
-      } else if (selectedExercise && all.includes(selectedExercise)) {
+      } else if (selectedExercise && filtered.includes(selectedExercise)) {
         select.value = selectedExercise;
       }
     }
@@ -6057,7 +6303,10 @@
         return;
       }
 
-      saveCustomExercise(currentSession.split, name);
+      saveCustomExercise(currentSession.split, name, {
+        loadType: document.getElementById("gymLoadType").value,
+        metric: isCircuitWorkout() && getCurrentCircuitExerciseTemplate()?.metric === "time" ? "time" : "reps"
+      });
 
       if (isCircuitWorkout()) {
         const currentBlock = getCurrentCircuitBlock();
@@ -6783,8 +7032,21 @@
     function updatePlanExerciseOptions() {
       const split = document.getElementById("planSplit").value;
       const select = document.getElementById("planExerciseSelect");
-      const exercises = getMergedExercises(split);
+      const query = document.getElementById("planExerciseSearch")?.value || "";
+      const previous = select.value;
+      const exercises = ensureExerciseVisible(
+        filterExercisesBySearch(getMergedExercises(split), query),
+        previous
+      );
       select.innerHTML = "";
+
+      if (!exercises.length) {
+        const option = document.createElement("option");
+        option.value = "";
+        option.textContent = "Ничего не найдено";
+        select.appendChild(option);
+        return;
+      }
 
       exercises.forEach(exercise => {
         const option = document.createElement("option");
@@ -6792,6 +7054,10 @@
         option.textContent = exercise;
         select.appendChild(option);
       });
+
+      if (previous && exercises.includes(previous)) {
+        select.value = previous;
+      }
     }
 
     function addExerciseToPlanBuilder() {
@@ -6813,7 +7079,7 @@
       }
 
       if (custom) {
-        saveCustomExercise(split, custom);
+        saveCustomExercise(split, custom, { loadType: "machine", metric: "reps" });
         updatePlanExerciseOptions();
         updateTemplateExerciseOptions();
       }
@@ -7043,7 +7309,7 @@
         return;
       }
 
-      saveCustomExercise(currentSession.split, exercise);
+      saveCustomExercise(currentSession.split, exercise, { loadType: "machine", metric: "reps" });
       currentSession.planExercises.push({ exercise, targetSets, targetReps });
       document.getElementById("sessionExerciseName").value = "";
       document.getElementById("sessionExerciseSets").value = "";
@@ -7474,18 +7740,117 @@
       });
     }
 
+    function getCustomExerciseCount() {
+      return Array.isArray(customExerciseCatalog) ? customExerciseCatalog.length : 0;
+    }
+
+    function resetProfileCustomExerciseForm() {
+      const nameInput = document.getElementById("profileExerciseName");
+      const loadTypeSelect = document.getElementById("profileExerciseLoadType");
+      const metricSelect = document.getElementById("profileExerciseMetric");
+      if (nameInput) nameInput.value = "";
+      if (loadTypeSelect) loadTypeSelect.value = "machine";
+      if (metricSelect) metricSelect.value = "reps";
+    }
+
+    function saveProfileCustomExercise() {
+      const split = document.getElementById("profileExerciseSplit")?.value || "";
+      const name = document.getElementById("profileExerciseName")?.value || "";
+      const loadType = document.getElementById("profileExerciseLoadType")?.value || "machine";
+      const metric = document.getElementById("profileExerciseMetric")?.value || "reps";
+
+      if (!split) {
+        alert("Сначала выбери группу мышц / сплит.");
+        return;
+      }
+
+      const saved = saveCustomExercise(split, name, { loadType, metric });
+      if (!saved) {
+        alert("Укажи название упражнения.");
+        return;
+      }
+
+      resetProfileCustomExerciseForm();
+      updatePlanExerciseOptions();
+      updateCircuitExerciseOptions();
+      updateGymExerciseOptions();
+      renderProfileScreen();
+      showToast("Упражнение сохранено");
+    }
+
+    function deleteProfileCustomExercise(exerciseId) {
+      const target = customExerciseCatalog.find(item => item.id === exerciseId);
+      if (!target) return;
+      if (!confirm(`Удалить упражнение «${target.name}»?`)) return;
+
+      customExerciseCatalog = customExerciseCatalog.filter(item => item.id !== exerciseId);
+      customExercisesBySplit = buildCustomExercisesBySplit(customExerciseCatalog, {});
+      saveData();
+      renderAll();
+      showToast("Упражнение удалено");
+    }
+
+    function renderProfileCustomExerciseList() {
+      const box = document.getElementById("profileCustomExercisesList");
+      if (!box) return;
+
+      const query = document.getElementById("profileExerciseSearch")?.value || "";
+      const filtered = filterExercisesBySearch(
+        customExerciseCatalog.map(item => `${item.split}:::${item.name}`),
+        query
+      );
+      const visibleKeys = new Set(filtered);
+      const items = customExerciseCatalog.filter(item => visibleKeys.has(`${item.split}:::${item.name}`));
+
+      box.innerHTML = "";
+
+      if (!items.length) {
+        box.innerHTML = '<p class="empty">Своих упражнений пока нет</p>';
+        return;
+      }
+
+      items.forEach(item => {
+        const div = document.createElement("div");
+        div.className = "list-item";
+        div.innerHTML = `
+          <div class="list-top">
+            <div>
+              <strong>${escapeHtml(item.name)}</strong>
+              <div class="muted" style="margin-top:6px;">
+                <span class="badge">${escapeHtml(item.split)}</span>
+                <span class="badge">${getLoadTypeLabel(item.loadType)}</span>
+                <span class="badge">${item.metric === "time" ? "На время" : "На повторы"}</span>
+              </div>
+            </div>
+            <div class="inline-actions">
+              <button class="btn-danger" onclick="deleteProfileCustomExercise('${item.id}')">Удалить</button>
+            </div>
+          </div>
+        `;
+        box.appendChild(div);
+      });
+    }
+
     function renderProfileScreen() {
       const header = document.getElementById("profileCabinetHeader");
       const cloud = document.getElementById("profileCloudStatus");
       const summary = document.getElementById("profileCabinetSummary");
       const bodyNote = document.getElementById("profileBodyNote");
-      if (!header || !cloud || !summary || !bodyNote) return;
+      const backupSummary = document.getElementById("profileBackupSummary");
+      const backupsPanel = document.getElementById("profileBackupsPanel");
+      const customSummary = document.getElementById("profileCustomExercisesSummary");
+      const customPanel = document.getElementById("profileCustomExercisesPanel");
+      if (!header || !cloud || !summary || !bodyNote || !backupSummary || !backupsPanel || !customSummary || !customPanel) return;
 
       if (!currentProfileId) {
         header.innerHTML = "<strong>Профиль не выбран</strong><div class='muted'>Сначала войди через Google или создай локальный профиль.</div>";
         cloud.textContent = "Облачная синхронизация недоступна без активного профиля.";
         summary.textContent = "";
         bodyNote.textContent = "";
+        backupSummary.textContent = "";
+        customSummary.textContent = "";
+        backupsPanel.classList.add("hidden");
+        customPanel.classList.add("hidden");
         return;
       }
 
@@ -7497,20 +7862,25 @@
       const lastWorkout = workoutHistory[0];
 
       header.innerHTML = `
-        <strong>${escapeHtml(getCurrentProfileName())}</strong>
+        <strong>${escapeHtml(getCurrentAccountDisplayName())}</strong>
         <div class="muted">
-          ${profile?.authProvider === "google" ? `Вход через ${escapeHtml(profile.email || "Google")}` : `Локальный профиль · создан ${profile?.createdAt ? new Date(profile.createdAt).toLocaleString("ru-RU") : "неизвестно"}`}
+          ${profile?.authProvider === "google" ? "Google-аккаунт подключен" : `Локальный профиль · создан ${profile?.createdAt ? new Date(profile.createdAt).toLocaleString("ru-RU") : "неизвестно"}`}
         </div>
       `;
 
-      cloud.textContent = shouldUseCloudProfileSync()
-        ? `Профиль связан с облаком. Очередь тренировок: ${pendingCloudWorkouts.length}. Очередь удалений: ${pendingCloudDeletedWorkoutIds.length}. Последняя ошибка: ${cloudConfig.lastSyncError || "нет"}.`
+      cloud.innerHTML = shouldUseCloudProfileSync()
+        ? `
+          <strong style="color:var(--success);">Облако подключено</strong><br>
+          Последняя синхронизация: ${cloudConfig.lastSyncAt || "еще не выполнялась"}<br>
+          Очередь тренировок: ${pendingCloudWorkouts.length} · Очередь удалений: ${pendingCloudDeletedWorkoutIds.length}<br>
+          Ошибка: ${cloudConfig.lastSyncError || "нет"}
+        `
         : "Сейчас это локальный профиль. Для синхронизации между устройствами нужен вход через Google.";
 
       summary.innerHTML = `
         Последняя тренировка: ${lastWorkout ? `${lastWorkout.date} · ${escapeHtml(lastWorkout.split)} · ${lastWorkout.sets.length} подходов` : "пока нет тренировок"}<br>
         Ближайший план: ${nextPlan ? `${nextPlan.date} · ${escapeHtml(nextPlan.title || nextPlan.split)}` : "пока ничего не запланировано"}<br>
-        Кастомных сплитов/упражнений: ${Object.values(customExercisesBySplit).reduce((sum, items) => sum + items.length, 0)}
+        Пользовательских упражнений: ${getCustomExerciseCount()}
       `;
 
       document.getElementById("bodyHeightInput").value = bodyProfile.height ?? "";
@@ -7521,6 +7891,16 @@
       bodyNote.innerHTML = `
         Параметры тела теперь находятся во вкладке «Баланс». Сегодняшний расчет: BMR ${today.bmr || 0} ккал, средняя дневная активность ${getAverageDailyActivityCalories()} ккал, расход ${today.totalBurn || 0} ккал, ${getEnergyBalanceLabel(today.deficit || 0).toLowerCase()} ${getEnergyBalanceValue(today.deficit || 0)} ккал.
       `;
+
+      backupSummary.innerHTML = `
+        Можно сохранить весь профиль целиком или выгрузить только отдельные разделы: тренировки, планы, КБЖУ, активность, воду, параметры тела и пользовательские упражнения.
+      `;
+      customSummary.innerHTML = `
+        Здесь хранятся твои упражнения. Они появятся в выборе упражнений во время тренировки и при создании плана.
+      `;
+      backupsPanel.classList.toggle("hidden", !profileSectionState.backups);
+      customPanel.classList.toggle("hidden", !profileSectionState.customExercises);
+      renderProfileCustomExerciseList();
     }
 
     function updateTemplateExerciseOptions() {
@@ -7876,36 +8256,148 @@
         feedbackEntries
       };
 
+      downloadJsonExport("gymcontrol-feedback.json", data);
+    }
+
+    function getProfileExportSlug() {
+      return (getCurrentProfileName() || getCurrentAccountDisplayName() || "profile")
+        .replace(/\s+/g, "-")
+        .replace(/[^a-zA-Z0-9а-яА-Я_-]/g, "")
+        .toLowerCase();
+    }
+
+    function downloadJsonExport(filename, data) {
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "gymcontrol-feedback.json";
+      a.download = filename;
       a.click();
       URL.revokeObjectURL(url);
     }
 
-    function exportData() {
-      const data = {
+    function buildExportEnvelope(section, payload) {
+      return {
         profileId: currentProfileId,
         profileName: getCurrentProfileName(),
+        section,
+        exportedAt: new Date().toISOString(),
+        ...payload
+      };
+    }
+
+    function collectBodyMetricsExport() {
+      return {
+        bodyProfile,
+        dailyMetricsByDate: Object.fromEntries(
+          Object.entries(dailyMetricsByDate).map(([date, entry]) => [date, {
+            date,
+            updatedAt: entry.updatedAt || "",
+            weight: entry.weight,
+            waist: entry.waist,
+            hips: entry.hips,
+            bodyCompositionSource: entry.bodyCompositionSource || "auto",
+            manualBodyFatPercent: entry.manualBodyFatPercent,
+            manualFatMass: entry.manualFatMass,
+            manualLeanMass: entry.manualLeanMass,
+            estimatedBodyFatPercent: entry.estimatedBodyFatPercent,
+            estimatedFatMass: entry.estimatedFatMass,
+            estimatedLeanMass: entry.estimatedLeanMass,
+            bodyFatPercent: entry.bodyFatPercent,
+            fatMass: entry.fatMass,
+            leanMass: entry.leanMass
+          }])
+        )
+      };
+    }
+
+    function exportData() {
+      const data = buildExportEnvelope("all", {
         workoutHistory,
         customExercisesBySplit,
+        customExerciseCatalog,
         scheduledWorkouts,
         templates,
         feedbackEntries,
         pendingCloudWorkouts,
-        workoutSettings,
-        exportedAt: new Date().toISOString()
-      };
+        pendingCloudDeletedWorkoutIds,
+        dailyMetricsByDate,
+        bodyProfile,
+        workoutSettings
+      });
 
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `gymcontrol-backup-${(getCurrentProfileName() || "profile").replace(/\s+/g, "-").toLowerCase()}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
+      downloadJsonExport(`gymcontrol-backup-${getProfileExportSlug()}.json`, data);
+    }
+
+    function exportWorkoutsData() {
+      downloadJsonExport(`gymcontrol-workouts-${getProfileExportSlug()}.json`, buildExportEnvelope("workouts", {
+        workoutHistory
+      }));
+    }
+
+    function exportPlansData() {
+      downloadJsonExport(`gymcontrol-plans-${getProfileExportSlug()}.json`, buildExportEnvelope("plans", {
+        scheduledWorkouts,
+        templates
+      }));
+    }
+
+    function exportNutritionData() {
+      downloadJsonExport(`gymcontrol-nutrition-${getProfileExportSlug()}.json`, buildExportEnvelope("nutrition", {
+        dailyMetricsByDate: Object.fromEntries(
+          Object.entries(dailyMetricsByDate).map(([date, entry]) => [date, {
+            date,
+            updatedAt: entry.updatedAt || "",
+            meals: Array.isArray(entry.meals) ? entry.meals : [],
+            calories: entry.calories || 0,
+            protein: entry.protein || 0,
+            fat: entry.fat || 0,
+            carbs: entry.carbs || 0
+          }])
+        )
+      }));
+    }
+
+    function exportActivityData() {
+      downloadJsonExport(`gymcontrol-activity-${getProfileExportSlug()}.json`, buildExportEnvelope("activity", {
+        dailyMetricsByDate: Object.fromEntries(
+          Object.entries(dailyMetricsByDate).map(([date, entry]) => [date, {
+            date,
+            updatedAt: entry.updatedAt || "",
+            activityEntries: Array.isArray(entry.activityEntries) ? entry.activityEntries : [],
+            activityCaloriesRaw: entry.activityCaloriesRaw || 0,
+            activityCalories: entry.activityCalories || 0,
+            steps: entry.steps || 0,
+            totalBurn: entry.totalBurn || 0,
+            deficit: entry.deficit || 0
+          }])
+        )
+      }));
+    }
+
+    function exportWaterData() {
+      downloadJsonExport(`gymcontrol-water-${getProfileExportSlug()}.json`, buildExportEnvelope("water", {
+        dailyMetricsByDate: Object.fromEntries(
+          Object.entries(dailyMetricsByDate).map(([date, entry]) => [date, {
+            date,
+            updatedAt: entry.updatedAt || "",
+            waterEntries: Array.isArray(entry.waterEntries) ? entry.waterEntries : [],
+            water: entry.water || 0,
+            liquids: entry.liquids || 0
+          }])
+        )
+      }));
+    }
+
+    function exportBodyData() {
+      downloadJsonExport(`gymcontrol-body-${getProfileExportSlug()}.json`, buildExportEnvelope("body", collectBodyMetricsExport()));
+    }
+
+    function exportCustomExercisesData() {
+      downloadJsonExport(`gymcontrol-exercises-${getProfileExportSlug()}.json`, buildExportEnvelope("custom_exercises", {
+        customExercisesBySplit,
+        customExerciseCatalog
+      }));
     }
 
     function importData(event) {
@@ -7922,6 +8414,10 @@
       reader.onload = function(e) {
         try {
           const parsed = JSON.parse(e.target.result);
+          if (parsed.section && parsed.section !== "all") {
+            alert("Этот файл содержит только часть данных. Для импорта полного профиля используй резервную копию «Сохранить все».");
+            return;
+          }
           const confirmed = confirm("Импорт заменит текущие данные. Продолжить?");
           if (!confirmed) return;
 
