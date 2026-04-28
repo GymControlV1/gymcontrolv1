@@ -1156,6 +1156,32 @@
       </div>
     </div>
 
+    <div id="googleOnboardingCard" class="card hidden">
+      <div class="section-head">
+        <h2 class="section-title">Стартовые параметры</h2>
+      </div>
+      <div class="muted" style="margin-bottom:12px;">
+        Чтобы `Баланс` и расход считались точнее, заполни пол, текущий вес, возраст, рост и образ жизни.
+      </div>
+      <div class="form-grid">
+        <select id="onboardingSexInput">
+          <option value="male">Мужчина</option>
+          <option value="female">Женщина</option>
+        </select>
+        <input id="onboardingWeightInput" type="number" min="0" step="0.1" placeholder="Текущий вес, кг" />
+        <input id="onboardingAgeInput" type="number" min="0" step="1" placeholder="Возраст" />
+        <input id="onboardingHeightInput" type="number" min="0" step="1" placeholder="Рост, см" />
+        <select id="onboardingActivityLevelInput">
+          <option value="low">Низкая активность</option>
+          <option value="moderate">Обычный образ жизни</option>
+          <option value="high">Высокая активность</option>
+        </select>
+      </div>
+      <div class="actions">
+        <button class="btn-primary" onclick="saveGoogleOnboardingProfile()">Сохранить параметры</button>
+      </div>
+    </div>
+
     <div id="appContent">
     <section id="screen-training" class="screen active">
       <div class="card">
@@ -1392,7 +1418,7 @@
           </div>
           <div class="form-grid">
             <input id="setupDate" type="date" />
-            <select id="setupWorkoutMode">
+            <select id="setupWorkoutMode" onchange="updateTrainingSetupModeUI()">
               <option value="regular">Обычная тренировка</option>
               <option value="circuit">Круговая тренировка</option>
               <option value="cardio">Кардио тренировка</option>
@@ -1895,6 +1921,14 @@
               <div class="field-label">Цель по жиру, %</div>
               <input id="bodyTargetFatInput" type="number" min="0" step="0.1" placeholder="Например 12" />
             </div>
+            <div class="form-field">
+              <div class="field-label">Образ жизни</div>
+              <select id="bodyActivityLevelInput">
+                <option value="low">Низкая активность</option>
+                <option value="moderate">Обычный образ жизни</option>
+                <option value="high">Высокая активность</option>
+              </select>
+            </div>
           </div>
           <div class="actions">
             <button class="btn-primary" onclick="saveBodyProfileSettings()">Сохранить параметры</button>
@@ -2274,7 +2308,8 @@
         age: null,
         sex: "male",
         neck: null,
-        targetBodyFat: null
+        targetBodyFat: null,
+        activityLevel: "moderate"
       };
     }
 
@@ -2355,8 +2390,22 @@
         time: getCurrentTimeValue(),
         caloriesRaw: 0,
         steps: 0,
-        note: ""
+        note: "",
+        source: "manual"
       };
+    }
+
+    function getActivityLevelDefinitions() {
+      return {
+        low: { label: "низкая активность", calories: 180 },
+        moderate: { label: "обычный образ жизни", calories: 300 },
+        high: { label: "высокая активность", calories: 450 }
+      };
+    }
+
+    function getActivityLevelLabel(level = bodyProfile.activityLevel) {
+      const definitions = getActivityLevelDefinitions();
+      return definitions[level]?.label || definitions.moderate.label;
     }
 
     function normalizeCustomExerciseLoadType(value) {
@@ -2522,7 +2571,8 @@
     }
 
     function getAverageDailyActivityCalories() {
-      return 300;
+      const definitions = getActivityLevelDefinitions();
+      return definitions[bodyProfile.activityLevel || "moderate"]?.calories || definitions.moderate.calories;
     }
 
     function createEmptyCardioWorkoutData() {
@@ -2673,7 +2723,8 @@
         time: String(entry?.time || base.time),
         caloriesRaw: clampMetricNumber(entry?.caloriesRaw ?? entry?.activityCaloriesRaw ?? entry?.activityCalories),
         steps: clampMetricNumber(entry?.steps),
-        note: String(entry?.note || "")
+        note: String(entry?.note || ""),
+        source: String(entry?.source || "manual")
       };
     }
 
@@ -2779,7 +2830,20 @@
 
     function isMeaningfulBodyProfile(profile) {
       const safe = profile || {};
-      return Object.keys(getEmptyBodyProfile()).some(key => safe[key] !== null && safe[key] !== "" && safe[key] !== "male");
+      return Object.keys(getEmptyBodyProfile()).some(key => {
+        const value = safe[key];
+        return value !== null && value !== "" && value !== "male" && value !== "moderate";
+      });
+    }
+
+    function isGoogleOnboardingNeeded() {
+      const profile = getCurrentProfile();
+      if (!profile || profile.authProvider !== "google") return false;
+      const today = getTodayEntry();
+      return !bodyProfile.height ||
+        !bodyProfile.age ||
+        !bodyProfile.activityLevel ||
+        toNumberOrNull(today.weight) === null;
     }
 
     function mergeCloudProfileSnapshots(localSnapshot, remoteSnapshot) {
@@ -3249,6 +3313,7 @@
       const hasProfile = !!currentProfileId;
       document.getElementById("appContent").classList.toggle("hidden", !hasProfile);
       document.getElementById("bottomNav").classList.toggle("hidden", !hasProfile);
+      document.getElementById("googleOnboardingCard")?.classList.toggle("hidden", !hasProfile);
     }
 
     function toggleBalanceSection(sectionName) {
@@ -3340,6 +3405,22 @@
       }
 
       updateProfileDependentUI();
+    }
+
+    function renderGoogleOnboardingCard() {
+      const card = document.getElementById("googleOnboardingCard");
+      if (!card) return;
+
+      const shouldShow = !!currentProfileId && isGoogleOnboardingNeeded();
+      card.classList.toggle("hidden", !shouldShow);
+      if (!shouldShow) return;
+
+      const today = getTodayEntry();
+      document.getElementById("onboardingSexInput").value = bodyProfile.sex || "male";
+      document.getElementById("onboardingWeightInput").value = today.weight ?? "";
+      document.getElementById("onboardingAgeInput").value = bodyProfile.age ?? "";
+      document.getElementById("onboardingHeightInput").value = bodyProfile.height ?? "";
+      document.getElementById("onboardingActivityLevelInput").value = bodyProfile.activityLevel || "moderate";
     }
 
     function createProfile(name, initialData = null) {
@@ -3500,6 +3581,9 @@
         await refreshWorkoutHistoryFromCloud(false);
         await refreshCloudProfileData(false);
         showToast(`Вход через Google: ${profile.name}`);
+        if (isGoogleOnboardingNeeded()) {
+          showToast("Заполни стартовые параметры: пол, вес, возраст, рост и образ жизни");
+        }
       } catch (error) {
         console.error("Google login error", error);
         alert(`Не удалось войти через Google: ${error.message || "неизвестная ошибка"}`);
@@ -3594,6 +3678,80 @@
       if (target && willShow) {
         target.classList.remove("hidden");
       }
+    }
+
+    function updateTrainingSetupModeUI() {
+      const workoutModeSelect = document.getElementById("setupWorkoutMode");
+      const splitSelect = document.getElementById("setupSplit");
+      if (!workoutModeSelect || !splitSelect) return;
+      const isCardio = workoutModeSelect.value === "cardio";
+      splitSelect.classList.toggle("hidden", isCardio);
+    }
+
+    function appendWorkoutActivityEntry(date, options = {}) {
+      const targetDate = date || getTodayKey();
+      const caloriesRaw = clampMetricNumber(options.caloriesRaw);
+      if (!caloriesRaw) return;
+
+      saveDailyEntry(targetDate, entry => {
+        entry.activityEntries = Array.isArray(entry.activityEntries) ? entry.activityEntries : [];
+        entry.activityEntries.push(normalizeActivityEntry({
+          time: options.time || getCurrentTimeValue(),
+          caloriesRaw,
+          steps: 0,
+          note: options.note || "Тренировка",
+          source: "workout"
+        }, targetDate, entry.activityEntries.length));
+        return entry;
+      });
+    }
+
+    function promptWorkoutCaloriesValue(defaultValue = "") {
+      const rawValue = prompt("Сколько ккал сожжено за тренировку? Если не знаешь точное значение, оставь 0.", defaultValue);
+      if (rawValue === null) {
+        return null;
+      }
+
+      if (String(rawValue).trim() === "") {
+        return 0;
+      }
+
+      const caloriesRaw = Number(rawValue);
+      if (!Number.isFinite(caloriesRaw) || caloriesRaw < 0) {
+        alert("Укажи число 0 или больше.");
+        return null;
+      }
+
+      return Math.round(caloriesRaw);
+    }
+
+    function saveGoogleOnboardingProfile() {
+      const weight = toNumberOrNull(document.getElementById("onboardingWeightInput")?.value);
+      const height = toNumberOrNull(document.getElementById("onboardingHeightInput")?.value);
+      const age = toNumberOrNull(document.getElementById("onboardingAgeInput")?.value);
+      const sex = document.getElementById("onboardingSexInput")?.value || "male";
+      const activityLevel = document.getElementById("onboardingActivityLevelInput")?.value || "moderate";
+
+      if (!weight || !height || !age) {
+        alert("Заполни вес, рост и возраст.");
+        return;
+      }
+
+      bodyProfile = {
+        ...getEmptyBodyProfile(),
+        ...bodyProfile,
+        height,
+        age,
+        sex,
+        activityLevel
+      };
+
+      saveDailyEntry(getTodayKey(), entry => {
+        entry.weight = weight;
+        return entry;
+      });
+
+      showToast("Стартовые параметры сохранены");
     }
 
     function getDeficitStatusText(deficit) {
@@ -4366,7 +4524,8 @@
         age: toNumberOrNull(document.getElementById("bodyAgeInput").value),
         sex: document.getElementById("bodySexInput").value || "male",
         neck: toNumberOrNull(document.getElementById("bodyNeckInput").value),
-        targetBodyFat: toNumberOrNull(document.getElementById("bodyTargetFatInput").value)
+        targetBodyFat: toNumberOrNull(document.getElementById("bodyTargetFatInput").value),
+        activityLevel: document.getElementById("bodyActivityLevelInput").value || "moderate"
       };
 
       Object.keys(dailyMetricsByDate).forEach(date => {
@@ -4506,7 +4665,7 @@
       profileNote.textContent = `Сегодня: ${entry.date}`;
       if (bodyProfileSummary) {
         bodyProfileSummary.innerHTML = `
-          Рост: ${formatMetric(bodyProfile.height, " см")} · Возраст: ${formatMetric(bodyProfile.age)} · Пол: ${bodyProfile.sex === "female" ? "женщина" : "мужчина"} · Шея: ${formatMetric(bodyProfile.neck, " см")} · Цель по жиру: ${formatMetric(bodyProfile.targetBodyFat, "%")}
+          Рост: ${formatMetric(bodyProfile.height, " см")} · Возраст: ${formatMetric(bodyProfile.age)} · Пол: ${bodyProfile.sex === "female" ? "женщина" : "мужчина"} · Шея: ${formatMetric(bodyProfile.neck, " см")} · Образ жизни: ${escapeHtml(getActivityLevelLabel())} · Цель по жиру: ${formatMetric(bodyProfile.targetBodyFat, "%")}
         `;
       }
       if (statsSummary) {
@@ -4658,9 +4817,9 @@
             <div class="metric-subvalue">ккал в покое</div>
           </div>
           <div class="metric-tile">
-            <div class="metric-label">Средняя активность</div>
+            <div class="metric-label">Образ жизни</div>
             <div class="metric-value">${getAverageDailyActivityCalories()}</div>
-            <div class="metric-subvalue">ккал в день</div>
+            <div class="metric-subvalue">${escapeHtml(getActivityLevelLabel())}</div>
           </div>
           <div class="metric-tile emphasis">
             <div class="metric-label">С часов</div>
@@ -4706,6 +4865,7 @@
       renderProfileScreen();
       syncSettingsUI();
       renderProfileManager();
+      renderGoogleOnboardingCard();
     }
 
     function saveData(options = {}) {
@@ -5896,6 +6056,7 @@
       switch (currentSession.state) {
         case "setup":
           document.getElementById("trainingSetupView").classList.remove("hidden");
+          updateTrainingSetupModeUI();
           break;
         case "warmup":
           document.getElementById("warmupView").classList.remove("hidden");
@@ -5950,6 +6111,7 @@
       document.getElementById("setupDate").valueAsDate = new Date();
       document.getElementById("setupWorkoutMode").value = "regular";
       updateCircuitExerciseOptions();
+      updateTrainingSetupModeUI();
       renderTrainingScreen();
     }
 
@@ -6250,6 +6412,11 @@
 
       workoutHistory.unshift(historyItem);
       queueWorkoutForCloud(historyItem);
+      appendWorkoutActivityEntry(historyItem.date, {
+        time: cardio.time,
+        caloriesRaw: cardio.caloriesBurned,
+        note: `Кардио: ${getCardioTypeLabel(cardio.cardioType)}`
+      });
       currentSession.pendingSummary = {
         date: historyItem.date,
         workoutType: "cardio",
@@ -7005,6 +7172,11 @@
         return;
       }
 
+      const workoutCaloriesRaw = promptWorkoutCaloriesValue("");
+      if (workoutCaloriesRaw === null) {
+        return;
+      }
+
       const totalVolume = currentSession.sets.reduce((sum, set) => sum + set.volume, 0);
       const exercises = [...new Set(currentSession.sets.map(set => set.exercise))];
 
@@ -7026,6 +7198,11 @@
 
       workoutHistory.unshift(historyItem);
       queueWorkoutForCloud(historyItem);
+      appendWorkoutActivityEntry(historyItem.date, {
+        time: getCurrentTimeValue(),
+        caloriesRaw: workoutCaloriesRaw,
+        note: `Тренировка: ${currentSession.workoutMode === "circuit" ? `круговая · ${currentSession.split}` : currentSession.split}`
+      });
 
       if (currentSession.fromScheduledWorkoutId) {
         const scheduled = scheduledWorkouts.find(item => item.id === currentSession.fromScheduledWorkoutId);
@@ -8246,8 +8423,12 @@
       document.getElementById("bodySexInput").value = bodyProfile.sex || "male";
       document.getElementById("bodyNeckInput").value = bodyProfile.neck ?? "";
       document.getElementById("bodyTargetFatInput").value = bodyProfile.targetBodyFat ?? "";
+      const bodyActivityLevelInput = document.getElementById("bodyActivityLevelInput");
+      if (bodyActivityLevelInput) {
+        bodyActivityLevelInput.value = bodyProfile.activityLevel || "moderate";
+      }
       bodyNote.innerHTML = `
-        Параметры тела теперь находятся во вкладке «Баланс». Сегодняшний расчет: BMR ${today.bmr || 0} ккал, средняя дневная активность ${getAverageDailyActivityCalories()} ккал, расход ${today.totalBurn || 0} ккал, ${getEnergyBalanceLabel(today.deficit || 0).toLowerCase()} ${getEnergyBalanceValue(today.deficit || 0)} ккал.
+        Параметры тела теперь находятся во вкладке «Баланс». Сегодняшний расчет: BMR ${today.bmr || 0} ккал, образ жизни ${escapeHtml(getActivityLevelLabel())}, базовая дневная активность ${getAverageDailyActivityCalories()} ккал, расход ${today.totalBurn || 0} ккал, ${getEnergyBalanceLabel(today.deficit || 0).toLowerCase()} ${getEnergyBalanceValue(today.deficit || 0)} ккал.
       `;
 
       backupSummary.innerHTML = `
