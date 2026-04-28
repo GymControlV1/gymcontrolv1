@@ -1072,6 +1072,20 @@
       color: #334155;
     }
 
+    .collapsible-panel {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(215, 225, 238, 0.85);
+    }
+
+    .screen-intro {
+      background: linear-gradient(180deg, #f8fbff 0%, #f1f6fd 100%);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 14px;
+      box-shadow: var(--shadow-soft);
+    }
+
     @media (max-width: 700px) {
       .container { padding: 12px 12px 20px; }
       input, select, button, textarea { font-size: 16px; }
@@ -1115,7 +1129,7 @@
     <div id="profileCard" class="card profile-card">
       <div class="profile-head">
         <div>
-          <div class="muted">Активный профиль</div>
+          <div class="muted" id="profileCurrentLabel">Активный профиль</div>
           <div class="profile-name" id="profileCurrentName">Профиль не выбран</div>
         </div>
         <span id="profileBadge" class="badge hidden">Активный</span>
@@ -1805,7 +1819,64 @@
             <button class="btn-secondary" onclick="switchScreen('training')">На главную</button>
           </div>
         </div>
+        <div class="screen-intro muted" style="margin-bottom:12px;">
+          Баланс показывает состояние дня: тело, калории, КБЖУ, воду, активность и динамику по ключевым показателям.
+        </div>
         <div id="balanceDateNote" class="muted"></div>
+      </div>
+
+      <div class="card">
+        <div class="section-head">
+          <h2 class="section-title">Параметры тела</h2>
+          <div class="section-head-actions">
+            <button class="btn-secondary" onclick="toggleBalanceSection('bodySettings')">Показать / скрыть</button>
+          </div>
+        </div>
+        <div id="balanceBodyProfileSummary" class="muted"></div>
+        <div id="balanceBodySettingsPanel" class="collapsible-panel hidden">
+          <div class="form-grid">
+            <div class="form-field">
+              <div class="field-label">Рост, см</div>
+              <input id="bodyHeightInput" type="number" min="0" step="1" placeholder="Рост, см" />
+            </div>
+            <div class="form-field">
+              <div class="field-label">Возраст</div>
+              <input id="bodyAgeInput" type="number" min="0" step="1" placeholder="Возраст" />
+            </div>
+            <div class="form-field">
+              <div class="field-label">Пол</div>
+              <select id="bodySexInput">
+                <option value="male">Мужчина</option>
+                <option value="female">Женщина</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <div class="field-label">Шея, см</div>
+              <input id="bodyNeckInput" type="number" min="0" step="0.1" placeholder="Шея, см" />
+            </div>
+            <div class="form-field">
+              <div class="field-label">Цель по жиру, %</div>
+              <input id="bodyTargetFatInput" type="number" min="0" step="0.1" placeholder="Например 12" />
+            </div>
+          </div>
+          <div class="actions">
+            <button class="btn-primary" onclick="saveBodyProfileSettings()">Сохранить параметры</button>
+          </div>
+          <div id="profileBodyNote" class="muted" style="margin-top:10px;"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-head">
+          <h2 class="section-title">Статистика показателей</h2>
+          <div class="section-head-actions">
+            <button class="btn-secondary" onclick="toggleBalanceSection('stats')">Показать / скрыть</button>
+          </div>
+        </div>
+        <div id="balanceStatsSummary" class="muted"></div>
+        <div id="balanceStatsPanel" class="collapsible-panel hidden">
+          <div id="balanceTrendCard" class="muted"></div>
+        </div>
       </div>
 
       <div class="card">
@@ -1824,17 +1895,35 @@
       </div>
 
       <div class="card">
-        <h2 class="section-title">Приёмы пищи</h2>
+        <div class="section-head">
+          <h2 class="section-title">Приёмы пищи</h2>
+          <div class="section-head-actions">
+            <button class="btn-secondary" onclick="toggleBalanceSection('meals')">Показать / скрыть</button>
+          </div>
+        </div>
+        <div id="balanceMealsSummary" class="muted"></div>
         <div id="balanceMealsCard" class="muted"></div>
       </div>
 
       <div class="card">
-        <h2 class="section-title">Вода</h2>
+        <div class="section-head">
+          <h2 class="section-title">Вода</h2>
+          <div class="section-head-actions">
+            <button class="btn-secondary" onclick="toggleBalanceSection('water')">Показать / скрыть</button>
+          </div>
+        </div>
+        <div id="balanceWaterSummary" class="muted"></div>
         <div id="balanceWaterCard" class="muted"></div>
       </div>
 
       <div class="card">
-        <h2 class="section-title">Активность</h2>
+        <div class="section-head">
+          <h2 class="section-title">Активность</h2>
+          <div class="section-head-actions">
+            <button class="btn-secondary" onclick="toggleBalanceSection('activity')">Показать / скрыть</button>
+          </div>
+        </div>
+        <div id="balanceActivitySummary" class="muted"></div>
         <div id="balanceActivityCard" class="muted"></div>
       </div>
 
@@ -1857,45 +1946,15 @@
             <button class="btn-secondary" onclick="goToTrainingHome()">На главную</button>
           </div>
         </div>
+        <div class="screen-intro muted" style="margin-bottom:12px;">
+          Профиль нужен для управления облаком, доступа к статистике и планам тренировок.
+        </div>
         <div id="profileCabinetHeader" class="info-box"></div>
       </div>
 
       <div class="card">
         <h2 class="section-title">Краткая сводка</h2>
         <div id="profileCabinetSummary" class="muted"></div>
-      </div>
-
-      <div class="card">
-        <h2 class="section-title">Параметры тела</h2>
-        <div class="form-grid">
-          <div class="form-field">
-            <div class="field-label">Рост, см</div>
-            <input id="bodyHeightInput" type="number" min="0" step="1" placeholder="Рост, см" />
-          </div>
-          <div class="form-field">
-            <div class="field-label">Возраст</div>
-            <input id="bodyAgeInput" type="number" min="0" step="1" placeholder="Возраст" />
-          </div>
-          <div class="form-field">
-            <div class="field-label">Пол</div>
-            <select id="bodySexInput">
-              <option value="male">Мужчина</option>
-              <option value="female">Женщина</option>
-            </select>
-          </div>
-          <div class="form-field">
-            <div class="field-label">Шея, см</div>
-            <input id="bodyNeckInput" type="number" min="0" step="0.1" placeholder="Шея, см" />
-          </div>
-          <div class="form-field">
-            <div class="field-label">Цель по жиру, %</div>
-            <input id="bodyTargetFatInput" type="number" min="0" step="0.1" placeholder="Например 12" />
-          </div>
-        </div>
-        <div class="actions">
-          <button class="btn-primary" onclick="saveBodyProfileSettings()">Сохранить параметры</button>
-        </div>
-        <div id="profileBodyNote" class="muted" style="margin-top:10px;"></div>
       </div>
 
       <div class="card">
@@ -1976,6 +2035,13 @@
     let nutritionEditingMealRef = null;
     let waterEditingEntryRef = null;
     let activityEditingEntryRef = null;
+    const balanceSectionState = {
+      bodySettings: false,
+      stats: false,
+      meals: false,
+      water: false,
+      activity: false
+    };
     let profiles = [];
     let currentProfileId = "";
     let cloudConfig = {
@@ -2842,12 +2908,26 @@
       document.getElementById("bottomNav").classList.toggle("hidden", !hasProfile);
     }
 
+    function toggleBalanceSection(sectionName) {
+      if (!Object.prototype.hasOwnProperty.call(balanceSectionState, sectionName)) return;
+      balanceSectionState[sectionName] = !balanceSectionState[sectionName];
+      renderBalanceScreen();
+    }
+
+    function getCurrentAccountDisplayName() {
+      const profile = getCurrentProfile();
+      if (!profile) return "Профиль не выбран";
+      return profile.email || profile.username || profile.name || getCurrentProfileName();
+    }
+
     function renderProfileManager() {
       const select = document.getElementById("profileSelect");
       const currentName = document.getElementById("profileCurrentName");
+      const currentLabel = document.getElementById("profileCurrentLabel");
       const badge = document.getElementById("profileBadge");
       const setupFields = document.getElementById("profileSetupFields");
       const googleSection = document.getElementById("googleLoginSection");
+      const profileNote = document.getElementById("profileNote");
       const activeProfile = getCurrentProfile();
       const selectableProfiles = profiles.filter(profile => profile.authProvider === "local");
 
@@ -2858,10 +2938,12 @@
         option.value = "";
         option.textContent = "Профилей пока нет";
         select.appendChild(option);
+        currentLabel.textContent = "Активный профиль";
         currentName.textContent = "Профиль не выбран";
         badge.classList.add("hidden");
         setupFields.classList.remove("hidden");
         googleSection.classList.remove("hidden");
+        profileNote.classList.remove("hidden");
         renderGoogleLoginButton();
         updateProfileDependentUI();
         return;
@@ -2882,15 +2964,19 @@
       });
 
       if (currentProfileId && activeProfile) {
-        currentName.textContent = getCurrentProfileName();
-        badge.classList.remove("hidden");
+        currentLabel.textContent = activeProfile.authProvider === "google" ? "Google аккаунт" : "Активный профиль";
+        currentName.textContent = getCurrentAccountDisplayName();
+        badge.classList.add("hidden");
         setupFields.classList.add("hidden");
         googleSection.classList.add("hidden");
+        profileNote.classList.add("hidden");
       } else {
+        currentLabel.textContent = "Активный профиль";
         currentName.textContent = "Профиль не выбран";
         badge.classList.add("hidden");
         setupFields.classList.remove("hidden");
         googleSection.classList.remove("hidden");
+        profileNote.classList.remove("hidden");
         renderGoogleLoginButton();
       }
 
@@ -4045,6 +4131,14 @@
       const notesCard = document.getElementById("balanceNotesCard");
       const weekCard = document.getElementById("balanceWeekCard");
       const mealsCard = document.getElementById("balanceMealsCard");
+      const trendCard = document.getElementById("balanceTrendCard");
+      const mealsSummary = document.getElementById("balanceMealsSummary");
+      const waterSummaryBox = document.getElementById("balanceWaterSummary");
+      const activitySummaryBox = document.getElementById("balanceActivitySummary");
+      const bodyProfileSummary = document.getElementById("balanceBodyProfileSummary");
+      const statsSummary = document.getElementById("balanceStatsSummary");
+      const bodySettingsPanel = document.getElementById("balanceBodySettingsPanel");
+      const statsPanel = document.getElementById("balanceStatsPanel");
       if (!profileNote) return;
 
       const water = getWaterProgress(entry, targets);
@@ -4055,6 +4149,18 @@
       const carbsProgress = getProgressWidth(entry.carbs, targets.carbsMax);
 
       profileNote.textContent = `Сегодня: ${entry.date}`;
+      if (bodyProfileSummary) {
+        bodyProfileSummary.innerHTML = `
+          Рост: ${formatMetric(bodyProfile.height, " см")} · Возраст: ${formatMetric(bodyProfile.age)} · Пол: ${bodyProfile.sex === "female" ? "женщина" : "мужчина"} · Шея: ${formatMetric(bodyProfile.neck, " см")} · Цель по жиру: ${formatMetric(bodyProfile.targetBodyFat, "%")}
+        `;
+      }
+      if (statsSummary) {
+        statsSummary.innerHTML = `
+          Вес: ${formatMetric(week.weightChange, " кг")} за 7 дней · Талия: ${formatMetric(week.waistChange, " см")} · Средний ${getEnergyBalanceLabel(week.avgDeficit || 0).toLowerCase()}: ${Math.abs(week.avgDeficit || 0)} ккал
+        `;
+      }
+      if (bodySettingsPanel) bodySettingsPanel.classList.toggle("hidden", !balanceSectionState.bodySettings);
+      if (statsPanel) statsPanel.classList.toggle("hidden", !balanceSectionState.stats);
       bodyCard.innerHTML = `
         <div class="metric-grid">
           <div class="metric-tile blue">
@@ -4095,6 +4201,32 @@
           </div>
         </div>
       `;
+      if (trendCard) {
+        trendCard.innerHTML = `
+          <div class="metric-grid">
+            <div class="metric-tile blue">
+              <div class="metric-label">Вес</div>
+              <div class="metric-value">${formatMetric(week.weightChange, " кг")}</div>
+              <div class="metric-subvalue">изменение за 7 дней</div>
+            </div>
+            <div class="metric-tile blue">
+              <div class="metric-label">Талия</div>
+              <div class="metric-value">${formatMetric(week.waistChange, " см")}</div>
+              <div class="metric-subvalue">изменение за 7 дней</div>
+            </div>
+            <div class="metric-tile emphasis">
+              <div class="metric-label">% жира</div>
+              <div class="metric-value">${formatMetric(week.avgBodyFat, "%")}</div>
+              <div class="metric-subvalue">среднее за 7 дней</div>
+            </div>
+            <div class="metric-tile ${isDeficitInSafeRange(week.avgDeficit || 0) ? "green" : "red"}">
+              <div class="metric-label">${getEnergyBalanceLabel(week.avgDeficit || 0)}</div>
+              <div class="metric-value">${Math.abs(week.avgDeficit || 0)}</div>
+              <div class="metric-subvalue">среднее за 7 дней</div>
+            </div>
+          </div>
+        `;
+      }
       caloriesCard.innerHTML = `
         <div class="status-panel ${isDeficitInSafeRange(entry.deficit || 0) ? "status-ok" : "status-bad"}">
           За день: ${getEnergyBalanceLabel(entry.deficit || 0)} ${getEnergyBalanceValue(entry.deficit || 0)} ккал · ${getDeficitStatusText(entry.deficit || 0)}
@@ -4142,7 +4274,15 @@
         </div>
       `;
       if (mealsCard) {
-        mealsCard.innerHTML = renderBalanceMeals(entry);
+        if (mealsSummary) {
+          mealsSummary.textContent = `Приемов пищи сегодня: ${entry.meals?.length || 0} · калории ${entry.calories || 0} ккал`;
+        }
+        mealsCard.innerHTML = balanceSectionState.meals
+          ? `<div class="collapsible-panel">${renderBalanceMeals(entry)}</div>`
+          : "";
+      }
+      if (waterSummaryBox) {
+        waterSummaryBox.textContent = `Выпито: ${water.water} / ${water.target} мл · ${water.percent}% · записей ${entry.waterEntries?.length || 0}`;
       }
       waterCard.innerHTML = `
         <div class="status-panel ${water.remaining === 0 ? "status-ok" : water.percent >= 70 ? "status-warn" : "status-bad"}">
@@ -4150,10 +4290,11 @@
           <div class="progress-strip green"><span style="width:${water.percent}%;"></span></div>
         </div>
         Жидкости: ${entry.liquids || 0} мл
-        <div style="margin-top:10px;">
-          ${renderWaterEntries(entry.date, entry.waterEntries || [])}
-        </div>
+        ${balanceSectionState.water ? `<div class="collapsible-panel" style="margin-top:10px;">${renderWaterEntries(entry.date, entry.waterEntries || [])}</div>` : ""}
       `;
+      if (activitySummaryBox) {
+        activitySummaryBox.textContent = `После коррекции: ${entry.activityCalories || 0} ккал · шаги ${entry.steps || 0} · записей ${entry.activityEntries?.length || 0}`;
+      }
       activityCard.innerHTML = `
         <div class="metric-grid">
           <div class="metric-tile blue">
@@ -4172,9 +4313,7 @@
             <div class="metric-subvalue">${entry.activityCaloriesRaw || 0} до коррекции · ${entry.steps || 0} шагов</div>
           </div>
         </div>
-        <div style="margin-top:10px;">
-          ${renderActivityEntries(entry.date, entry.activityEntries || [])}
-        </div>
+        ${balanceSectionState.activity ? `<div class="collapsible-panel" style="margin-top:10px;">${renderActivityEntries(entry.date, entry.activityEntries || [])}</div>` : ""}
       `;
       notesCard.innerHTML = `<div class="note-list">${notes.map(note => `<div class="note-item">${escapeHtml(note)}</div>`).join("")}</div>`;
       weekCard.innerHTML = `
@@ -4200,9 +4339,6 @@
             <div class="metric-subvalue">г в день</div>
           </div>
         </div>
-        ${renderMiniChart(week.entries, "deficit", value => `${Math.round(value)}`)}
-        ${renderMiniChart(week.entries, "weight", value => `${roundTo(value, 1)} кг`)}
-        ${renderMiniChart(week.entries, "waist", value => `${roundTo(value, 1)} см`)}
       `;
     }
 
@@ -7363,7 +7499,7 @@
       header.innerHTML = `
         <strong>${escapeHtml(getCurrentProfileName())}</strong>
         <div class="muted">
-          Профиль создан: ${profile?.createdAt ? new Date(profile.createdAt).toLocaleString("ru-RU") : "неизвестно"}
+          ${profile?.authProvider === "google" ? `Вход через ${escapeHtml(profile.email || "Google")}` : `Локальный профиль · создан ${profile?.createdAt ? new Date(profile.createdAt).toLocaleString("ru-RU") : "неизвестно"}`}
         </div>
       `;
 
@@ -7383,11 +7519,8 @@
       document.getElementById("bodyNeckInput").value = bodyProfile.neck ?? "";
       document.getElementById("bodyTargetFatInput").value = bodyProfile.targetBodyFat ?? "";
       bodyNote.innerHTML = `
-        Профиль тела: рост ${formatMetric(bodyProfile.height, " см")}, возраст ${formatMetric(bodyProfile.age)}, пол ${bodyProfile.sex === "female" ? "женщина" : "мужчина"}, шея ${formatMetric(bodyProfile.neck, " см")}, цель ${formatMetric(bodyProfile.targetBodyFat, "%")}<br>
-        Сегодняшний расчет: BMR ${today.bmr || 0} ккал, средняя дневная активность ${getAverageDailyActivityCalories()} ккал, расход ${today.totalBurn || 0} ккал, ${getEnergyBalanceLabel(today.deficit || 0).toLowerCase()} ${getEnergyBalanceValue(today.deficit || 0)} ккал.
+        Параметры тела теперь находятся во вкладке «Баланс». Сегодняшний расчет: BMR ${today.bmr || 0} ккал, средняя дневная активность ${getAverageDailyActivityCalories()} ккал, расход ${today.totalBurn || 0} ккал, ${getEnergyBalanceLabel(today.deficit || 0).toLowerCase()} ${getEnergyBalanceValue(today.deficit || 0)} ккал.
       `;
-
-      renderProfileWorkoutHistoryList();
     }
 
     function updateTemplateExerciseOptions() {
