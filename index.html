@@ -493,6 +493,12 @@
       color: #991b1b;
     }
 
+    .status-info {
+      background: #dbeafe;
+      border-color: #93c5fd;
+      color: #1d4ed8;
+    }
+
     .mini-chart {
       display: grid;
       gap: 10px;
@@ -887,8 +893,7 @@
     #todayActivitySummary,
     #todayNutritionSummary,
     #profileCloudStatus,
-    #profileCabinetSummary,
-    #profileBodyNote {
+    #profileCabinetSummary {
       background: linear-gradient(180deg, #f8fbff 0%, #f2f7fd 100%);
       border: 1px solid var(--border);
       border-radius: 18px;
@@ -916,7 +921,6 @@
     #balanceMealsCard,
     #balanceWaterCard,
     #balanceActivityCard,
-    #balanceNotesCard,
     #balanceWeekCard {
       display: grid;
       gap: 10px;
@@ -1107,8 +1111,7 @@
       #todayActivitySummary,
       #todayNutritionSummary,
       #profileCloudStatus,
-      #profileCabinetSummary,
-      #profileBodyNote { padding: 12px; }
+      #profileCabinetSummary { padding: 12px; }
     }
   </style>
 </head>
@@ -1239,8 +1242,8 @@
           <h2 class="section-title">Вес и замеры</h2>
           <div class="form-grid">
             <div class="form-field">
-              <div class="field-label">Вес, кг</div>
-              <input id="dailyWeightInput" type="number" min="0" step="0.1" placeholder="Вес, кг" />
+              <div class="field-label">Вес сегодня, кг</div>
+              <input id="dailyWeightInput" type="number" min="0" step="0.1" placeholder="Необязательно" />
             </div>
             <div class="form-field">
               <div class="field-label">Талия, см</div>
@@ -1375,37 +1378,6 @@
           <div id="todayActivityEntriesBox" style="margin-top:12px;"></div>
         </div>
 
-        <div class="card">
-          <h2 class="section-title">Помощь</h2>
-          <div class="muted">
-            Выбери тренировку или план, вводи вес и повторы, сохраняй подходы и отдыхай по таймеру.
-          </div>
-          <div class="actions">
-            <button class="btn-secondary" onclick="showHelpInline()">? Как пользоваться</button>
-          </div>
-          <div id="helpInlineBox" class="hint-box hidden">
-            <ol class="help-list">
-              <li>Начни тренировку или запусти план.</li>
-              <li>Сделай разминку.</li>
-              <li>Вводи вес и повторы и нажимай «Готово».</li>
-              <li>После подхода запустится таймер отдыха.</li>
-              <li>Прогресс смотри во вкладке «Статистика».</li>
-            </ol>
-            <div class="muted" style="margin-top:10px;">
-              Замеры тела: вес лучше утром натощак, талию мерь на расслабленном выдохе, шею чуть ниже кадыка, а для женщин бедра/ягодицы по самой широкой части.
-            </div>
-          </div>
-        </div>
-
-        <div class="card">
-          <h2 class="section-title">Обратная связь</h2>
-          <div class="muted">
-            Если хочешь предложить идею, сообщить о проблеме или просто написать отзыв, переходи сразу в Telegram.
-          </div>
-          <div class="actions">
-            <button class="btn-teal" onclick="openFeedbackTelegram()">Открыть Telegram</button>
-          </div>
-        </div>
       </div>
 
       <div id="trainingSetupView" class="hidden">
@@ -1563,18 +1535,17 @@
           </div>
 
           <div class="form-grid" style="margin-top:14px;">
-            <input id="gymExerciseSearch" type="text" placeholder="Быстрый поиск упражнения" oninput="updateGymExerciseOptions()" />
             <select id="gymExerciseSelect" onchange="changeManualExercise()"></select>
-            <input id="gymCustomExercise" type="text" placeholder="Свое упражнение" />
-            <select id="gymLoadType">
+            <input id="gymCustomExercise" type="text" placeholder="Свое упражнение" oninput="markGymFormDirty()" />
+            <select id="gymLoadType" onchange="markGymFormDirty()">
               <option value="barbell">Штанга / общий вес</option>
               <option value="machine">Тренажер / общий вес</option>
               <option value="dumbbell_one">1 гантель</option>
               <option value="dumbbell_two">2 гантели</option>
               <option value="bodyweight">Собственный вес</option>
             </select>
-            <input id="gymWeight" type="number" min="0" step="0.1" placeholder="Вес" />
-            <input id="gymReps" type="number" min="1" step="1" placeholder="Повторы" />
+            <input id="gymWeight" type="number" min="0" step="0.1" placeholder="Вес" oninput="markGymFormDirty()" />
+            <input id="gymReps" type="number" min="1" step="1" placeholder="Повторы" oninput="markGymFormDirty()" />
           </div>
 
           <div class="quick-grid">
@@ -1836,42 +1807,6 @@
     </section>
 
     <section id="screen-more" class="screen">
-      <div class="card">
-        <h2 class="section-title">Настройки</h2>
-        <div class="settings-row">
-          <label class="setting-chip">
-            <input type="checkbox" id="soundEnabledMore" checked onchange="toggleSetting('soundEnabled', this.checked, true)" />
-            <span>Звук таймера</span>
-          </label>
-          <label class="setting-chip">
-            <input type="checkbox" id="vibrationEnabledMore" checked onchange="toggleSetting('vibrationEnabled', this.checked, true)" />
-            <span>Вибрация</span>
-          </label>
-        </div>
-      </div>
-
-      <div class="card">
-        <h2 class="section-title">Помощь</h2>
-        <ol class="help-list">
-          <li>Выбери тренировку или запусти план.</li>
-          <li>Сделай разминку.</li>
-          <li>Вводи вес и повторы и нажимай «Готово».</li>
-          <li>После подхода отдыхай по таймеру.</li>
-          <li>Прогресс смотри во вкладке «Статистика».</li>
-        </ol>
-        <div class="muted" style="margin-top:10px;">
-          Замеры тела: вес лучше утром натощак, талию мерь на расслабленном выдохе, шею чуть ниже кадыка, а для женщин бедра/ягодицы по самой широкой части.
-        </div>
-      </div>
-
-      <div class="card">
-        <h2 class="section-title">Дисклеймер</h2>
-        <div class="muted">
-          Приложение предназначено для фиксации выполненных упражнений и не заменяет рекомендации врача,
-          тренера или иных специалистов. Перед началом занятий рекомендуется получить рекомендации специалистов.
-          Пользователь выполняет упражнения под свою ответственность. Приложение не несет ответственности за возможные травмы.
-        </div>
-      </div>
     </section>
 
     <section id="screen-balance" class="screen">
@@ -1895,9 +1830,12 @@
             <button class="btn-secondary" onclick="toggleBalanceSection('bodySettings')">Показать / скрыть</button>
           </div>
         </div>
-        <div id="balanceBodyProfileSummary" class="muted"></div>
         <div id="balanceBodySettingsPanel" class="collapsible-panel hidden">
           <div class="form-grid">
+            <div class="form-field">
+              <div class="field-label">Текущий вес, кг</div>
+              <input id="bodyWeightInput" type="number" min="0" step="0.1" placeholder="Вес, кг" />
+            </div>
             <div class="form-field">
               <div class="field-label">Рост, см</div>
               <input id="bodyHeightInput" type="number" min="0" step="1" placeholder="Рост, см" />
@@ -1933,20 +1871,37 @@
           <div class="actions">
             <button class="btn-primary" onclick="saveBodyProfileSettings()">Сохранить параметры</button>
           </div>
-          <div id="profileBodyNote" class="muted" style="margin-top:10px;"></div>
         </div>
       </div>
 
       <div class="card">
         <div class="section-head">
-          <h2 class="section-title">Статистика показателей</h2>
+          <h2 class="section-title">Динамика</h2>
           <div class="section-head-actions">
             <button class="btn-secondary" onclick="toggleBalanceSection('stats')">Показать / скрыть</button>
           </div>
         </div>
         <div id="balanceStatsSummary" class="muted"></div>
         <div id="balanceStatsPanel" class="collapsible-panel hidden">
-          <div id="balanceTrendCard" class="muted"></div>
+          <div class="actions" style="margin-bottom:12px;">
+            <button id="balanceRange7dBtn" class="btn-secondary" onclick="setBalanceDynamicsRange('7d')">7 дней</button>
+            <button id="balanceRangeAllBtn" class="btn-secondary" onclick="setBalanceDynamicsRange('all')">Весь период</button>
+          </div>
+          <div class="chart-wrap" style="margin-bottom:14px;">
+            <div class="chart-box">
+              <canvas id="balanceWeightChart" width="900" height="280"></canvas>
+            </div>
+          </div>
+          <div class="chart-wrap" style="margin-bottom:14px;">
+            <div class="chart-box">
+              <canvas id="balanceBodyFatChart" width="900" height="280"></canvas>
+            </div>
+          </div>
+          <div class="chart-wrap">
+            <div class="chart-box">
+              <canvas id="balanceDeficitChart" width="900" height="280"></canvas>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1999,12 +1954,7 @@
       </div>
 
       <div class="card">
-        <h2 class="section-title">Умные заметки</h2>
-        <div id="balanceNotesCard" class="muted"></div>
-      </div>
-
-      <div class="card">
-        <h2 class="section-title">Динамика 7 дней</h2>
+        <h2 class="section-title">Сводка 7 дней</h2>
         <div id="balanceWeekCard" class="muted"></div>
       </div>
     </section>
@@ -2038,9 +1988,77 @@
       <div class="card">
         <h2 class="section-title">Облако и устройства</h2>
         <div id="profileCloudStatus" class="muted" style="margin-bottom:10px;"></div>
+        <div class="form-grid" style="margin-bottom:10px;">
+          <div class="form-field">
+            <div class="field-label">URL Google Apps Script</div>
+            <input id="cloudScriptUrl" type="text" placeholder="Вставь URL Web App" />
+          </div>
+          <label class="setting-chip" style="align-self:end;">
+            <input type="checkbox" id="cloudAutoSync" onchange="toggleCloudAutoSync(this.checked)" />
+            <span>Автосинхронизация</span>
+          </label>
+        </div>
         <div class="actions full">
+          <button class="btn-secondary" onclick="saveCloudScriptUrl()">Сохранить URL</button>
+          <button class="btn-secondary" onclick="pingCloudScript()">Проверить подключение</button>
           <button class="btn-primary" onclick="syncAllCloudData(true)">Синхронизировать сейчас</button>
           <button class="btn-secondary" onclick="refreshAllCloudData(true)">Обновить из облака</button>
+        </div>
+        <div id="cloudSyncStatus" class="muted" style="margin-top:10px;"></div>
+      </div>
+
+      <div class="card">
+        <h2 class="section-title">Настройки</h2>
+        <div class="settings-row">
+          <label class="setting-chip">
+            <input type="checkbox" id="soundEnabledMore" checked onchange="toggleSetting('soundEnabled', this.checked, true)" />
+            <span>Звук таймера</span>
+          </label>
+          <label class="setting-chip">
+            <input type="checkbox" id="vibrationEnabledMore" checked onchange="toggleSetting('vibrationEnabled', this.checked, true)" />
+            <span>Вибрация</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 class="section-title">Помощь</h2>
+        <div class="muted">
+          Выбери тренировку или план, вводи вес и повторы, сохраняй подходы и отдыхай по таймеру.
+        </div>
+        <div class="actions">
+          <button class="btn-secondary" onclick="showHelpInline()">? Как пользоваться</button>
+        </div>
+        <div id="helpInlineBox" class="hint-box hidden">
+          <ol class="help-list">
+            <li>Начни тренировку или запусти план.</li>
+            <li>Сделай разминку.</li>
+            <li>Вводи вес и повторы и нажимай «Готово».</li>
+            <li>После подхода запустится таймер отдыха.</li>
+            <li>Прогресс смотри во вкладке «Статистика».</li>
+          </ol>
+          <div class="muted" style="margin-top:10px;">
+            Замеры тела: вес лучше утром натощак, талию мерь на расслабленном выдохе, шею чуть ниже кадыка, а для женщин бедра/ягодицы по самой широкой части.
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 class="section-title">Обратная связь</h2>
+        <div class="muted">
+          Если хочешь предложить идею, сообщить о проблеме или просто написать отзыв, переходи сразу в Telegram.
+        </div>
+        <div class="actions">
+          <button class="btn-teal" onclick="openFeedbackTelegram()">Открыть Telegram</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 class="section-title">Дисклеймер</h2>
+        <div class="muted">
+          Приложение предназначено для фиксации выполненных упражнений и не заменяет рекомендации врача,
+          тренера или иных специалистов. Перед началом занятий рекомендуется получить рекомендации специалистов.
+          Пользователь выполняет упражнения под свою ответственность. Приложение не несет ответственности за возможные травмы.
         </div>
       </div>
 
@@ -2125,7 +2143,6 @@
   <nav id="bottomNav" class="bottom-nav">
     <button id="nav-training" class="nav-btn active" onclick="switchScreen('training')">Тренировка</button>
     <button id="nav-balance" class="nav-btn" onclick="switchScreen('balance')">Баланс</button>
-    <button id="nav-more" class="nav-btn" onclick="switchScreen('more')">Еще</button>
     <button id="nav-profile" class="nav-btn" onclick="switchScreen('profile')">Профиль</button>
   </nav>
 
@@ -2165,7 +2182,8 @@
       editingSetIndex: -1,
       lastMotivation: "",
       planEditorOpen: false,
-      exerciseFeedback: ""
+      exerciseFeedback: "",
+      formDirty: false
     };
 
     let planBuilderExercises = [];
@@ -2189,6 +2207,7 @@
       water: false,
       activity: false
     };
+    let balanceDynamicsRange = "7d";
     const profileSectionState = {
       backups: false,
       customExercises: false
@@ -2304,6 +2323,7 @@
 
     function getEmptyBodyProfile() {
       return {
+        weight: null,
         height: null,
         age: null,
         sex: "male",
@@ -2839,11 +2859,22 @@
     function isGoogleOnboardingNeeded() {
       const profile = getCurrentProfile();
       if (!profile || profile.authProvider !== "google") return false;
-      const today = getTodayEntry();
+      const weight = toNumberOrNull(bodyProfile.weight) ?? getLatestRecordedWeight();
       return !bodyProfile.height ||
+        weight === null ||
         !bodyProfile.age ||
-        !bodyProfile.activityLevel ||
-        toNumberOrNull(today.weight) === null;
+        !bodyProfile.activityLevel;
+    }
+
+    function getLatestRecordedWeight() {
+      const datedEntries = Object.values(dailyMetricsByDate || {})
+        .filter(item => item && item.date)
+        .sort((a, b) => String(b.date).localeCompare(String(a.date)));
+      for (const entry of datedEntries) {
+        const weight = toNumberOrNull(entry.weight);
+        if (weight !== null) return weight;
+      }
+      return null;
     }
 
     function mergeCloudProfileSnapshots(localSnapshot, remoteSnapshot) {
@@ -3019,7 +3050,7 @@
     }
 
     function calculateBmrForEntry(entry) {
-      const weight = toNumberOrNull(entry.weight);
+      const weight = toNumberOrNull(entry.weight) ?? toNumberOrNull(bodyProfile.weight) ?? getLatestRecordedWeight();
       const height = toNumberOrNull(bodyProfile.height);
       const age = toNumberOrNull(bodyProfile.age);
       if (!weight || !height || !age) return 0;
@@ -3029,7 +3060,7 @@
     }
 
     function calculateBodyComposition(entry) {
-      const weight = toNumberOrNull(entry.weight);
+      const weight = toNumberOrNull(entry.weight) ?? toNumberOrNull(bodyProfile.weight) ?? getLatestRecordedWeight();
       const waist = toNumberOrNull(entry.waist);
       const neck = toNumberOrNull(bodyProfile.neck);
       const height = toNumberOrNull(bodyProfile.height);
@@ -3301,7 +3332,8 @@
         editingSetIndex: -1,
         lastMotivation: "",
         planEditorOpen: false,
-        exerciseFeedback: ""
+        exerciseFeedback: "",
+        formDirty: false
       };
     }
 
@@ -3415,9 +3447,8 @@
       card.classList.toggle("hidden", !shouldShow);
       if (!shouldShow) return;
 
-      const today = getTodayEntry();
       document.getElementById("onboardingSexInput").value = bodyProfile.sex || "male";
-      document.getElementById("onboardingWeightInput").value = today.weight ?? "";
+      document.getElementById("onboardingWeightInput").value = bodyProfile.weight ?? getLatestRecordedWeight() ?? "";
       document.getElementById("onboardingAgeInput").value = bodyProfile.age ?? "";
       document.getElementById("onboardingHeightInput").value = bodyProfile.height ?? "";
       document.getElementById("onboardingActivityLevelInput").value = bodyProfile.activityLevel || "moderate";
@@ -3740,18 +3771,28 @@
       bodyProfile = {
         ...getEmptyBodyProfile(),
         ...bodyProfile,
+        weight,
         height,
         age,
         sex,
         activityLevel
       };
-
-      saveDailyEntry(getTodayKey(), entry => {
-        entry.weight = weight;
-        return entry;
-      });
-
+      saveData();
+      renderAll();
       showToast("Стартовые параметры сохранены");
+    }
+
+    function getEffectiveWeight(entry) {
+      return toNumberOrNull(entry?.weight) ?? toNumberOrNull(bodyProfile.weight) ?? getLatestRecordedWeight();
+    }
+
+    function getDeficitStatusTone(deficit) {
+      if (deficit < 0) return "red";
+      if (Math.abs(deficit) < 50) return "blue";
+      if (deficit > 1000) return "red";
+      if (deficit >= 700) return "green";
+      if (deficit >= 500) return "yellow";
+      return "yellow";
     }
 
     function getDeficitStatusText(deficit) {
@@ -3983,7 +4024,8 @@
         const manualBodyFatPercent = toNumberOrNull(document.getElementById("dailyManualBodyFatInput").value);
         const manualFatMass = toNumberOrNull(document.getElementById("dailyManualFatMassInput").value);
         const hasManualValues = manualBodyFatPercent !== null || manualFatMass !== null;
-        entry.weight = toNumberOrNull(document.getElementById("dailyWeightInput").value);
+        const dailyWeight = toNumberOrNull(document.getElementById("dailyWeightInput").value);
+        entry.weight = dailyWeight;
         entry.waist = toNumberOrNull(document.getElementById("dailyWaistInput").value);
         entry.hips = toNumberOrNull(document.getElementById("dailyHipsInput").value);
         entry.bodyCompositionSource = hasManualValues ? selectedSource : "auto";
@@ -3992,6 +4034,15 @@
         entry.manualLeanMass = null;
         return entry;
       });
+      const latestWeight = toNumberOrNull(document.getElementById("dailyWeightInput").value);
+      if (latestWeight !== null) {
+        bodyProfile = {
+          ...getEmptyBodyProfile(),
+          ...bodyProfile,
+          weight: latestWeight
+        };
+        saveData();
+      }
       showToast("Замеры сохранены");
     }
 
@@ -4520,6 +4571,7 @@
 
     function saveBodyProfileSettings() {
       bodyProfile = {
+        weight: toNumberOrNull(document.getElementById("bodyWeightInput").value),
         height: toNumberOrNull(document.getElementById("bodyHeightInput").value),
         age: toNumberOrNull(document.getElementById("bodyAgeInput").value),
         sex: document.getElementById("bodySexInput").value || "male",
@@ -4563,10 +4615,8 @@
       }
       const nutritionSummary = document.getElementById("todayNutritionSummary");
       if (nutritionSummary) {
-        const remaining = getRemainingNutrition(safe);
         nutritionSummary.innerHTML = `
-          Съедено сегодня: ${safe.calories || 0} ккал · Б ${safe.protein || 0} г · Ж ${safe.fat || 0} г · У ${safe.carbs || 0} г · приемов пищи ${safe.meals?.length || 0}<br>
-          Осталось: Калории ${remaining.calories} ккал · Белок ${remaining.protein} г · Жиры ${remaining.fat} г · Углеводы ${remaining.carbs} г
+          Съедено сегодня: ${safe.calories || 0} ккал · Б ${safe.protein || 0} г · Ж ${safe.fat || 0} г · У ${safe.carbs || 0} г · приемов пищи ${safe.meals?.length || 0}
         `;
       }
       const waterSummary = document.getElementById("todayWaterSummary");
@@ -4600,11 +4650,12 @@
         const water = getWaterProgress(entry);
         const balanceLabel = getEnergyBalanceLabel(entry.deficit || 0);
         const balanceTone = balanceLabel === "Профицит" ? "red" : balanceLabel === "Баланс" ? "blue" : isDeficitInSafeRange(entry.deficit || 0) ? "green" : "red";
+        const weightValue = getEffectiveWeight(entry);
         box.innerHTML = `
           <div class="metric-grid">
             <div class="metric-tile blue">
               <div class="metric-label">Вес</div>
-              <div class="metric-value">${formatMetric(entry.weight, " кг")}</div>
+              <div class="metric-value">${formatMetric(weightValue, " кг")}</div>
               <div class="metric-subvalue">Талия: ${formatMetric(entry.waist, " см")}</div>
             </div>
             <div class="metric-tile emphasis">
@@ -4633,7 +4684,6 @@
     function renderBalanceScreen() {
       const entry = getTodayEntry();
       const targets = getMacroTargets();
-      const notes = getDailyNotes(entry);
       const week = getWeeklyDynamics();
       const goal = getGoalForecast(entry, week);
       const profileNote = document.getElementById("balanceDateNote");
@@ -4642,14 +4692,11 @@
       const macrosCard = document.getElementById("balanceMacrosCard");
       const waterCard = document.getElementById("balanceWaterCard");
       const activityCard = document.getElementById("balanceActivityCard");
-      const notesCard = document.getElementById("balanceNotesCard");
       const weekCard = document.getElementById("balanceWeekCard");
       const mealsCard = document.getElementById("balanceMealsCard");
-      const trendCard = document.getElementById("balanceTrendCard");
       const mealsSummary = document.getElementById("balanceMealsSummary");
       const waterSummaryBox = document.getElementById("balanceWaterSummary");
       const activitySummaryBox = document.getElementById("balanceActivitySummary");
-      const bodyProfileSummary = document.getElementById("balanceBodyProfileSummary");
       const statsSummary = document.getElementById("balanceStatsSummary");
       const bodySettingsPanel = document.getElementById("balanceBodySettingsPanel");
       const statsPanel = document.getElementById("balanceStatsPanel");
@@ -4661,25 +4708,28 @@
       const proteinProgress = getProgressWidth(entry.protein, targets.proteinMax);
       const fatProgress = getProgressWidth(entry.fat, targets.fatMax);
       const carbsProgress = getProgressWidth(entry.carbs, targets.carbsMax);
+      const weightValue = getEffectiveWeight(entry);
+      const deficitTone = getDeficitStatusTone(entry.deficit || 0);
 
       profileNote.textContent = `Сегодня: ${entry.date}`;
-      if (bodyProfileSummary) {
-        bodyProfileSummary.innerHTML = `
-          Рост: ${formatMetric(bodyProfile.height, " см")} · Возраст: ${formatMetric(bodyProfile.age)} · Пол: ${bodyProfile.sex === "female" ? "женщина" : "мужчина"} · Шея: ${formatMetric(bodyProfile.neck, " см")} · Образ жизни: ${escapeHtml(getActivityLevelLabel())} · Цель по жиру: ${formatMetric(bodyProfile.targetBodyFat, "%")}
-        `;
-      }
       if (statsSummary) {
-        statsSummary.innerHTML = `
-          Вес: ${formatMetric(week.weightChange, " кг")} за 7 дней · Талия: ${formatMetric(week.waistChange, " см")} · Средний ${getEnergyBalanceLabel(week.avgDeficit || 0).toLowerCase()}: ${Math.abs(week.avgDeficit || 0)} ккал
-        `;
+        statsSummary.textContent = balanceDynamicsRange === "all"
+          ? "Показан весь период отслеживания."
+          : "Показаны последние 7 дней, где есть записи по показателям.";
       }
       if (bodySettingsPanel) bodySettingsPanel.classList.toggle("hidden", !balanceSectionState.bodySettings);
       if (statsPanel) statsPanel.classList.toggle("hidden", !balanceSectionState.stats);
+      const range7dBtn = document.getElementById("balanceRange7dBtn");
+      const rangeAllBtn = document.getElementById("balanceRangeAllBtn");
+      if (range7dBtn) range7dBtn.classList.toggle("btn-primary", balanceDynamicsRange === "7d");
+      if (range7dBtn) range7dBtn.classList.toggle("btn-secondary", balanceDynamicsRange !== "7d");
+      if (rangeAllBtn) rangeAllBtn.classList.toggle("btn-primary", balanceDynamicsRange === "all");
+      if (rangeAllBtn) rangeAllBtn.classList.toggle("btn-secondary", balanceDynamicsRange !== "all");
       bodyCard.innerHTML = `
         <div class="metric-grid">
           <div class="metric-tile blue">
             <div class="metric-label">Вес</div>
-            <div class="metric-value">${formatMetric(entry.weight, " кг")}</div>
+            <div class="metric-value">${formatMetric(weightValue, " кг")}</div>
             <div class="metric-subvalue">Талия: ${formatMetric(entry.waist, " см")}</div>
           </div>
           <div class="metric-tile emphasis">
@@ -4715,51 +4765,23 @@
           </div>
         </div>
       `;
-      if (trendCard) {
-        trendCard.innerHTML = `
-          <div class="metric-grid">
-            <div class="metric-tile blue">
-              <div class="metric-label">Вес</div>
-              <div class="metric-value">${formatMetric(week.weightChange, " кг")}</div>
-              <div class="metric-subvalue">изменение за 7 дней</div>
-            </div>
-            <div class="metric-tile blue">
-              <div class="metric-label">Талия</div>
-              <div class="metric-value">${formatMetric(week.waistChange, " см")}</div>
-              <div class="metric-subvalue">изменение за 7 дней</div>
-            </div>
-            <div class="metric-tile emphasis">
-              <div class="metric-label">% жира</div>
-              <div class="metric-value">${formatMetric(week.avgBodyFat, "%")}</div>
-              <div class="metric-subvalue">среднее за 7 дней</div>
-            </div>
-            <div class="metric-tile ${isDeficitInSafeRange(week.avgDeficit || 0) ? "green" : "red"}">
-              <div class="metric-label">${getEnergyBalanceLabel(week.avgDeficit || 0)}</div>
-              <div class="metric-value">${Math.abs(week.avgDeficit || 0)}</div>
-              <div class="metric-subvalue">среднее за 7 дней</div>
-            </div>
-          </div>
-        `;
-      }
+      renderBalanceDynamicsCharts();
       caloriesCard.innerHTML = `
-        <div class="status-panel ${isDeficitInSafeRange(entry.deficit || 0) ? "status-ok" : "status-bad"}">
-          За день: ${getEnergyBalanceLabel(entry.deficit || 0)} ${getEnergyBalanceValue(entry.deficit || 0)} ккал · ${getDeficitStatusText(entry.deficit || 0)}
-        </div>
-        <div class="status-panel ${isDeficitInSafeRange(week.avgDeficit || 0) ? "status-ok" : "status-bad"}">
-          Средний за 7 дней: ${getEnergyBalanceLabel(week.avgDeficit || 0)} ${getEnergyBalanceValue(week.avgDeficit || 0)} ккал · ${getDeficitStatusText(week.avgDeficit || 0)}
+        <div class="status-panel ${deficitTone === "green" ? "status-ok" : deficitTone === "yellow" ? "status-warn" : deficitTone === "blue" ? "status-info" : "status-bad"}">
+          ${getEnergyBalanceLabel(entry.deficit || 0)} · ${getEnergyBalanceValue(entry.deficit || 0)} ккал · ${getDeficitStatusText(entry.deficit || 0)}
         </div>
         <div class="metric-grid">
           <div class="metric-tile blue">
             <div class="metric-label">Расход</div>
             <div class="metric-value">${entry.totalBurn || 0}</div>
-            <div class="metric-subvalue">ккал за день</div>
+            <div class="metric-subvalue">ккал</div>
           </div>
           <div class="metric-tile emphasis">
             <div class="metric-label">Съедено</div>
             <div class="metric-value">${entry.calories || 0}</div>
-            <div class="metric-subvalue">ккал за день</div>
+            <div class="metric-subvalue">ккал</div>
           </div>
-          <div class="metric-tile ${getEnergyBalanceLabel(entry.deficit || 0) === "Профицит" ? "red" : isDeficitInSafeRange(entry.deficit || 0) ? "green" : "blue"}">
+          <div class="metric-tile ${getEnergyBalanceLabel(entry.deficit || 0) === "Профицит" ? "red" : deficitTone === "green" ? "green" : deficitTone === "yellow" ? "yellow" : deficitTone === "blue" ? "blue" : "red"}">
             <div class="metric-label">${getEnergyBalanceLabel(entry.deficit || 0)}</div>
             <div class="metric-value">${getEnergyBalanceValue(entry.deficit || 0)}</div>
             <div class="metric-subvalue">${getDeficitStatusText(entry.deficit || 0)}</div>
@@ -4782,9 +4804,6 @@
         <div class="status-panel ${getStatusClassForRange(entry.carbs, targets.carbsMin, targets.carbsMax)}">
           Углеводы: ${entry.carbs || 0} / ${targets.carbsMin}–${targets.carbsMax} г · ${getStatusTextForRange(entry.carbs, targets.carbsMin, targets.carbsMax)}
           <div class="progress-strip ${getProgressToneByRange(entry.carbs, targets.carbsMin, targets.carbsMax)}"><span style="width:${carbsProgress}%;"></span></div>
-        </div>
-        <div class="muted" style="margin-top:10px;">
-          Осталось: Калории ${remaining.calories} ккал · Белок ${remaining.protein} г · Жиры ${remaining.fat} г · Углеводы ${remaining.carbs} г
         </div>
       `;
       if (mealsCard) {
@@ -4829,7 +4848,6 @@
         </div>
         ${balanceSectionState.activity ? `<div class="collapsible-panel" style="margin-top:10px;">${renderActivityEntries(entry.date, entry.activityEntries || [])}</div>` : ""}
       `;
-      notesCard.innerHTML = `<div class="note-list">${notes.map(note => `<div class="note-item">${escapeHtml(note)}</div>`).join("")}</div>`;
       weekCard.innerHTML = `
         <div class="metric-grid">
           <div class="metric-tile blue">
@@ -4856,12 +4874,46 @@
       `;
     }
 
+    function getBalanceDynamicsEntries() {
+      return Object.values(dailyMetricsByDate || {})
+        .map(item => normalizeDailyEntry(item, item?.date))
+        .filter(item => item && item.date)
+        .sort((a, b) => String(a.date).localeCompare(String(b.date)));
+    }
+
+    function getBalanceDynamicsSlice(entries) {
+      if (balanceDynamicsRange === "all") return entries;
+      return entries.slice(-7);
+    }
+
+    function renderBalanceDynamicsCharts() {
+      const entries = getBalanceDynamicsSlice(getBalanceDynamicsEntries());
+      drawMetricSeriesChart("balanceWeightChart", entries, item => toNumberOrNull(item.weight), "Вес, кг");
+      drawMetricSeriesChart("balanceBodyFatChart", entries, item => toNumberOrNull(item.bodyFatPercent), "% жира");
+      drawMetricSeriesChart("balanceDeficitChart", entries, item => Number.isFinite(item.deficit) ? item.deficit : null, "Дефицит / профицит, ккал");
+    }
+
+    function drawMetricSeriesChart(canvasId, entries, getter, title) {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas) return;
+      const filtered = entries
+        .map(item => ({ date: item.date, value: getter(item) }))
+        .filter(item => item.value !== null && item.value !== undefined && item.value !== "");
+      const labels = filtered.map(item => item.date);
+      const values = filtered.map(item => Number(item.value));
+      drawLineChart(canvas, labels, values, title);
+    }
+
+    function setBalanceDynamicsRange(range) {
+      balanceDynamicsRange = range === "all" ? "all" : "7d";
+      renderBalanceScreen();
+    }
+
     function renderAll() {
       renderTrainingScreen();
       renderBalanceScreen();
       renderPlansScreen();
       renderStatsScreen();
-      renderMoreScreen();
       renderProfileScreen();
       syncSettingsUI();
       renderProfileManager();
@@ -5456,7 +5508,8 @@
     }
 
     function switchScreen(name) {
-      ["training", "balance", "plans", "stats", "more", "profile"].forEach(screen => {
+      if (name === "more") name = "profile";
+      ["training", "balance", "plans", "stats", "profile"].forEach(screen => {
         document.getElementById("screen-" + screen).classList.toggle("active", screen === name);
         const navBtn = document.getElementById("nav-" + screen);
         if (navBtn) navBtn.classList.toggle("active", screen === name);
@@ -5466,7 +5519,6 @@
       if (name === "balance") renderBalanceScreen();
       if (name === "plans") renderPlansScreen();
       if (name === "stats") renderStatsScreen();
-      if (name === "more") renderMoreScreen();
       if (name === "profile") renderProfileScreen();
     }
 
@@ -6444,13 +6496,12 @@
       const select = document.getElementById("gymExerciseSelect");
       if (!select) return;
       const selectedExercise = select.value;
-      const query = document.getElementById("gymExerciseSearch")?.value || "";
       const all = currentSession.planExercises.length
         ? currentSession.planExercises.map(item => item.exercise)
         : getMergedExercises(currentSession.split);
       const current = getCurrentExerciseObject();
       const currentName = current ? current.exercise : selectedExercise;
-      const filtered = ensureExerciseVisible(filterExercisesBySearch([...new Set(all)], query), currentName);
+      const filtered = ensureExerciseVisible([...new Set(all)], currentName);
 
       select.innerHTML = "";
 
@@ -6495,6 +6546,117 @@
       title.textContent = `Редактирование подхода ${currentSession.editingSetIndex + 1} из ${currentSession.sets.length}`;
       text.textContent = `${set.exercise} · ${getSetResultText(set)}`;
       saveBtn.textContent = "Сохранить изменения";
+    }
+
+    function markGymFormDirty() {
+      if (!currentSession.active) return;
+      currentSession.formDirty = true;
+    }
+
+    function clearGymFormDirty() {
+      currentSession.formDirty = false;
+    }
+
+    function getSelectedWorkoutExerciseName() {
+      const customInput = document.getElementById("gymCustomExercise");
+      const customName = normalizeExerciseName(customInput?.value || "");
+      if (customName) {
+        saveCustomExercise(currentSession.split, customName, {
+          loadType: document.getElementById("gymLoadType").value,
+          metric: isCircuitWorkout() && getCurrentCircuitExerciseTemplate()?.metric === "time" ? "time" : "reps"
+        });
+        updateGymExerciseOptions();
+        const select = document.getElementById("gymExerciseSelect");
+        if (select) select.value = customName;
+        if (customInput) customInput.value = "";
+        return customName;
+      }
+      return document.getElementById("gymExerciseSelect").value;
+    }
+
+    function buildGymSetDraft() {
+      const exercise = getSelectedWorkoutExerciseName();
+      const loadType = document.getElementById("gymLoadType").value;
+      const currentCircuitTemplate = getCurrentCircuitExerciseTemplate();
+      const metric = isCircuitWorkout() && currentCircuitTemplate ? currentCircuitTemplate.metric : "reps";
+      const reps = parseInt(document.getElementById("gymReps").value);
+      let enteredWeight = 0;
+
+      if (!exercise || isNaN(reps)) {
+        throw new Error("Укажи упражнение и повторы");
+      }
+
+      if (loadType !== "bodyweight") {
+        enteredWeight = parseFloat(document.getElementById("gymWeight").value);
+        if (isNaN(enteredWeight)) {
+          throw new Error("Укажи вес");
+        }
+      }
+
+      return buildSet({
+        date: currentSession.date,
+        split: currentSession.split,
+        exercise,
+        loadType,
+        enteredWeight,
+        reps,
+        metric,
+        circuitBlockIndex: isCircuitWorkout() ? currentSession.currentCircuitBlockIndex : null,
+        circuitRoundIndex: isCircuitWorkout() ? currentSession.currentCircuitRoundIndex : null
+      });
+    }
+
+    function commitGymSet(options = {}) {
+      const {
+        suppressTimer = false,
+        toastMessage = "",
+        preserveMotivation = false
+      } = options;
+
+      const newSet = buildGymSetDraft();
+
+      if (currentSession.editingSetIndex >= 0) {
+        newSet.id = currentSession.sets[currentSession.editingSetIndex].id;
+        currentSession.sets[currentSession.editingSetIndex] = newSet;
+        currentSession.lastMotivation = getMotivationForSet(newSet, true);
+        resetEditorMode();
+        clearGymFormDirty();
+        saveData();
+        renderGymWorkoutView();
+        if (toastMessage) showToast(toastMessage);
+        return newSet;
+      }
+
+      currentSession.sets.push(newSet);
+      if (!preserveMotivation) {
+        currentSession.lastMotivation = "";
+        currentSession.exerciseFeedback = "";
+      }
+      clearGymFormDirty();
+      saveData();
+
+      if (suppressTimer) {
+        renderGymWorkoutView();
+        if (toastMessage) showToast(toastMessage);
+        return newSet;
+      }
+
+      if (isCircuitWorkout()) {
+        renderGymWorkoutView();
+        if (toastMessage) showToast(toastMessage);
+        return newSet;
+      }
+
+      currentSession.state = "timer";
+      pendingRestAction = {
+        type: "after-set",
+        exerciseName: newSet.exercise
+      };
+      restTimeLeft = 90;
+      startRestTimer();
+      renderTrainingScreen();
+      if (toastMessage) showToast(toastMessage);
+      return newSet;
     }
 
     function renderGymWorkoutView() {
@@ -6614,6 +6776,9 @@
         document.getElementById("gymLoadType").value = currentLoadType;
         document.getElementById("gymWeight").value = "";
         document.getElementById("gymReps").value = currentMetric === "time" && currentCircuitTemplate ? 30 : "";
+        const customInput = document.getElementById("gymCustomExercise");
+        if (customInput) customInput.value = "";
+        clearGymFormDirty();
         renderGymWorkoutView();
         return;
       }
@@ -6621,6 +6786,9 @@
       document.getElementById("gymLoadType").value = currentCircuitTemplate ? currentLoadType : stats.last.loadType;
       document.getElementById("gymWeight").value = document.getElementById("gymLoadType").value === "bodyweight" ? "" : stats.last.enteredWeight;
       document.getElementById("gymReps").value = stats.last.reps;
+      const customInput = document.getElementById("gymCustomExercise");
+      if (customInput) customInput.value = "";
+      clearGymFormDirty();
       renderGymWorkoutView();
     }
 
@@ -6633,6 +6801,9 @@
       document.getElementById("gymLoadType").value = set.loadType;
       document.getElementById("gymWeight").value = set.loadType === "bodyweight" ? "" : set.enteredWeight;
       document.getElementById("gymReps").value = set.reps;
+      const customInput = document.getElementById("gymCustomExercise");
+      if (customInput) customInput.value = "";
+      clearGymFormDirty();
 
       renderGymWorkoutView();
       showToast("Подход загружен для редактирования");
@@ -6682,8 +6853,9 @@
       renderEditorInfo();
     }
 
-    function changeManualExercise() {
+    function changeManualExercise(markDirtyFlag = true) {
       const selectedExercise = document.getElementById("gymExerciseSelect").value;
+      if (markDirtyFlag) markGymFormDirty();
 
       if (currentSession.planExercises.length) {
         const nextIndex = currentSession.planExercises.findIndex(item => item.exercise === selectedExercise);
@@ -6705,6 +6877,7 @@
       let next = current + delta;
       if (next < 0) next = 0;
       input.value = Number(next.toFixed(1));
+      markGymFormDirty();
     }
 
     function adjustGymReps(delta) {
@@ -6713,6 +6886,7 @@
       let next = current + delta;
       if (next < 1) next = 1;
       input.value = next;
+      markGymFormDirty();
     }
 
     function fillLikeLastTime() {
@@ -6768,7 +6942,8 @@
       updateGymExerciseOptions();
       document.getElementById("gymExerciseSelect").value = name;
       input.value = "";
-      changeManualExercise();
+      clearGymFormDirty();
+      changeManualExercise(false);
       showToast("Упражнение добавлено");
     }
 
@@ -6817,68 +6992,14 @@
 
     function saveGymSet() {
       unlockAudio();
-
-      const exercise = document.getElementById("gymExerciseSelect").value;
-      const loadType = document.getElementById("gymLoadType").value;
-      const currentCircuitTemplate = getCurrentCircuitExerciseTemplate();
-      const metric = isCircuitWorkout() && currentCircuitTemplate ? currentCircuitTemplate.metric : "reps";
-      const reps = parseInt(document.getElementById("gymReps").value);
-      let enteredWeight = 0;
-
-      if (!exercise || isNaN(reps)) {
-        alert("Укажи упражнение и повторы");
-        return;
+      try {
+        commitGymSet({
+          suppressTimer: false,
+          toastMessage: isCircuitWorkout() ? "Результат упражнения сохранен" : "Подход сохранен, отдых начался"
+        });
+      } catch (error) {
+        alert(error.message || "Не удалось сохранить подход");
       }
-
-      if (loadType !== "bodyweight") {
-        enteredWeight = parseFloat(document.getElementById("gymWeight").value);
-        if (isNaN(enteredWeight)) {
-          alert("Укажи вес");
-          return;
-        }
-      }
-
-      const newSet = buildSet({
-        date: currentSession.date,
-        split: currentSession.split,
-        exercise,
-        loadType,
-        enteredWeight,
-        reps,
-        metric,
-        circuitBlockIndex: isCircuitWorkout() ? currentSession.currentCircuitBlockIndex : null,
-        circuitRoundIndex: isCircuitWorkout() ? currentSession.currentCircuitRoundIndex : null
-      });
-
-      if (currentSession.editingSetIndex >= 0) {
-        newSet.id = currentSession.sets[currentSession.editingSetIndex].id;
-        currentSession.sets[currentSession.editingSetIndex] = newSet;
-        currentSession.lastMotivation = getMotivationForSet(newSet, true);
-        resetEditorMode();
-        saveData();
-        renderGymWorkoutView();
-        showToast("Подход обновлен");
-        return;
-      }
-
-      currentSession.sets.push(newSet);
-      currentSession.lastMotivation = "";
-      currentSession.exerciseFeedback = "";
-      saveData();
-      if (isCircuitWorkout()) {
-        renderGymWorkoutView();
-        showToast("Результат упражнения сохранен");
-        return;
-      }
-      currentSession.state = "timer";
-      pendingRestAction = {
-        type: "after-set",
-        exerciseName: newSet.exercise
-      };
-      restTimeLeft = 90;
-      startRestTimer();
-      renderTrainingScreen();
-      showToast("Подход сохранен, отдых начался");
     }
 
     function renderCurrentWorkoutMiniList() {
@@ -6994,10 +7115,24 @@
     }
 
     function completeCurrentExercise() {
-      const exerciseName = getCurrentExerciseName();
+      let exerciseName = getCurrentExerciseName();
       if (!exerciseName) {
         alert("Сначала выбери упражнение");
         return;
+      }
+
+      if (currentSession.formDirty) {
+        try {
+          const savedSet = commitGymSet({
+            suppressTimer: true,
+            toastMessage: "",
+            preserveMotivation: true
+          });
+          exerciseName = savedSet.exercise;
+        } catch (error) {
+          alert(error.message || "Сначала корректно заполни подход");
+          return;
+        }
       }
 
       const doneSets = currentSession.sets.filter(
@@ -7323,7 +7458,8 @@
         editingSetIndex: -1,
         lastMotivation: "",
         planEditorOpen: false,
-        exerciseFeedback: ""
+        exerciseFeedback: "",
+        formDirty: false
       };
       renderTrainingScreen();
     }
@@ -8203,8 +8339,7 @@
     }
 
     function renderMoreScreen() {
-      renderCloudSyncSettings();
-      syncSettingsUI();
+      renderProfileScreen();
     }
 
     function renderProfileWorkoutHistoryList() {
@@ -8368,18 +8503,16 @@
       const header = document.getElementById("profileCabinetHeader");
       const cloud = document.getElementById("profileCloudStatus");
       const summary = document.getElementById("profileCabinetSummary");
-      const bodyNote = document.getElementById("profileBodyNote");
       const backupSummary = document.getElementById("profileBackupSummary");
       const backupsPanel = document.getElementById("profileBackupsPanel");
       const customSummary = document.getElementById("profileCustomExercisesSummary");
       const customPanel = document.getElementById("profileCustomExercisesPanel");
-      if (!header || !cloud || !summary || !bodyNote || !backupSummary || !backupsPanel || !customSummary || !customPanel) return;
+      if (!header || !cloud || !summary || !backupSummary || !backupsPanel || !customSummary || !customPanel) return;
 
       if (!currentProfileId) {
         header.innerHTML = "<strong>Профиль не выбран</strong><div class='muted'>Сначала войди через Google или создай локальный профиль.</div>";
         cloud.textContent = "Облачная синхронизация недоступна без активного профиля.";
         summary.textContent = "";
-        bodyNote.textContent = "";
         backupSummary.textContent = "";
         customSummary.textContent = "";
         backupsPanel.classList.add("hidden");
@@ -8418,6 +8551,7 @@
         Пользовательских упражнений: ${getCustomExerciseCount()}
       `;
 
+      document.getElementById("bodyWeightInput").value = bodyProfile.weight ?? "";
       document.getElementById("bodyHeightInput").value = bodyProfile.height ?? "";
       document.getElementById("bodyAgeInput").value = bodyProfile.age ?? "";
       document.getElementById("bodySexInput").value = bodyProfile.sex || "male";
@@ -8427,9 +8561,6 @@
       if (bodyActivityLevelInput) {
         bodyActivityLevelInput.value = bodyProfile.activityLevel || "moderate";
       }
-      bodyNote.innerHTML = `
-        Параметры тела теперь находятся во вкладке «Баланс». Сегодняшний расчет: BMR ${today.bmr || 0} ккал, образ жизни ${escapeHtml(getActivityLevelLabel())}, базовая дневная активность ${getAverageDailyActivityCalories()} ккал, расход ${today.totalBurn || 0} ккал, ${getEnergyBalanceLabel(today.deficit || 0).toLowerCase()} ${getEnergyBalanceValue(today.deficit || 0)} ккал.
-      `;
 
       backupSummary.innerHTML = `
         Можно сохранить весь профиль целиком или выгрузить только отдельные разделы: тренировки, планы, КБЖУ, активность, воду, параметры тела и пользовательские упражнения.
@@ -8439,6 +8570,7 @@
       `;
       backupsPanel.classList.toggle("hidden", !profileSectionState.backups);
       customPanel.classList.toggle("hidden", !profileSectionState.customExercises);
+      renderCloudSyncSettings();
       renderProfileCustomExerciseList();
     }
 
@@ -8551,7 +8683,7 @@
       document.getElementById("templateName").value = "";
       templateBuilderExercises = [];
       saveData();
-      renderMoreScreen();
+      renderPlansScreen();
       showToast("Шаблон сохранен");
     }
 
