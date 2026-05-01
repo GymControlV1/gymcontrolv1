@@ -465,6 +465,77 @@
       margin-bottom: 10px;
     }
 
+    .stats-menu-select {
+      width: auto;
+      min-width: 230px;
+      min-height: 42px;
+      padding: 8px 12px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .stats-summary-card {
+      background: linear-gradient(180deg, #fbfdff 0%, #f3f8ff 100%);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 14px;
+      box-shadow: var(--shadow-soft);
+    }
+
+    .stats-summary-value {
+      color: var(--primary-dark);
+      font-size: 24px;
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+
+    .stats-summary-label {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.35;
+    }
+
+    .cardio-timeline {
+      display: grid;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .cardio-session-item {
+      display: grid;
+      grid-template-columns: minmax(110px, 150px) 1fr;
+      gap: 12px;
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .cardio-session-date {
+      color: var(--primary-dark);
+      font-size: 15px;
+      font-weight: 800;
+    }
+
+    .cardio-session-metrics {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .cardio-session-metric {
+      border-radius: 14px;
+      padding: 10px;
+      background: #edf6ff;
+      color: var(--dark);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
     .status-panel {
       border-radius: 18px;
       padding: 14px 15px;
@@ -1104,6 +1175,8 @@
       .title-block h1 { font-size: 24px; }
       .chart-box { padding: 10px; }
       .mini-chart-row { grid-template-columns: 72px 1fr 66px; font-size: 12px; }
+      .stats-menu-select { width: 100%; min-width: 0; }
+      .cardio-session-item { grid-template-columns: 1fr; }
       .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .metric-value { font-size: 22px; }
       #todaySummaryBox,
@@ -1788,16 +1861,25 @@
         <div class="section-head">
           <h2 class="section-title">Статистика</h2>
           <div class="section-head-actions">
+            <select id="statsViewSelect" class="stats-menu-select" aria-label="Выбор статистики" onchange="setStatsView(this.value)"></select>
+            <button class="btn-secondary" onclick="switchScreen('profile')">Назад</button>
             <button class="btn-secondary" onclick="goToTrainingHome()">На главную</button>
           </div>
         </div>
-        <div class="muted">График показывает общий тоннаж по тренировкам за разные дни.</div>
+        <div id="statsViewDescription" class="muted">График показывает общий тоннаж по тренировкам за разные дни.</div>
+        <div id="statsSummaryCards" class="stats-grid" style="margin:12px 0;"></div>
         <div class="chart-wrap">
           <div class="chart-box">
             <canvas id="progressChart" width="900" height="320"></canvas>
           </div>
         </div>
         <div id="progressChartHint" class="muted" style="margin-top:10px;"></div>
+      </div>
+
+      <div class="card">
+        <h2 class="section-title">Кардиотренировки</h2>
+        <div id="cardioStatsSummary" class="muted"></div>
+        <div id="cardioStatsTimeline"></div>
       </div>
 
       <div class="card">
@@ -1980,9 +2062,21 @@
       </div>
 
       <div class="card">
-        <h2 class="section-title">Действия</h2>
+        <div class="section-head">
+          <h2 class="section-title">Статистика</h2>
+          <div class="section-head-actions">
+            <select id="profileStatsViewSelect" class="stats-menu-select" aria-label="Выбор статистики" onchange="setStatsView(this.value); showProfileStats()"></select>
+          </div>
+        </div>
+        <div id="profileStatsPreview" class="muted" style="margin-bottom:10px;"></div>
         <div class="actions full">
           <button class="btn-secondary" onclick="showProfileStats()">Открыть статистику</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 class="section-title">Действия</h2>
+        <div class="actions full">
           <button class="btn-secondary" onclick="showProfilePlans()">Открыть планы</button>
           <button class="btn-secondary" onclick="scrollToProfileSection('profileCustomExercisesCard')">Мои упражнения</button>
           <button class="btn-secondary" onclick="scrollToProfileSection('profileBackupCard')">Резервные копии</button>
@@ -2187,6 +2281,7 @@
     let circuitBuilderBlocks = [];
     let circuitBlockBuilderExercises = [];
     let templateBuilderExercises = [];
+    let selectedStatsView = "total";
     let restTimerInterval = null;
     let restTimeLeft = 90;
     let restEndTime = 0;
@@ -7986,22 +8081,226 @@
     }
 
     function renderStatsScreen() {
-      renderWorkoutProgressChart();
+      selectedStatsView = normalizeStatsViewValue(selectedStatsView);
+      renderStatsViewControls();
+      renderSelectedStatsChart();
+      renderCardioStatsTimeline();
       renderHistoryList();
     }
 
+    function getCompletedStrengthSets() {
+      const allSets = [];
+      getStrengthWorkoutHistory().forEach(workout => {
+        const sets = Array.isArray(workout.sets) ? workout.sets : [];
+        sets.forEach(set => {
+          allSets.push({
+            ...set,
+            date: set.date || workout.date,
+            split: set.split || workout.split
+          });
+        });
+      });
+      return allSets;
+    }
+
     function getWorkoutStatsByDay() {
-      return getStrengthWorkoutHistory()
-        .slice()
+      const grouped = {};
+
+      getStrengthWorkoutHistory().forEach(workout => {
+        const date = String(workout.date || "Дата не указана");
+        if (!grouped[date]) {
+          grouped[date] = {
+            date,
+            splits: new Set(),
+            exercises: new Set(),
+            totalVolume: 0,
+            totalSets: 0
+          };
+        }
+
+        if (workout.split) grouped[date].splits.add(workout.split);
+        const sets = Array.isArray(workout.sets) ? workout.sets : [];
+        sets.forEach(set => {
+          grouped[date].totalVolume += Number(set.volume) || 0;
+          grouped[date].totalSets += 1;
+          if (set.exercise) grouped[date].exercises.add(set.exercise);
+        });
+      });
+
+      return Object.values(grouped)
         .sort((a, b) => String(a.date).localeCompare(String(b.date)))
-        .map(workout => ({
-          id: workout.id,
-          date: workout.date,
-          split: workout.split,
-          totalVolume: workout.sets.reduce((sum, set) => sum + (set.volume || 0), 0),
-          totalSets: workout.sets.length,
-          uniqueExercises: new Set(workout.sets.map(set => set.exercise)).size
+        .map(item => ({
+          date: item.date,
+          split: [...item.splits].join(", ") || "Силовая",
+          totalVolume: Math.round(item.totalVolume),
+          totalSets: item.totalSets,
+          uniqueExercises: item.exercises.size
         }));
+    }
+
+    function getPerformedExerciseNamesSorted() {
+      const names = new Set();
+      getCompletedStrengthSets().forEach(set => {
+        const name = normalizeExerciseName(set.exercise);
+        if (name) names.add(name);
+      });
+      return [...names].sort((a, b) => a.localeCompare(b, "ru"));
+    }
+
+    function getStatsViewOptions() {
+      return [
+        { value: "total", label: "Общий тоннаж за упражнения" },
+        { value: "cardio", label: "Кардио" },
+        ...getPerformedExerciseNamesSorted().map(exercise => ({
+          value: `exercise:${exercise}`,
+          label: exercise
+        }))
+      ];
+    }
+
+    function normalizeStatsViewValue(value) {
+      const raw = String(value || "total");
+      if (raw === "total" || raw === "cardio") return raw;
+      if (raw.startsWith("exercise:")) {
+        const exercise = raw.slice("exercise:".length);
+        if (getPerformedExerciseNamesSorted().includes(exercise)) return raw;
+      }
+      return "total";
+    }
+
+    function renderStatsViewControls() {
+      const options = getStatsViewOptions();
+      selectedStatsView = normalizeStatsViewValue(selectedStatsView);
+
+      ["statsViewSelect", "profileStatsViewSelect"].forEach(selectId => {
+        const select = document.getElementById(selectId);
+        if (!select) return;
+
+        select.innerHTML = "";
+        options.forEach(option => {
+          const item = document.createElement("option");
+          item.value = option.value;
+          item.textContent = option.label;
+          select.appendChild(item);
+        });
+        select.value = selectedStatsView;
+      });
+    }
+
+    function setStatsView(value) {
+      selectedStatsView = normalizeStatsViewValue(value);
+      renderStatsViewControls();
+      renderProfileStatsPreview();
+
+      const statsScreen = document.getElementById("screen-stats");
+      if (statsScreen && statsScreen.classList.contains("active")) {
+        renderStatsScreen();
+      }
+    }
+
+    function getSelectedExerciseFromStatsView() {
+      if (!selectedStatsView.startsWith("exercise:")) return "";
+      return selectedStatsView.slice("exercise:".length);
+    }
+
+    function getExerciseVolumeStatsByDay(exerciseName) {
+      const target = normalizeExerciseName(exerciseName).toLowerCase();
+      const grouped = {};
+
+      getCompletedStrengthSets()
+        .filter(set => normalizeExerciseName(set.exercise).toLowerCase() === target)
+        .forEach(set => {
+          const date = String(set.date || "Дата не указана");
+          if (!grouped[date]) {
+            grouped[date] = {
+              date,
+              totalVolume: 0,
+              totalSets: 0,
+              bestWeight: 0,
+              bestReps: 0
+            };
+          }
+
+          grouped[date].totalVolume += Number(set.volume) || 0;
+          grouped[date].totalSets += 1;
+          if ((Number(set.totalWeight) || 0) > grouped[date].bestWeight) {
+            grouped[date].bestWeight = Number(set.totalWeight) || 0;
+            grouped[date].bestReps = Number(set.reps) || 0;
+          }
+        });
+
+      return Object.values(grouped)
+        .sort((a, b) => String(a.date).localeCompare(String(b.date)))
+        .map(item => ({
+          ...item,
+          totalVolume: Math.round(item.totalVolume)
+        }));
+    }
+
+    function getExerciseVolumeSummary(exerciseName) {
+      const days = getExerciseVolumeStatsByDay(exerciseName);
+      const totalVolume = days.reduce((sum, item) => sum + item.totalVolume, 0);
+      const totalSets = days.reduce((sum, item) => sum + item.totalSets, 0);
+      const bestDay = days.reduce((best, item) => (
+        !best || item.totalVolume > best.totalVolume ? item : best
+      ), null);
+      const latestDay = days[days.length - 1] || null;
+      return { days, totalVolume, totalSets, bestDay, latestDay };
+    }
+
+    function getCardioStatsTimelineItems() {
+      return getCardioWorkoutHistory()
+        .slice()
+        .sort((a, b) => `${String(a.date || "")} ${String(a.cardio?.time || "")}`.localeCompare(`${String(b.date || "")} ${String(b.cardio?.time || "")}`))
+        .map(workout => {
+          const cardio = normalizeCardioWorkoutData(workout.cardio);
+          return {
+            id: workout.id,
+            date: workout.date || "Дата не указана",
+            time: cardio.time,
+            typeLabel: getCardioTypeLabel(cardio.cardioType),
+            locationLabel: getCardioLocationLabel(cardio.locationType),
+            durationMinutes: cardio.durationMinutes || 0,
+            caloriesBurned: cardio.caloriesBurned || 0,
+            distanceKm: cardio.distanceKm,
+            averagePace: cardio.averagePace,
+            averageHeartRate: cardio.averageHeartRate,
+            maxHeartRate: cardio.maxHeartRate,
+            note: cardio.note
+          };
+        });
+    }
+
+    function formatStatsNumber(value, suffix = "") {
+      const number = Number(value) || 0;
+      const rounded = Number.isInteger(number) ? number : Math.round(number * 10) / 10;
+      return `${rounded.toLocaleString("ru-RU")}${suffix ? ` ${suffix}` : ""}`;
+    }
+
+    function renderStatsSummaryCards(cards) {
+      const box = document.getElementById("statsSummaryCards");
+      if (!box) return;
+      box.innerHTML = cards.map(card => `
+        <div class="stats-summary-card">
+          <div class="stats-summary-value">${escapeHtml(card.value)}</div>
+          <div class="stats-summary-label">${escapeHtml(card.label)}</div>
+        </div>
+      `).join("");
+    }
+
+    function renderSelectedStatsChart() {
+      if (selectedStatsView === "cardio") {
+        renderCardioProgressChart();
+        return;
+      }
+
+      const exerciseName = getSelectedExerciseFromStatsView();
+      if (exerciseName) {
+        renderExerciseVolumeChart(exerciseName);
+        return;
+      }
+
+      renderWorkoutProgressChart();
     }
 
     function renderProgressExerciseOptions() {
@@ -8168,39 +8467,197 @@
     function renderWorkoutProgressChart() {
       const canvas = document.getElementById("progressChart");
       const hint = document.getElementById("progressChartHint");
+      const description = document.getElementById("statsViewDescription");
       const stats = getWorkoutStatsByDay();
-      const cardioWorkouts = getCardioWorkoutHistory()
-        .slice()
-        .sort((a, b) => String(a.date).localeCompare(String(b.date)))
-        .map(workout => ({
-          date: workout.date,
-          label: getCardioTypeLabel(workout.cardio?.cardioType),
-          caloriesBurned: workout.cardio?.caloriesBurned || 0,
-          durationMinutes: workout.cardio?.durationMinutes || 0
-        }));
 
-      if (!stats.length && !cardioWorkouts.length) {
+      if (description) {
+        description.textContent = "График показывает общий тоннаж по силовым тренировкам за каждый день.";
+      }
+
+      if (!stats.length) {
         const ctx = canvas.getContext("2d");
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         hint.textContent = "Нет данных для графика";
+        renderStatsSummaryCards([
+          { value: "0 кг", label: "Общий тоннаж" },
+          { value: "0", label: "Силовых дней" },
+          { value: "0", label: "Подходов" }
+        ]);
         return;
       }
 
-      if (stats.length) {
-        const labels = stats.map(item => item.date);
-        const values = stats.map(item => item.totalVolume);
-        drawLineChart(canvas, labels, values, "Тоннаж по силовым тренировкам");
+      const labels = stats.map(item => item.date);
+      const values = stats.map(item => item.totalVolume);
+      drawLineChart(canvas, labels, values, "Общий тоннаж, кг");
 
-        const latest = stats[stats.length - 1];
-        hint.textContent = `Силовых тренировок на графике: ${stats.length}. Последняя: ${latest.date} · ${latest.split} · тоннаж ${latest.totalVolume} кг.${cardioWorkouts.length ? ` Кардио-сессий в истории: ${cardioWorkouts.length}.` : ""}`;
+      const totalVolume = stats.reduce((sum, item) => sum + item.totalVolume, 0);
+      const totalSets = stats.reduce((sum, item) => sum + item.totalSets, 0);
+      const latest = stats[stats.length - 1];
+      renderStatsSummaryCards([
+        { value: formatStatsNumber(totalVolume, "кг"), label: "Общий тоннаж за силовые тренировки" },
+        { value: formatStatsNumber(stats.length), label: "Дней с силовыми тренировками" },
+        { value: formatStatsNumber(totalSets), label: "Всего подходов" }
+      ]);
+      hint.textContent = `Силовых дней на графике: ${stats.length}. Последний день: ${latest.date} · ${latest.split} · тоннаж ${latest.totalVolume} кг.`;
+    }
+
+    function renderExerciseVolumeChart(exerciseName) {
+      const canvas = document.getElementById("progressChart");
+      const hint = document.getElementById("progressChartHint");
+      const description = document.getElementById("statsViewDescription");
+      const summary = getExerciseVolumeSummary(exerciseName);
+
+      if (description) {
+        description.textContent = `График показывает тоннаж по дням только для упражнения «${exerciseName}».`;
+      }
+
+      if (!summary.days.length) {
+        const ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        renderStatsSummaryCards([
+          { value: "0 кг", label: `Общий тоннаж: ${exerciseName}` },
+          { value: "0", label: "Подходов" },
+          { value: "0", label: "Дней" }
+        ]);
+        hint.textContent = `По упражнению "${exerciseName}" пока нет данных.`;
         return;
       }
 
-      const labels = cardioWorkouts.map(item => item.date);
-      const values = cardioWorkouts.map(item => item.caloriesBurned);
-      drawLineChart(canvas, labels, values, "Ккал по кардио-сессиям");
-      const latest = cardioWorkouts[cardioWorkouts.length - 1];
-      hint.textContent = `Кардио-сессий на графике: ${cardioWorkouts.length}. Последняя: ${latest.date} · ${latest.label} · ${latest.caloriesBurned} ккал за ${latest.durationMinutes} мин.`;
+      const labels = summary.days.map(item => item.date);
+      const values = summary.days.map(item => item.totalVolume);
+      drawLineChart(canvas, labels, values, `${exerciseName}: тоннаж, кг`);
+
+      renderStatsSummaryCards([
+        { value: formatStatsNumber(summary.totalVolume, "кг"), label: `Общий вес, поднятый в упражнении «${exerciseName}»` },
+        { value: formatStatsNumber(summary.totalSets), label: "Зафиксированных подходов" },
+        { value: summary.bestDay ? `${summary.bestDay.date}` : "-", label: summary.bestDay ? `Лучший день: ${formatStatsNumber(summary.bestDay.totalVolume, "кг")}` : "Лучший день" },
+        { value: summary.latestDay ? `${summary.latestDay.date}` : "-", label: summary.latestDay ? `Последний день: ${formatStatsNumber(summary.latestDay.totalVolume, "кг")}` : "Последний день" }
+      ]);
+
+      hint.textContent = `Упражнение: ${exerciseName}. Дней на графике: ${summary.days.length}. Всего поднято: ${summary.totalVolume} кг.`;
+    }
+
+    function renderCardioProgressChart() {
+      const canvas = document.getElementById("progressChart");
+      const hint = document.getElementById("progressChartHint");
+      const description = document.getElementById("statsViewDescription");
+      const items = getCardioStatsTimelineItems();
+
+      if (description) {
+        description.textContent = "График показывает ккал по кардио-сессиям, а ниже идет временная шкала с временем, ккал и километрами.";
+      }
+
+      if (!items.length) {
+        const ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        renderStatsSummaryCards([
+          { value: "0", label: "Кардио-сессий" },
+          { value: "0 мин", label: "Общее время" },
+          { value: "0 ккал", label: "Сожжено" },
+          { value: "0 км", label: "Дистанция" }
+        ]);
+        hint.textContent = "Кардиотренировок пока нет.";
+        return;
+      }
+
+      const labels = items.map(item => item.time ? `${item.date} ${item.time}` : item.date);
+      const values = items.map(item => item.caloriesBurned);
+      drawLineChart(canvas, labels, values, "Кардио: ккал за сессию");
+
+      const totalMinutes = items.reduce((sum, item) => sum + item.durationMinutes, 0);
+      const totalCalories = items.reduce((sum, item) => sum + item.caloriesBurned, 0);
+      const totalDistance = items.reduce((sum, item) => sum + (Number(item.distanceKm) || 0), 0);
+      const latest = items[items.length - 1];
+
+      renderStatsSummaryCards([
+        { value: formatStatsNumber(items.length), label: "Кардио-сессий" },
+        { value: formatStatsNumber(totalMinutes, "мин"), label: "Общее время" },
+        { value: formatStatsNumber(totalCalories, "ккал"), label: "Всего сожжено" },
+        { value: formatStatsNumber(totalDistance, "км"), label: "Всего пройдено / проехано" }
+      ]);
+
+      hint.textContent = `Кардио-сессий на графике: ${items.length}. Последняя: ${latest.date} · ${latest.typeLabel} · ${latest.caloriesBurned} ккал за ${latest.durationMinutes} мин.`;
+    }
+
+    function renderCardioStatsTimeline() {
+      const summaryBox = document.getElementById("cardioStatsSummary");
+      const timelineBox = document.getElementById("cardioStatsTimeline");
+      if (!summaryBox || !timelineBox) return;
+
+      const items = getCardioStatsTimelineItems();
+      if (!items.length) {
+        summaryBox.textContent = "Кардиотренировки появятся здесь после сохранения первой кардио-сессии.";
+        timelineBox.innerHTML = '<p class="empty">Кардио-сессий пока нет</p>';
+        return;
+      }
+
+      const totalMinutes = items.reduce((sum, item) => sum + item.durationMinutes, 0);
+      const totalCalories = items.reduce((sum, item) => sum + item.caloriesBurned, 0);
+      const totalDistance = items.reduce((sum, item) => sum + (Number(item.distanceKm) || 0), 0);
+
+      summaryBox.innerHTML = `
+        Всего сессий: ${items.length} · Время: ${formatStatsNumber(totalMinutes, "мин")} ·
+        Ккал: ${formatStatsNumber(totalCalories, "ккал")} ·
+        Дистанция: ${formatStatsNumber(totalDistance, "км")}
+      `;
+
+      timelineBox.innerHTML = `
+        <div class="cardio-timeline">
+          ${items.map(item => `
+            <div class="cardio-session-item">
+              <div>
+                <div class="cardio-session-date">${escapeHtml(item.date)}</div>
+                <div class="muted">${item.time ? escapeHtml(item.time) : "Время не указано"}</div>
+              </div>
+              <div>
+                <strong>${escapeHtml(item.typeLabel)}</strong>
+                <div class="muted">${escapeHtml(item.locationLabel)}${item.averagePace ? ` · темп ${escapeHtml(item.averagePace)}` : ""}${item.averageHeartRate ? ` · ср. пульс ${item.averageHeartRate}` : ""}${item.maxHeartRate ? ` · макс. пульс ${item.maxHeartRate}` : ""}</div>
+                <div class="cardio-session-metrics">
+                  <div class="cardio-session-metric">${formatStatsNumber(item.durationMinutes, "мин")}</div>
+                  <div class="cardio-session-metric">${formatStatsNumber(item.caloriesBurned, "ккал")}</div>
+                  <div class="cardio-session-metric">${item.distanceKm !== null ? formatStatsNumber(item.distanceKm, "км") : "км не указаны"}</div>
+                </div>
+                ${item.note ? `<div class="muted" style="margin-top:8px;">${escapeHtml(item.note)}</div>` : ""}
+              </div>
+            </div>
+          `).join("")}
+        </div>
+      `;
+    }
+
+    function renderProfileStatsPreview() {
+      const box = document.getElementById("profileStatsPreview");
+      if (!box) return;
+
+      renderStatsViewControls();
+      const view = normalizeStatsViewValue(selectedStatsView);
+
+      if (view === "cardio") {
+        const items = getCardioStatsTimelineItems();
+        const totalMinutes = items.reduce((sum, item) => sum + item.durationMinutes, 0);
+        const totalCalories = items.reduce((sum, item) => sum + item.caloriesBurned, 0);
+        const totalDistance = items.reduce((sum, item) => sum + (Number(item.distanceKm) || 0), 0);
+        box.textContent = items.length
+          ? `Кардио: ${items.length} сессий · ${totalMinutes} мин · ${totalCalories} ккал · ${formatStatsNumber(totalDistance, "км")}.`
+          : "Кардио-статистика появится после первой кардио-сессии.";
+        return;
+      }
+
+      const exerciseName = getSelectedExerciseFromStatsView();
+      if (exerciseName) {
+        const summary = getExerciseVolumeSummary(exerciseName);
+        box.textContent = summary.days.length
+          ? `${exerciseName}: общий поднятый вес ${summary.totalVolume} кг · подходов ${summary.totalSets} · дней ${summary.days.length}.`
+          : `${exerciseName}: пока нет сохраненных подходов.`;
+        return;
+      }
+
+      const stats = getWorkoutStatsByDay();
+      const totalVolume = stats.reduce((sum, item) => sum + item.totalVolume, 0);
+      const totalSets = stats.reduce((sum, item) => sum + item.totalSets, 0);
+      box.textContent = stats.length
+        ? `Общий тоннаж: ${totalVolume} кг · силовых дней ${stats.length} · подходов ${totalSets}.`
+        : "Статистика появится после первой силовой тренировки.";
     }
 
     function renderStatsList() {
@@ -8503,16 +8960,19 @@
       const backupsPanel = document.getElementById("profileBackupsPanel");
       const customSummary = document.getElementById("profileCustomExercisesSummary");
       const customPanel = document.getElementById("profileCustomExercisesPanel");
+      const statsPreview = document.getElementById("profileStatsPreview");
       if (!header || !cloud || !summary || !backupSummary || !backupsPanel || !customSummary || !customPanel) return;
 
       if (!currentProfileId) {
         header.innerHTML = "<strong>Профиль не выбран</strong><div class='muted'>Сначала войди через Google или создай локальный профиль.</div>";
         cloud.textContent = "Облачная синхронизация недоступна без активного профиля.";
         summary.textContent = "";
+        if (statsPreview) statsPreview.textContent = "Статистика доступна после выбора профиля.";
         backupSummary.textContent = "";
         customSummary.textContent = "";
         backupsPanel.classList.add("hidden");
         customPanel.classList.add("hidden");
+        renderStatsViewControls();
         return;
       }
 
@@ -8566,6 +9026,7 @@
       `;
       backupsPanel.classList.toggle("hidden", !profileSectionState.backups);
       customPanel.classList.toggle("hidden", !profileSectionState.customExercises);
+      renderProfileStatsPreview();
       renderCloudSyncSettings();
       renderProfileCustomExerciseList();
     }
