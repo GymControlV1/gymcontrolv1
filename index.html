@@ -1894,6 +1894,11 @@
           </div>
           <div class="chart-wrap" style="margin-bottom:14px;">
             <div class="chart-box">
+              <canvas id="balanceWaistChart" width="900" height="280"></canvas>
+            </div>
+          </div>
+          <div class="chart-wrap" style="margin-bottom:14px;">
+            <div class="chart-box">
               <canvas id="balanceBodyFatChart" width="900" height="280"></canvas>
             </div>
           </div>
@@ -2133,7 +2138,7 @@
   </div>
 
   <nav id="bottomNav" class="bottom-nav">
-    <button id="nav-training" class="nav-btn active" onclick="switchScreen('training')">Тренировка</button>
+    <button id="nav-training" class="nav-btn active" onclick="switchScreen('training')">Главная</button>
     <button id="nav-balance" class="nav-btn" onclick="switchScreen('balance')">Баланс</button>
     <button id="nav-profile" class="nav-btn" onclick="switchScreen('profile')">Профиль</button>
   </nav>
@@ -4881,6 +4886,7 @@
     function renderBalanceDynamicsCharts() {
       const entries = getBalanceDynamicsSlice(getBalanceDynamicsEntries());
       drawMetricSeriesChart("balanceWeightChart", entries, item => toNumberOrNull(item.weight), "Вес, кг");
+      drawMetricSeriesChart("balanceWaistChart", entries, item => toNumberOrNull(item.waist), "Талия, см");
       drawMetricSeriesChart("balanceBodyFatChart", entries, item => toNumberOrNull(item.bodyFatPercent), "% жира");
       drawMetricSeriesChart("balanceDeficitChart", entries, item => Number.isFinite(item.deficit) ? item.deficit : null, "Дефицит / профицит, ккал");
     }
