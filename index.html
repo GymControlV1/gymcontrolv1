@@ -1988,19 +1988,11 @@
       <div class="card">
         <h2 class="section-title">Облако и устройства</h2>
         <div id="profileCloudStatus" class="muted" style="margin-bottom:10px;"></div>
-        <div class="form-grid" style="margin-bottom:10px;">
-          <div class="form-field">
-            <div class="field-label">URL Google Apps Script</div>
-            <input id="cloudScriptUrl" type="text" placeholder="Вставь URL Web App" />
-          </div>
-          <label class="setting-chip" style="align-self:end;">
-            <input type="checkbox" id="cloudAutoSync" onchange="toggleCloudAutoSync(this.checked)" />
-            <span>Автосинхронизация</span>
-          </label>
-        </div>
+        <label class="setting-chip" style="margin-bottom:10px;">
+          <input type="checkbox" id="cloudAutoSync" onchange="toggleCloudAutoSync(this.checked)" />
+          <span>Автосинхронизация</span>
+        </label>
         <div class="actions full">
-          <button class="btn-secondary" onclick="saveCloudScriptUrl()">Сохранить URL</button>
-          <button class="btn-secondary" onclick="pingCloudScript()">Проверить подключение</button>
           <button class="btn-primary" onclick="syncAllCloudData(true)">Синхронизировать сейчас</button>
           <button class="btn-secondary" onclick="refreshAllCloudData(true)">Обновить из облака</button>
         </div>
@@ -4964,12 +4956,10 @@
     }
 
     function renderCloudSyncSettings() {
-      const urlInput = document.getElementById("cloudScriptUrl");
       const autoSync = document.getElementById("cloudAutoSync");
       const status = document.getElementById("cloudSyncStatus");
-      if (!urlInput || !autoSync || !status) return;
+      if (!autoSync || !status) return;
 
-      urlInput.value = cloudConfig.scriptUrl || "";
       autoSync.checked = !!cloudConfig.autoSync;
 
       if (!cloudConfig.scriptUrl) {
