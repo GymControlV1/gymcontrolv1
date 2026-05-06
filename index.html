@@ -1257,6 +1257,7 @@
               <div class="field-label">Источник состава тела</div>
               <select id="dailyBodyCompositionSourceInput">
                 <option value="auto">Авторасчет по замерам</option>
+                <option value="inbody">InBody</option>
                 <option value="smart_scale">Умные весы</option>
                 <option value="analyzer">Анализатор состава тела</option>
                 <option value="caliper">Калипер/замер</option>
@@ -1804,6 +1805,38 @@
         <h2 class="section-title">Проведенные тренировки</h2>
         <div id="historyList"></div>
       </div>
+
+      <div class="card">
+        <div class="section-head">
+          <h2 class="section-title">Кардио-инфографика</h2>
+          <div class="section-head-actions">
+            <button id="cardioStatsToggleBtn" class="btn-secondary" onclick="toggleCardioStatsPanel()">Показать / скрыть</button>
+          </div>
+        </div>
+        <div id="cardioStatsSummary" class="muted"></div>
+        <div id="cardioStatsPanel" class="collapsible-panel hidden">
+          <div class="chart-wrap" style="margin-bottom:14px;">
+            <div class="chart-box">
+              <canvas id="cardioCaloriesChart" width="900" height="280"></canvas>
+            </div>
+          </div>
+          <div class="chart-wrap" style="margin-bottom:14px;">
+            <div class="chart-box">
+              <canvas id="cardioDistanceChart" width="900" height="280"></canvas>
+            </div>
+          </div>
+          <div class="chart-wrap" style="margin-bottom:14px;">
+            <div class="chart-box">
+              <canvas id="cardioHeartRateChart" width="900" height="280"></canvas>
+            </div>
+          </div>
+          <div class="chart-wrap">
+            <div class="chart-box">
+              <canvas id="cardioPaceChart" width="900" height="280"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
     </section>
 
     <section id="screen-more" class="screen">
@@ -1860,12 +1893,72 @@
               <input id="bodyTargetFatInput" type="number" min="0" step="0.1" placeholder="Например 12" />
             </div>
             <div class="form-field">
+              <div class="field-label">BMR вручную, ккал</div>
+              <input id="bodyManualBmrInput" type="number" min="0" step="1" placeholder="Если известен по тесту" />
+            </div>
+            <div class="form-field">
               <div class="field-label">Образ жизни</div>
               <select id="bodyActivityLevelInput">
                 <option value="low">Низкая активность</option>
                 <option value="moderate">Обычный образ жизни</option>
                 <option value="high">Высокая активность</option>
               </select>
+            </div>
+          </div>
+          <div class="hint-box" style="margin-top:12px;">
+            <strong>Состав тела по InBody / аналогам</strong>
+            <div class="muted" style="margin-top:6px;">
+              Эти данные фиксируют текущую точку тела. Если внести % жира или массу жира, они будут приоритетнее автоформулы на выбранную дату.
+            </div>
+            <div class="form-grid" style="margin-top:12px;">
+              <div class="form-field">
+                <div class="field-label">Дата анализа</div>
+                <input id="bodyCompositionDateInput" type="date" />
+              </div>
+              <div class="form-field">
+                <div class="field-label">Источник</div>
+                <select id="bodyCompositionSourceInput">
+                  <option value="inbody">InBody</option>
+                  <option value="smart_scale">Умные весы</option>
+                  <option value="analyzer">Анализатор</option>
+                  <option value="manual">Ручной ввод</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <div class="field-label">Вес по анализу, кг</div>
+                <input id="bodyCompositionWeightInput" type="number" min="0" step="0.1" placeholder="Например 88.4" />
+              </div>
+              <div class="form-field">
+                <div class="field-label">% жира</div>
+                <input id="bodyCompositionFatPercentInput" type="number" min="0" step="0.1" placeholder="Например 18.5" />
+              </div>
+              <div class="form-field">
+                <div class="field-label">Жировая масса, кг</div>
+                <input id="bodyCompositionFatMassInput" type="number" min="0" step="0.1" placeholder="Например 16.3" />
+              </div>
+              <div class="form-field">
+                <div class="field-label">Безжировая масса, кг</div>
+                <input id="bodyCompositionLeanMassInput" type="number" min="0" step="0.1" placeholder="Если есть в отчете" />
+              </div>
+              <div class="form-field">
+                <div class="field-label">Мышечная масса, кг</div>
+                <input id="bodyCompositionMuscleMassInput" type="number" min="0" step="0.1" placeholder="SMM / мышцы" />
+              </div>
+              <div class="form-field">
+                <div class="field-label">Висцеральный жир</div>
+                <input id="bodyCompositionVisceralFatInput" type="number" min="0" step="0.1" placeholder="Если есть" />
+              </div>
+              <div class="form-field">
+                <div class="field-label">Вода в теле, %</div>
+                <input id="bodyCompositionWaterPercentInput" type="number" min="0" step="0.1" placeholder="Если есть" />
+              </div>
+              <div class="form-field">
+                <div class="field-label">BMR из анализа, ккал</div>
+                <input id="bodyCompositionBmrInput" type="number" min="0" step="1" placeholder="Если указан" />
+              </div>
+            </div>
+            <div class="actions">
+              <button class="btn-success" onclick="saveBodyCompositionAnalysis()">Сохранить анализ тела</button>
             </div>
           </div>
           <div class="actions">
@@ -1905,6 +1998,68 @@
           <div class="chart-wrap">
             <div class="chart-box">
               <canvas id="balanceDeficitChart" width="900" height="280"></canvas>
+            </div>
+          </div>
+          <div class="chart-wrap" style="margin-top:14px; margin-bottom:14px;">
+            <div class="chart-box">
+              <canvas id="balanceWaterTrendChart" width="900" height="280"></canvas>
+            </div>
+          </div>
+          <div class="chart-wrap" style="margin-bottom:14px;">
+            <div class="chart-box">
+              <canvas id="balanceCaloriesTrendChart" width="900" height="280"></canvas>
+            </div>
+          </div>
+          <div class="chart-wrap" style="margin-bottom:14px;">
+            <div class="chart-box">
+              <canvas id="balanceProteinTrendChart" width="900" height="280"></canvas>
+            </div>
+          </div>
+          <div class="chart-wrap" style="margin-bottom:14px;">
+            <div class="chart-box">
+              <canvas id="balanceFatTrendChart" width="900" height="280"></canvas>
+            </div>
+          </div>
+          <div class="chart-wrap" style="margin-bottom:14px;">
+            <div class="chart-box">
+              <canvas id="balanceCarbsTrendChart" width="900" height="280"></canvas>
+            </div>
+          </div>
+          <div class="chart-wrap">
+            <div class="chart-box">
+              <canvas id="balanceTotalBurnTrendChart" width="900" height="280"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-head">
+          <h2 class="section-title">Состав тела по анализам</h2>
+          <div class="section-head-actions">
+            <button class="btn-secondary" onclick="toggleBalanceSection('bodyCompositionStats')">Показать / скрыть</button>
+          </div>
+        </div>
+        <div id="balanceBodyCompositionSummary" class="muted"></div>
+        <div id="balanceBodyCompositionPanel" class="collapsible-panel hidden">
+          <div class="chart-wrap" style="margin-bottom:14px;">
+            <div class="chart-box">
+              <canvas id="balanceAnalysisBodyFatChart" width="900" height="280"></canvas>
+            </div>
+          </div>
+          <div class="chart-wrap" style="margin-bottom:14px;">
+            <div class="chart-box">
+              <canvas id="balanceAnalysisFatMassChart" width="900" height="280"></canvas>
+            </div>
+          </div>
+          <div class="chart-wrap" style="margin-bottom:14px;">
+            <div class="chart-box">
+              <canvas id="balanceAnalysisLeanMassChart" width="900" height="280"></canvas>
+            </div>
+          </div>
+          <div class="chart-wrap">
+            <div class="chart-box">
+              <canvas id="balanceAnalysisMuscleMassChart" width="900" height="280"></canvas>
             </div>
           </div>
         </div>
@@ -1987,6 +2142,19 @@
           <button class="btn-secondary" onclick="scrollToProfileSection('profileCustomExercisesCard')">Мои упражнения</button>
           <button class="btn-secondary" onclick="scrollToProfileSection('profileBackupCard')">Резервные копии</button>
           <button class="btn-danger" onclick="logoutProfile()">Выйти из профиля</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-head">
+          <h2 class="section-title">Тренировки</h2>
+          <div class="section-head-actions">
+            <button class="btn-secondary" onclick="toggleProfileSection('workouts')">Показать тренировки</button>
+          </div>
+        </div>
+        <div id="profileWorkoutHistorySummary" class="muted"></div>
+        <div id="profileWorkoutsPanel" class="collapsible-panel hidden">
+          <div id="profileWorkoutHistoryList"></div>
         </div>
       </div>
 
@@ -2200,12 +2368,15 @@
     const balanceSectionState = {
       bodySettings: false,
       stats: false,
+      bodyCompositionStats: false,
       meals: false,
       water: false,
       activity: false
     };
     let balanceDynamicsRange = "7d";
+    let cardioStatsPanelOpen = false;
     const profileSectionState = {
+      workouts: false,
       backups: false,
       customExercises: false
     };
@@ -2223,6 +2394,7 @@
     const DEFAULT_GOOGLE_CLIENT_ID = "355161249555-b2sssv764jqvvf1p25i5pm2oem1ffmnp.apps.googleusercontent.com";
     const PROFILE_INDEX_KEY = "gymcontrolProfiles";
     const CURRENT_PROFILE_KEY = "gymcontrolCurrentProfileId";
+    const CURRENT_SESSION_DRAFT_PREFIX = "gymcontrolCurrentSessionDraft:";
     const CLOUD_CONFIG_KEY = "gymcontrolCloudConfig";
     const AUTH_LOGIN_SUPPRESSED_KEY = "gymcontrolAuthLoginSuppressed";
     const LEGACY_TELEGRAM_LOGIN_SUPPRESSED_KEY = "gymcontrolTelegramLoginSuppressed";
@@ -2326,6 +2498,7 @@
         sex: "male",
         neck: null,
         targetBodyFat: null,
+        manualBmr: null,
         activityLevel: "moderate"
       };
     }
@@ -2347,6 +2520,10 @@
         manualBodyFatPercent: null,
         manualFatMass: null,
         manualLeanMass: null,
+        skeletalMuscleMass: null,
+        visceralFat: null,
+        bodyWaterPercent: null,
+        analysisBmr: null,
         bodyFatPercent: null,
         fatMass: null,
         leanMass: null,
@@ -2756,6 +2933,11 @@
         toNumberOrNull(safe.hips) !== null ||
         toNumberOrNull(safe.manualBodyFatPercent) !== null ||
         toNumberOrNull(safe.manualFatMass) !== null ||
+        toNumberOrNull(safe.manualLeanMass) !== null ||
+        toNumberOrNull(safe.skeletalMuscleMass) !== null ||
+        toNumberOrNull(safe.visceralFat) !== null ||
+        toNumberOrNull(safe.bodyWaterPercent) !== null ||
+        toNumberOrNull(safe.analysisBmr) !== null ||
         clampMetricNumber(safe.calories) > 0 ||
         clampMetricNumber(safe.protein) > 0 ||
         clampMetricNumber(safe.fat) > 0 ||
@@ -2778,6 +2960,11 @@
       if (toNumberOrNull(safe.hips) !== null) score += 1;
       if (toNumberOrNull(safe.manualBodyFatPercent) !== null) score += 2;
       if (toNumberOrNull(safe.manualFatMass) !== null) score += 2;
+      if (toNumberOrNull(safe.manualLeanMass) !== null) score += 2;
+      if (toNumberOrNull(safe.skeletalMuscleMass) !== null) score += 2;
+      if (toNumberOrNull(safe.visceralFat) !== null) score += 1;
+      if (toNumberOrNull(safe.bodyWaterPercent) !== null) score += 1;
+      if (toNumberOrNull(safe.analysisBmr) !== null) score += 1;
       if (clampMetricNumber(safe.calories) > 0) score += 2;
       if (clampMetricNumber(safe.protein) > 0) score += 1;
       if (clampMetricNumber(safe.fat) > 0) score += 1;
@@ -3047,6 +3234,8 @@
     }
 
     function calculateBmrForEntry(entry) {
+      const manualBmr = toNumberOrNull(bodyProfile.manualBmr);
+      if (manualBmr) return Math.round(manualBmr);
       const weight = toNumberOrNull(entry.weight) ?? toNumberOrNull(bodyProfile.weight) ?? getLatestRecordedWeight();
       const height = toNumberOrNull(bodyProfile.height);
       const age = toNumberOrNull(bodyProfile.age);
@@ -3123,6 +3312,10 @@
       recalculateActivityTotalsFromEntries(entry);
       entry.water = clampMetricNumber(entry.water);
       entry.liquids = clampMetricNumber(entry.liquids);
+      entry.skeletalMuscleMass = toNumberOrNull(entry.skeletalMuscleMass);
+      entry.visceralFat = toNumberOrNull(entry.visceralFat);
+      entry.bodyWaterPercent = toNumberOrNull(entry.bodyWaterPercent);
+      entry.analysisBmr = toNumberOrNull(entry.analysisBmr);
       entry.activityCaloriesRaw = clampMetricNumber(entry.activityCaloriesRaw || entry.activityCalories);
       entry.activityCalories = getCorrectedActivityCalories(entry.activityCaloriesRaw);
       entry.steps = clampMetricNumber(entry.steps);
@@ -3185,6 +3378,95 @@
 
     function getCurrentProfileStorageKey(profileId = currentProfileId) {
       return `gymcontrolProfileData:${profileId}`;
+    }
+
+    function getCurrentSessionDraftStorageKey(profileId = currentProfileId) {
+      return `${CURRENT_SESSION_DRAFT_PREFIX}${profileId || "anonymous"}`;
+    }
+
+    function shouldPersistCurrentSessionDraft() {
+      return !!currentProfileId
+        && currentSession
+        && currentSession.state !== "idle"
+        && currentSession.state !== "summary";
+    }
+
+    function captureCurrentSessionDraftData() {
+      if (currentSession.state === "cardio-entry") {
+        try {
+          currentSession.cardioDraft = collectCardioFormData();
+        } catch (error) {
+          // Форма может быть еще не отрисована; в таком случае сохраняем уже имеющееся состояние.
+        }
+      }
+
+      return {
+        savedAt: new Date().toISOString(),
+        session: JSON.parse(JSON.stringify(currentSession)),
+        timer: {
+          restTimeLeft,
+          restEndTime,
+          pendingRestAction
+        }
+      };
+    }
+
+    function persistCurrentSessionDraft() {
+      if (!currentProfileId) return;
+
+      if (!shouldPersistCurrentSessionDraft()) {
+        localStorage.removeItem(getCurrentSessionDraftStorageKey());
+        return;
+      }
+
+      try {
+        localStorage.setItem(getCurrentSessionDraftStorageKey(), JSON.stringify(captureCurrentSessionDraftData()));
+      } catch (error) {
+        console.warn("Не удалось сохранить черновик тренировки", error);
+      }
+    }
+
+    function clearCurrentSessionDraft() {
+      if (!currentProfileId) return;
+      localStorage.removeItem(getCurrentSessionDraftStorageKey());
+    }
+
+    function restoreCurrentSessionDraft() {
+      if (!currentProfileId) return false;
+
+      const raw = localStorage.getItem(getCurrentSessionDraftStorageKey());
+      if (!raw) return false;
+
+      try {
+        const parsed = JSON.parse(raw);
+        const draft = parsed?.session;
+        if (!draft || draft.state === "idle" || draft.state === "summary") {
+          localStorage.removeItem(getCurrentSessionDraftStorageKey());
+          return false;
+        }
+
+        currentSession = {
+          ...currentSession,
+          ...draft,
+          active: draft.active !== false,
+          editingSetIndex: Number.isFinite(draft.editingSetIndex) ? draft.editingSetIndex : -1,
+          formDirty: false
+        };
+        if (parsed.timer && typeof parsed.timer === "object") {
+          restTimeLeft = clampMetricNumber(parsed.timer.restTimeLeft) || 90;
+          restEndTime = clampMetricNumber(parsed.timer.restEndTime);
+          pendingRestAction = parsed.timer.pendingRestAction || null;
+          if (currentSession.state === "timer" && restEndTime > Date.now()) {
+            restTimeLeft = Math.max(1, Math.ceil((restEndTime - Date.now()) / 1000));
+          }
+        }
+        showToast("Незавершенная тренировка восстановлена");
+        return true;
+      } catch (error) {
+        console.warn("Не удалось восстановить черновик тренировки", error);
+        localStorage.removeItem(getCurrentSessionDraftStorageKey());
+        return false;
+      }
     }
 
     function getCurrentProfile() {
@@ -3863,6 +4145,8 @@
 
     function getBodyCompositionSourceLabel(source) {
       switch (source) {
+        case "inbody":
+          return "InBody";
         case "smart_scale":
           return "умные весы";
         case "analyzer":
@@ -4574,6 +4858,7 @@
         sex: document.getElementById("bodySexInput").value || "male",
         neck: toNumberOrNull(document.getElementById("bodyNeckInput").value),
         targetBodyFat: toNumberOrNull(document.getElementById("bodyTargetFatInput").value),
+        manualBmr: toNumberOrNull(document.getElementById("bodyManualBmrInput").value),
         activityLevel: document.getElementById("bodyActivityLevelInput").value || "moderate"
       };
 
@@ -4587,6 +4872,60 @@
       saveData();
       renderAll();
       showToast("Параметры тела сохранены");
+    }
+
+    function saveBodyCompositionAnalysis() {
+      const date = document.getElementById("bodyCompositionDateInput")?.value || getTodayKey();
+      const source = document.getElementById("bodyCompositionSourceInput")?.value || "inbody";
+      const analysisWeight = toNumberOrNull(document.getElementById("bodyCompositionWeightInput")?.value);
+      const fatPercent = toNumberOrNull(document.getElementById("bodyCompositionFatPercentInput")?.value);
+      const fatMass = toNumberOrNull(document.getElementById("bodyCompositionFatMassInput")?.value);
+      const leanMass = toNumberOrNull(document.getElementById("bodyCompositionLeanMassInput")?.value);
+      const muscleMass = toNumberOrNull(document.getElementById("bodyCompositionMuscleMassInput")?.value);
+      const visceralFat = toNumberOrNull(document.getElementById("bodyCompositionVisceralFatInput")?.value);
+      const bodyWaterPercent = toNumberOrNull(document.getElementById("bodyCompositionWaterPercentInput")?.value);
+      const analysisBmr = toNumberOrNull(document.getElementById("bodyCompositionBmrInput")?.value);
+
+      if (!date) {
+        alert("Укажи дату анализа.");
+        return;
+      }
+
+      if (fatPercent === null && fatMass === null && leanMass === null && muscleMass === null && bodyWaterPercent === null && visceralFat === null) {
+        alert("Внеси хотя бы один показатель состава тела.");
+        return;
+      }
+
+      saveDailyEntry(date, entry => {
+        if (analysisWeight !== null) entry.weight = analysisWeight;
+        entry.bodyCompositionSource = source;
+        entry.manualBodyFatPercent = fatPercent;
+        entry.manualFatMass = fatMass;
+        entry.manualLeanMass = leanMass;
+        entry.skeletalMuscleMass = muscleMass;
+        entry.visceralFat = visceralFat;
+        entry.bodyWaterPercent = bodyWaterPercent;
+        entry.analysisBmr = analysisBmr;
+        return entry;
+      });
+
+      if (analysisWeight !== null || analysisBmr !== null) {
+        bodyProfile = {
+          ...getEmptyBodyProfile(),
+          ...bodyProfile,
+          weight: analysisWeight !== null ? analysisWeight : bodyProfile.weight,
+          manualBmr: analysisBmr !== null ? analysisBmr : bodyProfile.manualBmr
+        };
+        Object.keys(dailyMetricsByDate).forEach(itemDate => {
+          dailyMetricsByDate[itemDate] = recalculateDailyEntry({
+            ...createEmptyDailyMetrics(itemDate),
+            ...dailyMetricsByDate[itemDate]
+          });
+        });
+        saveData();
+      }
+
+      showToast("Анализ состава тела сохранен");
     }
 
     function renderTodayForms(entry) {
@@ -4697,6 +5036,8 @@
       const statsSummary = document.getElementById("balanceStatsSummary");
       const bodySettingsPanel = document.getElementById("balanceBodySettingsPanel");
       const statsPanel = document.getElementById("balanceStatsPanel");
+      const bodyCompositionSummary = document.getElementById("balanceBodyCompositionSummary");
+      const bodyCompositionPanel = document.getElementById("balanceBodyCompositionPanel");
       if (!profileNote) return;
 
       const water = getWaterProgress(entry, targets);
@@ -4716,6 +5057,14 @@
       }
       if (bodySettingsPanel) bodySettingsPanel.classList.toggle("hidden", !balanceSectionState.bodySettings);
       if (statsPanel) statsPanel.classList.toggle("hidden", !balanceSectionState.stats);
+      if (bodyCompositionPanel) bodyCompositionPanel.classList.toggle("hidden", !balanceSectionState.bodyCompositionStats);
+      if (bodyCompositionSummary) {
+        const analysisEntries = getBodyCompositionAnalysisEntries();
+        const latestAnalysis = analysisEntries[analysisEntries.length - 1];
+        bodyCompositionSummary.textContent = latestAnalysis
+          ? `Анализов сохранено: ${analysisEntries.length}. Последний: ${latestAnalysis.date} · ${getBodyCompositionSourceLabel(latestAnalysis.bodyCompositionSource)} · жир ${formatMetric(latestAnalysis.bodyFatPercent, "%")}.`
+          : "Сохрани анализ InBody / умных весов в параметрах тела, и здесь появится отдельная динамика.";
+      }
       const range7dBtn = document.getElementById("balanceRange7dBtn");
       const rangeAllBtn = document.getElementById("balanceRangeAllBtn");
       if (range7dBtn) range7dBtn.classList.toggle("btn-primary", balanceDynamicsRange === "7d");
@@ -4760,9 +5109,21 @@
               <div class="metric-row-value">${escapeHtml(goal.estimateText)}</div>
             </div>
           </div>
+          ${(entry.skeletalMuscleMass !== null || entry.visceralFat !== null || entry.bodyWaterPercent !== null || entry.analysisBmr !== null) ? `
+            <div class="metric-row">
+              <div class="metric-row-top">
+                <div class="metric-row-title">Данные анализа тела</div>
+                <div class="metric-row-value">${getBodyCompositionSourceLabel(entry.bodyCompositionSource)}</div>
+              </div>
+              <div class="muted">
+                Мышечная масса: ${formatMetric(entry.skeletalMuscleMass, " кг")} · Висцеральный жир: ${formatMetric(entry.visceralFat, "")} · Вода: ${formatMetric(entry.bodyWaterPercent, "%")} · BMR анализа: ${formatMetric(entry.analysisBmr, " ккал")}
+              </div>
+            </div>
+          ` : ""}
         </div>
       `;
       renderBalanceDynamicsCharts();
+      renderBodyCompositionAnalysisCharts();
       caloriesCard.innerHTML = `
         <div class="status-panel ${deficitTone === "green" ? "status-ok" : deficitTone === "yellow" ? "status-warn" : deficitTone === "blue" ? "status-info" : "status-bad"}">
           ${getEnergyBalanceLabel(entry.deficit || 0)} · ${getEnergyBalanceValue(entry.deficit || 0)} ккал · ${getDeficitStatusText(entry.deficit || 0)}
@@ -4830,7 +5191,7 @@
           <div class="metric-tile blue">
             <div class="metric-label">BMR</div>
             <div class="metric-value">${entry.bmr || 0}</div>
-            <div class="metric-subvalue">ккал в покое</div>
+            <div class="metric-subvalue">${bodyProfile.manualBmr ? "вручную / по анализу" : "ккал в покое"}</div>
           </div>
           <div class="metric-tile">
             <div class="metric-label">Образ жизни</div>
@@ -4889,6 +5250,31 @@
       drawMetricSeriesChart("balanceWaistChart", entries, item => toNumberOrNull(item.waist), "Талия, см");
       drawMetricSeriesChart("balanceBodyFatChart", entries, item => toNumberOrNull(item.bodyFatPercent), "% жира");
       drawMetricSeriesChart("balanceDeficitChart", entries, item => Number.isFinite(item.deficit) ? item.deficit : null, "Дефицит / профицит, ккал");
+      drawMetricSeriesChart("balanceWaterTrendChart", entries, item => toNumberOrNull(item.water), "Вода за день, мл");
+      drawMetricSeriesChart("balanceCaloriesTrendChart", entries, item => toNumberOrNull(item.calories), "Калории съедено, ккал");
+      drawMetricSeriesChart("balanceProteinTrendChart", entries, item => toNumberOrNull(item.protein), "Белок, г");
+      drawMetricSeriesChart("balanceFatTrendChart", entries, item => toNumberOrNull(item.fat), "Жиры, г");
+      drawMetricSeriesChart("balanceCarbsTrendChart", entries, item => toNumberOrNull(item.carbs), "Углеводы, г");
+      drawMetricSeriesChart("balanceTotalBurnTrendChart", entries, item => toNumberOrNull(item.totalBurn), "Общий расход, ккал");
+    }
+
+    function getBodyCompositionAnalysisEntries() {
+      return getBalanceDynamicsEntries()
+        .filter(item => item.bodyCompositionSource && item.bodyCompositionSource !== "auto")
+        .filter(item =>
+          item.bodyFatPercent !== null ||
+          item.fatMass !== null ||
+          item.leanMass !== null ||
+          item.skeletalMuscleMass !== null
+        );
+    }
+
+    function renderBodyCompositionAnalysisCharts() {
+      const entries = getBodyCompositionAnalysisEntries();
+      drawMetricSeriesChart("balanceAnalysisBodyFatChart", entries, item => toNumberOrNull(item.bodyFatPercent), "% жира по анализам");
+      drawMetricSeriesChart("balanceAnalysisFatMassChart", entries, item => toNumberOrNull(item.fatMass), "Жировая масса, кг");
+      drawMetricSeriesChart("balanceAnalysisLeanMassChart", entries, item => toNumberOrNull(item.leanMass), "Безжировая масса, кг");
+      drawMetricSeriesChart("balanceAnalysisMuscleMassChart", entries, item => toNumberOrNull(item.skeletalMuscleMass), "Мышечная масса, кг");
     }
 
     function drawMetricSeriesChart(canvasId, entries, getter, title) {
@@ -6143,6 +6529,7 @@
       }
 
       syncSettingsUI();
+      persistCurrentSessionDraft();
     }
 
     function showHelpInline() {
@@ -6408,12 +6795,31 @@
 
     function renderCardioWorkoutView() {
       const meta = document.getElementById("cardioWorkoutMeta");
-      const timeInput = document.getElementById("cardioTime");
       if (meta) {
         meta.textContent = `${currentSession.date || getTodayKey()} · Кардио тренировка`;
       }
-      if (timeInput && !timeInput.value) {
-        timeInput.value = getCurrentTimeValue();
+
+      if (currentSession.cardioDraft) {
+        const draft = normalizeCardioWorkoutData(currentSession.cardioDraft);
+        const setValue = (id, value) => {
+          const el = document.getElementById(id);
+          if (el) el.value = value ?? "";
+        };
+        setValue("cardioType", draft.cardioType);
+        setValue("cardioLocationType", draft.locationType);
+        setValue("cardioTime", draft.time || getCurrentTimeValue());
+        setValue("cardioDurationMinutes", draft.durationMinutes || "");
+        setValue("cardioDistanceKm", draft.distanceKm ?? "");
+        setValue("cardioAverageHeartRate", draft.averageHeartRate || "");
+        setValue("cardioMaxHeartRate", draft.maxHeartRate || "");
+        setValue("cardioCaloriesBurned", draft.caloriesBurned || "");
+        setValue("cardioAveragePace", draft.averagePace || "");
+        setValue("cardioNote", draft.note || "");
+      } else {
+        const timeInput = document.getElementById("cardioTime");
+        if (timeInput && !timeInput.value) {
+          timeInput.value = getCurrentTimeValue();
+        }
       }
     }
 
@@ -7457,6 +7863,7 @@
         exerciseFeedback: "",
         formDirty: false
       };
+      clearCurrentSessionDraft();
       renderTrainingScreen();
     }
 
@@ -7988,6 +8395,7 @@
     function renderStatsScreen() {
       renderWorkoutProgressChart();
       renderHistoryList();
+      renderCardioInfographics();
     }
 
     function getWorkoutStatsByDay() {
@@ -8201,6 +8609,60 @@
       drawLineChart(canvas, labels, values, "Ккал по кардио-сессиям");
       const latest = cardioWorkouts[cardioWorkouts.length - 1];
       hint.textContent = `Кардио-сессий на графике: ${cardioWorkouts.length}. Последняя: ${latest.date} · ${latest.label} · ${latest.caloriesBurned} ккал за ${latest.durationMinutes} мин.`;
+    }
+
+    function parsePaceToMinutes(pace) {
+      const text = String(pace || "").trim();
+      if (!text) return null;
+      const match = text.match(/(\d+)\s*[:.]\s*(\d{1,2})/);
+      if (!match) return null;
+      const minutes = Number(match[1]);
+      const seconds = Number(match[2]);
+      if (!Number.isFinite(minutes) || !Number.isFinite(seconds)) return null;
+      return roundTo(minutes + seconds / 60, 2);
+    }
+
+    function getCardioChartEntries() {
+      return getCardioWorkoutHistory()
+        .slice()
+        .sort((a, b) => String(a.date).localeCompare(String(b.date)))
+        .map(workout => {
+          const cardio = normalizeCardioWorkoutData(workout.cardio);
+          return {
+            date: workout.date,
+            caloriesBurned: cardio.caloriesBurned || null,
+            distanceKm: cardio.distanceKm,
+            averageHeartRate: cardio.averageHeartRate || null,
+            averagePaceMinutes: parsePaceToMinutes(cardio.averagePace)
+          };
+        });
+    }
+
+    function toggleCardioStatsPanel() {
+      cardioStatsPanelOpen = !cardioStatsPanelOpen;
+      renderStatsScreen();
+    }
+
+    function renderCardioInfographics() {
+      const panel = document.getElementById("cardioStatsPanel");
+      const summary = document.getElementById("cardioStatsSummary");
+      const entries = getCardioChartEntries();
+      const latest = entries[entries.length - 1];
+
+      if (summary) {
+        summary.textContent = latest
+          ? `Кардио-сессий: ${entries.length}. Последняя: ${latest.date} · ${latest.caloriesBurned || 0} ккал · ${formatMetric(latest.distanceKm, " км")}.`
+          : "Кардио-графики появятся после сохранения кардиотренировок.";
+      }
+
+      if (panel) panel.classList.toggle("hidden", !cardioStatsPanelOpen);
+
+      if (!cardioStatsPanelOpen) return;
+
+      drawMetricSeriesChart("cardioCaloriesChart", entries, item => toNumberOrNull(item.caloriesBurned), "Кардио: ккал");
+      drawMetricSeriesChart("cardioDistanceChart", entries, item => toNumberOrNull(item.distanceKm), "Кардио: расстояние, км");
+      drawMetricSeriesChart("cardioHeartRateChart", entries, item => toNumberOrNull(item.averageHeartRate), "Кардио: средний пульс");
+      drawMetricSeriesChart("cardioPaceChart", entries, item => toNumberOrNull(item.averagePaceMinutes), "Кардио: темп, мин/км");
     }
 
     function renderStatsList() {
@@ -8503,6 +8965,8 @@
       const backupsPanel = document.getElementById("profileBackupsPanel");
       const customSummary = document.getElementById("profileCustomExercisesSummary");
       const customPanel = document.getElementById("profileCustomExercisesPanel");
+      const workoutsSummary = document.getElementById("profileWorkoutHistorySummary");
+      const workoutsPanel = document.getElementById("profileWorkoutsPanel");
       if (!header || !cloud || !summary || !backupSummary || !backupsPanel || !customSummary || !customPanel) return;
 
       if (!currentProfileId) {
@@ -8511,8 +8975,10 @@
         summary.textContent = "";
         backupSummary.textContent = "";
         customSummary.textContent = "";
+        if (workoutsSummary) workoutsSummary.textContent = "";
         backupsPanel.classList.add("hidden");
         customPanel.classList.add("hidden");
+        if (workoutsPanel) workoutsPanel.classList.add("hidden");
         return;
       }
 
@@ -8553,6 +9019,12 @@
       document.getElementById("bodySexInput").value = bodyProfile.sex || "male";
       document.getElementById("bodyNeckInput").value = bodyProfile.neck ?? "";
       document.getElementById("bodyTargetFatInput").value = bodyProfile.targetBodyFat ?? "";
+      const manualBmrInput = document.getElementById("bodyManualBmrInput");
+      if (manualBmrInput) manualBmrInput.value = bodyProfile.manualBmr ?? "";
+      const bodyCompositionDateInput = document.getElementById("bodyCompositionDateInput");
+      if (bodyCompositionDateInput && !bodyCompositionDateInput.value) {
+        bodyCompositionDateInput.value = getTodayKey();
+      }
       const bodyActivityLevelInput = document.getElementById("bodyActivityLevelInput");
       if (bodyActivityLevelInput) {
         bodyActivityLevelInput.value = bodyProfile.activityLevel || "moderate";
@@ -8564,9 +9036,16 @@
       customSummary.innerHTML = `
         Здесь хранятся твои упражнения. Они появятся в выборе упражнений во время тренировки и при создании плана.
       `;
+      if (workoutsSummary) {
+        const strengthCount = getStrengthWorkoutHistory().length;
+        const cardioCount = getCardioWorkoutHistory().length;
+        workoutsSummary.textContent = `Всего тренировок: ${workoutHistory.length} · силовых ${strengthCount} · кардио ${cardioCount}. Список скрыт, чтобы профиль не перегружался.`;
+      }
       backupsPanel.classList.toggle("hidden", !profileSectionState.backups);
       customPanel.classList.toggle("hidden", !profileSectionState.customExercises);
+      if (workoutsPanel) workoutsPanel.classList.toggle("hidden", !profileSectionState.workouts);
       renderCloudSyncSettings();
+      renderProfileWorkoutHistoryList();
       renderProfileCustomExerciseList();
     }
 
@@ -8967,6 +9446,10 @@
             manualBodyFatPercent: entry.manualBodyFatPercent,
             manualFatMass: entry.manualFatMass,
             manualLeanMass: entry.manualLeanMass,
+            skeletalMuscleMass: entry.skeletalMuscleMass,
+            visceralFat: entry.visceralFat,
+            bodyWaterPercent: entry.bodyWaterPercent,
+            analysisBmr: entry.analysisBmr,
             estimatedBodyFatPercent: entry.estimatedBodyFatPercent,
             estimatedFatMass: entry.estimatedFatMass,
             estimatedLeanMass: entry.estimatedLeanMass,
@@ -9137,6 +9620,7 @@
       loadProfilesMeta();
       loadCloudConfig();
       loadData();
+      const restoredWorkoutDraft = restoreCurrentSessionDraft();
 
       document.getElementById("setupDate").valueAsDate = new Date();
       document.getElementById("planDate").valueAsDate = new Date();
@@ -9144,6 +9628,9 @@
       updatePlanExerciseOptions();
       updateTemplateExerciseOptions();
       renderAll();
+      if (restoredWorkoutDraft && currentSession.state === "timer") {
+        startRestTimer();
+      }
 
       initPWAInstall();
       registerServiceWorker();
@@ -9151,6 +9638,7 @@
         Notification.requestPermission().catch(() => {});
       }
       document.addEventListener("visibilitychange", () => {
+        persistCurrentSessionDraft();
         if (currentSession.state === "timer") {
           updateRestTimeFromClock();
           if (restTimeLeft <= 0) {
@@ -9158,6 +9646,7 @@
           }
         }
       });
+      window.addEventListener("beforeunload", persistCurrentSessionDraft);
 
       document.body.addEventListener("click", unlockAudio, { once: true });
       document.body.addEventListener("touchstart", unlockAudio, { once: true });
