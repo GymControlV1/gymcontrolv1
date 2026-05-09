@@ -1424,41 +1424,37 @@
         </div>
 
         <div id="todayActivityPanel" class="card hidden">
-          <h2 class="section-title">Активность</h2>
+          <h2 class="section-title">Шаги за день и активность</h2>
           <div class="form-grid">
             <div class="form-field">
               <div class="field-label">Время записи</div>
               <input id="dailyActivityTimeInput" type="time" />
             </div>
             <div class="form-field">
-              <div class="field-label">Сожжено ккал</div>
-              <input id="dailyActivityCaloriesInput" type="number" min="0" step="1" placeholder="Активные ккал" />
+              <div class="field-label">Общие шаги за день</div>
+              <input id="dailyStepsInput" type="number" min="0" step="1" placeholder="Например: 14500" />
             </div>
             <div class="form-field">
-              <div class="field-label">Тип активности</div>
+              <div class="field-label">Ккал не-шаговой активности</div>
+              <input id="dailyActivityCaloriesInput" type="number" min="0" step="1" placeholder="Например: силовая 430" />
+            </div>
+            <div class="form-field">
+              <div class="field-label">Тип записи</div>
               <select id="dailyActivityTypeInput">
                 <option value="manual_counted">Другая активность</option>
                 <option value="strength_gym">Силовая в зале</option>
                 <option value="strength_home">Силовая дома</option>
-                <option value="treadmill_cardio">Кардио дома / дорожка</option>
-                <option value="outdoor_walk_run">Ходьба / бег на улице</option>
+                <option value="cardio_non_step">Кардио без шагов</option>
               </select>
             </div>
             <div class="form-field">
-              <div class="field-label">Шаги</div>
-              <input id="dailyStepsInput" type="number" min="0" step="1" placeholder="Например: 14500" />
-            </div>
-            <div class="form-field">
               <div class="field-label">Заметка</div>
-              <input id="dailyActivityNoteInput" type="text" placeholder="Например: силовая, кардио, прогулка" />
+              <input id="dailyActivityNoteInput" type="text" placeholder="Например: силовая с часов, домашняя активность" />
             </div>
           </div>
-          <label class="setting-chip" style="margin:10px 0;">
-            <input id="stepsIncludeCardioInput" type="checkbox" checked />
-            <span>Шаги включают кардио на дорожке / ходьбу / бег</span>
-          </label>
+          <input id="stepsIncludeCardioInput" type="checkbox" checked class="hidden" />
           <div class="muted" style="margin-bottom:10px;">
-            Если шаги взяты с часов Suunto за весь день, они обычно уже включают дорожку, прогулки и бег. Тогда калории кардио отдельно не прибавляются, чтобы не было двойного учета.
+            Вечером введи общее число шагов с часов. Шаги из кардио-тренировок приложение вычитает автоматически, чтобы бытовая активность не считалась дважды.
           </div>
           <div id="todayActivitySummary" class="muted" style="margin-bottom:10px;"></div>
           <div class="actions">
@@ -1724,16 +1720,20 @@
               <option value="outdoor">Улица</option>
             </select>
             <input id="cardioTime" type="time" />
-            <input id="cardioDurationMinutes" type="number" min="1" step="1" placeholder="Длительность, мин" />
+            <input id="cardioDurationMinutes" type="number" min="1" step="1" placeholder="Длительность, мин" oninput="renderCardioCaloriesEstimate()" />
             <input id="cardioDistanceKm" type="number" min="0" step="0.1" placeholder="Расстояние, км" />
-            <input id="cardioAverageHeartRate" type="number" min="0" step="1" placeholder="Средний пульс" />
+            <input id="cardioAverageHeartRate" type="number" min="0" step="1" placeholder="Средний пульс" oninput="renderCardioCaloriesEstimate()" />
+            <input id="cardioSteps" type="number" min="0" step="1" placeholder="Шаги тренировки" oninput="renderCardioCaloriesEstimate()" />
             <input id="cardioMaxHeartRate" type="number" min="0" step="1" placeholder="Макс. пульс" />
-            <input id="cardioCaloriesBurned" type="number" min="0" step="1" placeholder="Потраченные ккал" />
+            <input id="cardioCaloriesBurned" type="hidden" />
             <input id="cardioAveragePace" type="text" placeholder="Средний темп, например 6:20/км" />
             <input id="cardioNote" type="text" placeholder="Заметка (необязательно)" />
           </div>
+          <div id="cardioCaloriesEstimate" class="status-panel status-info" style="margin-top:10px;">
+            Введи длительность и средний пульс — приложение рассчитает кардио-ккал по формуле Keytel.
+          </div>
           <div class="muted" style="margin-top:10px;">
-            Обязательно укажи длительность и потраченные ккал. Остальные параметры помогут отслеживать прогресс в кардио.
+            Ккал кардио больше не вводятся вручную. Если указан средний пульс, расход считается автоматически; шаги тренировки потом вычитаются из бытовых шагов дня.
           </div>
           <div class="actions full" style="margin-top:14px;">
             <button class="btn-success full-width-btn" onclick="saveCardioWorkout()">Сохранить кардио</button>
@@ -2127,6 +2127,26 @@
           <div class="chart-wrap">
             <div class="chart-box">
               <canvas id="balanceTotalBurnTrendChart" width="900" height="280"></canvas>
+            </div>
+          </div>
+          <div class="chart-wrap" style="margin-top:14px;">
+            <div class="chart-box">
+              <canvas id="balanceBmrTrendChart" width="900" height="280"></canvas>
+            </div>
+          </div>
+          <div class="chart-wrap" style="margin-top:14px;">
+            <div class="chart-box">
+              <canvas id="balanceNeatTrendChart" width="900" height="280"></canvas>
+            </div>
+          </div>
+          <div class="chart-wrap" style="margin-top:14px;">
+            <div class="chart-box">
+              <canvas id="balanceCardioBurnTrendChart" width="900" height="280"></canvas>
+            </div>
+          </div>
+          <div class="chart-wrap" style="margin-top:14px;">
+            <div class="chart-box">
+              <canvas id="balanceStrengthBurnTrendChart" width="900" height="280"></canvas>
             </div>
           </div>
         </div>
@@ -2649,6 +2669,14 @@
         activityCaloriesRaw: 0,
         activityCalories: 0,
         stepCalories: 0,
+        totalDailySteps: 0,
+        cardioSteps: 0,
+        neatSteps: 0,
+        neatCalories: 0,
+        cardioCalories: 0,
+        strengthCalories: 0,
+        otherActivityCalories: 0,
+        preventedDoubleCountCalories: 0,
         countedWorkoutCalories: 0,
         excludedWorkoutCalories: 0,
         totalDailyExpenditure: 0,
@@ -2702,10 +2730,15 @@
         caloriesRaw: 0,
         activityType: "manual_counted",
         steps: 0,
+        durationMinutes: 0,
+        averageHeartRate: 0,
+        calculatedCalories: 0,
         note: "",
         source: "manual"
       };
     }
+
+    const NEAT_STEP_KCAL = 0.045;
 
     function getActivityLevelDefinitions() {
       return {
@@ -2722,17 +2755,19 @@
 
     function getActivityTypeLabel(type) {
       const labels = {
+        daily_steps: "Шаги за день",
         strength_gym: "Силовая в зале",
         strength_home: "Силовая дома",
         treadmill_cardio: "Кардио дома / дорожка",
         outdoor_walk_run: "Ходьба / бег на улице",
+        cardio_non_step: "Кардио без шагов",
         manual_counted: "Другая активность"
       };
       return labels[type] || labels.manual_counted;
     }
 
     function normalizeActivityType(value, note = "", source = "manual") {
-      const allowed = ["strength_gym", "strength_home", "treadmill_cardio", "outdoor_walk_run", "manual_counted"];
+      const allowed = ["daily_steps", "strength_gym", "strength_home", "treadmill_cardio", "outdoor_walk_run", "cardio_non_step", "manual_counted"];
       if (allowed.includes(value)) return value;
 
       const text = `${note || ""} ${source || ""}`.toLowerCase();
@@ -2748,16 +2783,22 @@
       return activityType === "treadmill_cardio" || activityType === "outdoor_walk_run";
     }
 
+    function isCardioActivityType(activityType) {
+      return isStepBasedActivity(activityType) || activityType === "cardio_non_step";
+    }
+
+    function isStrengthActivityType(activityType) {
+      return activityType === "strength_gym" || activityType === "strength_home";
+    }
+
     function shouldCountWorkoutCalories(activity, dailyActivity) {
       const activityType = normalizeActivityType(activity?.activityType, activity?.note, activity?.source);
-      if (!isStepBasedActivity(activityType)) return true;
-      return dailyActivity?.stepsIncludeCardio === false;
+      return activityType !== "daily_steps";
     }
 
     function calculateStepCalories(steps, weightKg) {
       const safeSteps = clampMetricNumber(steps);
-      const safeWeight = toNumberOrNull(weightKg) || 95;
-      return Math.round(safeSteps * safeWeight * 0.0005);
+      return Math.round(safeSteps * NEAT_STEP_KCAL);
     }
 
     function normalizeCustomExerciseLoadType(value) {
@@ -2936,6 +2977,7 @@
         distanceKm: null,
         averageHeartRate: 0,
         maxHeartRate: 0,
+        steps: 0,
         caloriesBurned: 0,
         averagePace: "",
         note: ""
@@ -2954,10 +2996,33 @@
         distanceKm: toNumberOrNull(data?.distanceKm),
         averageHeartRate: clampMetricNumber(data?.averageHeartRate),
         maxHeartRate: clampMetricNumber(data?.maxHeartRate),
+        steps: clampMetricNumber(data?.steps ?? data?.cardioSteps),
         caloriesBurned: clampMetricNumber(data?.caloriesBurned),
         averagePace: String(data?.averagePace || ""),
         note: String(data?.note || "")
       };
+    }
+
+    function calculateCardioCalories(cardioData, entry = null) {
+      const cardio = normalizeCardioWorkoutData(cardioData);
+      const duration = clampMetricNumber(cardio.durationMinutes);
+      const heartRate = clampMetricNumber(cardio.averageHeartRate);
+      const weight = getEffectiveWeight(entry);
+      const age = toNumberOrNull(bodyProfile.age);
+      if (!duration || !heartRate || !weight || !age) return 0;
+
+      const sex = bodyProfile.sex || "male";
+      const kcalPerMinute = sex === "female"
+        ? (-20.4022 + (0.4472 * heartRate) - (0.1263 * weight) + (0.074 * age)) / 4.184
+        : (-55.0969 + (0.6309 * heartRate) + (0.1988 * weight) + (0.2017 * age)) / 4.184;
+
+      return Math.max(0, Math.round(Math.max(0, kcalPerMinute) * duration));
+    }
+
+    function getActivityTypeForCardioType(cardioType) {
+      if (cardioType === "treadmill") return "treadmill_cardio";
+      if (cardioType === "walking_outdoor" || cardioType === "running_outdoor") return "outdoor_walk_run";
+      return "cardio_non_step";
     }
 
     function getWorkoutType(workout) {
@@ -3029,6 +3094,7 @@
         `${cardio.durationMinutes || 0} мин`,
         cardio.distanceKm !== null ? `${cardio.distanceKm} км` : "",
         cardio.averageHeartRate ? `ср. пульс ${cardio.averageHeartRate}` : "",
+        cardio.steps ? `${cardio.steps} шагов` : "",
         cardio.caloriesBurned ? `${cardio.caloriesBurned} ккал` : ""
       ].filter(Boolean);
       return parts.join(" · ");
@@ -3073,7 +3139,9 @@
       const explicitType = entry?.activityType || entry?.type;
       const inferredType = explicitType
         ? normalizeActivityType(explicitType, note, source)
-        : (clampMetricNumber(entry?.steps) > 0 ? "outdoor_walk_run" : normalizeActivityType(explicitType, note, source));
+        : (clampMetricNumber(entry?.steps) > 0 && !clampMetricNumber(entry?.caloriesRaw ?? entry?.activityCaloriesRaw ?? entry?.activityCalories)
+          ? "daily_steps"
+          : normalizeActivityType(explicitType, note, source));
       return {
         ...base,
         ...(entry || {}),
@@ -3082,6 +3150,9 @@
         caloriesRaw: clampMetricNumber(entry?.caloriesRaw ?? entry?.activityCaloriesRaw ?? entry?.activityCalories),
         activityType: inferredType,
         steps: clampMetricNumber(entry?.steps),
+        durationMinutes: clampMetricNumber(entry?.durationMinutes),
+        averageHeartRate: clampMetricNumber(entry?.averageHeartRate),
+        calculatedCalories: clampMetricNumber(entry?.calculatedCalories),
         note,
         source
       };
@@ -3110,7 +3181,7 @@
         clampMetricNumber(safe.water) > 0 ||
         clampMetricNumber(safe.liquids) > 0 ||
         clampMetricNumber(safe.activityCaloriesRaw || safe.activityCalories) > 0 ||
-        clampMetricNumber(safe.steps) > 0
+        clampMetricNumber(safe.totalDailySteps || safe.steps) > 0
       );
     }
 
@@ -3137,7 +3208,7 @@
       if (clampMetricNumber(safe.water) > 0) score += 1;
       if (clampMetricNumber(safe.liquids) > 0) score += 1;
       if (clampMetricNumber(safe.activityCaloriesRaw || safe.activityCalories) > 0) score += 2;
-      if (clampMetricNumber(safe.steps) > 0) score += 1;
+      if (clampMetricNumber(safe.totalDailySteps || safe.steps) > 0) score += 1;
       return score;
     }
 
@@ -3325,10 +3396,12 @@
           time: "18:00",
           caloriesRaw: legacyCaloriesRaw,
           activityType: normalizeActivityType(entry.activityType, entry.activityNote || entry.note || "старый формат", "legacy"),
-          steps: legacySteps,
+          steps: 0,
           note: "Автоматически перенесено из старого формата"
         }
       ];
+      entry.totalDailySteps = legacySteps;
+      entry.steps = legacySteps;
 
       return entry;
     }
@@ -3356,13 +3429,18 @@
     }
 
     function recalculateActivityTotalsFromEntries(entry) {
+      const legacyTotalSteps = clampMetricNumber(entry.totalDailySteps ?? entry.steps);
       migrateLegacyActivityToEntries(entry);
       const activityEntries = Array.isArray(entry.activityEntries)
         ? entry.activityEntries.map((item, index) => normalizeActivityEntry(item, entry.date, index))
         : [];
       entry.activityEntries = activityEntries;
       entry.activityCaloriesRaw = activityEntries.reduce((sum, item) => sum + item.caloriesRaw, 0);
-      entry.steps = activityEntries.reduce((sum, item) => sum + item.steps, 0);
+      const dailyStepsFromEntries = activityEntries
+        .filter(item => normalizeActivityType(item.activityType, item.note, item.source) === "daily_steps")
+        .reduce((sum, item) => sum + item.steps, 0);
+      entry.totalDailySteps = legacyTotalSteps || dailyStepsFromEntries;
+      entry.steps = entry.totalDailySteps;
       entry.stepsIncludeCardio = entry.stepsIncludeCardio !== false;
       return entry;
     }
@@ -3400,44 +3478,67 @@
       return Math.round(clampMetricNumber(rawCalories) * getActivityCorrectionMultiplier(rawCalories));
     }
 
-    function calculateWorkoutCaloriesForDay(entry) {
+    function calculateActivityBurnBreakdown(entry) {
       const safe = entry || {};
-      const dailyActivity = {
-        stepsIncludeCardio: safe.stepsIncludeCardio !== false
-      };
       const entries = Array.isArray(safe.activityEntries) ? safe.activityEntries : [];
-      return entries.reduce((totals, item) => {
+      const totals = entries.reduce((result, item) => {
         const normalized = normalizeActivityEntry(item, safe.date, 0);
         const calories = clampMetricNumber(normalized.caloriesRaw);
-        if (!calories) return totals;
+        const type = normalizeActivityType(normalized.activityType, normalized.note, normalized.source);
 
-        if (shouldCountWorkoutCalories(normalized, dailyActivity)) {
-          totals.counted += calories;
-        } else {
-          totals.excluded += calories;
+        if (isStepBasedActivity(type)) {
+          result.cardioSteps += clampMetricNumber(normalized.steps);
         }
 
-        if (isStepBasedActivity(normalized.activityType)) {
-          totals.stepBased += calories;
-        } else {
-          totals.nonStep += calories;
+        if (isCardioActivityType(type)) {
+          result.cardioCalories += calories;
+        } else if (isStrengthActivityType(type)) {
+          result.strengthCalories += calories;
+        } else if (type !== "daily_steps") {
+          result.otherActivityCalories += calories;
         }
 
-        return totals;
+        result.rawCalories += calories;
+        return result;
       }, {
-        counted: 0,
-        excluded: 0,
-        stepBased: 0,
-        nonStep: 0
+        rawCalories: 0,
+        cardioSteps: 0,
+        cardioCalories: 0,
+        strengthCalories: 0,
+        otherActivityCalories: 0
       });
+
+      const totalDailySteps = clampMetricNumber(safe.totalDailySteps ?? safe.steps);
+      const neatSteps = Math.max(0, totalDailySteps - totals.cardioSteps);
+      const neatCalories = calculateStepCalories(neatSteps);
+      const preventedDoubleCountCalories = calculateStepCalories(Math.min(totalDailySteps, totals.cardioSteps));
+
+      return {
+        ...totals,
+        totalDailySteps,
+        neatSteps,
+        neatCalories,
+        preventedDoubleCountCalories,
+        counted: totals.cardioCalories + totals.strengthCalories + totals.otherActivityCalories,
+        excluded: 0
+      };
+    }
+
+    function calculateWorkoutCaloriesForDay(entry) {
+      const burn = calculateActivityBurnBreakdown(entry);
+      return {
+        counted: burn.counted,
+        excluded: burn.excluded,
+        stepBased: burn.cardioCalories,
+        nonStep: burn.strengthCalories + burn.otherActivityCalories
+      };
     }
 
     function calculateTotalDailyExpenditure(entry) {
       const safe = entry || {};
       const bmr = clampMetricNumber(safe.bmr);
-      const stepCalories = clampMetricNumber(safe.stepCalories);
-      const workoutCalories = calculateWorkoutCaloriesForDay(safe);
-      return Math.round(bmr + stepCalories + workoutCalories.counted);
+      const burn = calculateActivityBurnBreakdown(safe);
+      return Math.round(bmr + burn.neatCalories + burn.cardioCalories + burn.strengthCalories + burn.otherActivityCalories);
     }
 
     function calculateDailyDeficit(entry) {
@@ -3446,20 +3547,25 @@
 
     function getDailyExpenditureBreakdown(entry) {
       const safe = entry || createEmptyDailyMetrics();
-      const workoutCalories = calculateWorkoutCaloriesForDay(safe);
-      const stepBasedLabel = safe.stepsIncludeCardio === false
-        ? "Кардио прибавлено отдельно, так как шаги указаны без учета тренировки."
-        : "Кардио не прибавлено отдельно, чтобы избежать двойного учета.";
+      const burn = calculateActivityBurnBreakdown(safe);
       return {
         bmr: safe.bmr || 0,
-        steps: safe.steps || 0,
-        stepCalories: safe.stepCalories || 0,
-        countedWorkoutCalories: workoutCalories.counted,
-        nonStepWorkoutCalories: workoutCalories.nonStep,
-        stepBasedWorkoutCalories: workoutCalories.stepBased,
-        excludedWorkoutCalories: workoutCalories.excluded,
+        steps: burn.totalDailySteps,
+        totalDailySteps: burn.totalDailySteps,
+        cardioSteps: burn.cardioSteps,
+        neatSteps: burn.neatSteps,
+        stepCalories: burn.neatCalories,
+        neatCalories: burn.neatCalories,
+        cardioCalories: burn.cardioCalories,
+        strengthCalories: burn.strengthCalories,
+        otherActivityCalories: burn.otherActivityCalories,
+        countedWorkoutCalories: burn.counted,
+        nonStepWorkoutCalories: burn.strengthCalories + burn.otherActivityCalories,
+        stepBasedWorkoutCalories: burn.cardioCalories,
+        excludedWorkoutCalories: burn.excluded,
+        preventedDoubleCountCalories: burn.preventedDoubleCountCalories,
         total: safe.totalBurn || safe.totalDailyExpenditure || 0,
-        stepBasedLabel
+        stepBasedLabel: "Кардио-шаги автоматически исключаются из бытовой активности, чтобы избежать двойного учета калорий."
       };
     }
 
@@ -3546,16 +3652,25 @@
       entry.visceralFat = toNumberOrNull(entry.visceralFat);
       entry.bodyWaterPercent = toNumberOrNull(entry.bodyWaterPercent);
       entry.analysisBmr = toNumberOrNull(entry.analysisBmr);
-      entry.activityCaloriesRaw = clampMetricNumber(entry.activityCaloriesRaw || entry.activityCalories);
-      entry.steps = clampMetricNumber(entry.steps);
+      entry.activityCaloriesRaw = clampMetricNumber(entry.activityCaloriesRaw);
+      entry.totalDailySteps = clampMetricNumber(entry.totalDailySteps ?? entry.steps);
+      entry.steps = entry.totalDailySteps;
       calculateBodyComposition(entry);
       entry.bmr = calculateBmrForEntry(entry);
-      const weightForSteps = toNumberOrNull(entry.weight) ?? toNumberOrNull(bodyProfile.weight) ?? getLatestRecordedWeight() ?? 95;
-      const workoutCalories = calculateWorkoutCaloriesForDay(entry);
-      entry.stepCalories = calculateStepCalories(entry.steps, weightForSteps);
-      entry.countedWorkoutCalories = workoutCalories.counted;
-      entry.excludedWorkoutCalories = workoutCalories.excluded;
-      entry.activityCalories = workoutCalories.counted;
+      const burn = calculateActivityBurnBreakdown(entry);
+      entry.totalDailySteps = burn.totalDailySteps;
+      entry.steps = burn.totalDailySteps;
+      entry.cardioSteps = burn.cardioSteps;
+      entry.neatSteps = burn.neatSteps;
+      entry.neatCalories = burn.neatCalories;
+      entry.stepCalories = burn.neatCalories;
+      entry.cardioCalories = burn.cardioCalories;
+      entry.strengthCalories = burn.strengthCalories;
+      entry.otherActivityCalories = burn.otherActivityCalories;
+      entry.preventedDoubleCountCalories = burn.preventedDoubleCountCalories;
+      entry.countedWorkoutCalories = burn.counted;
+      entry.excludedWorkoutCalories = burn.excluded;
+      entry.activityCalories = burn.counted;
       entry.totalDailyExpenditure = calculateTotalDailyExpenditure(entry);
       entry.totalBurn = entry.totalDailyExpenditure;
       entry.deficit = calculateDailyDeficit(entry);
@@ -4237,7 +4352,8 @@
     function appendWorkoutActivityEntry(date, options = {}) {
       const targetDate = date || getTodayKey();
       const caloriesRaw = clampMetricNumber(options.caloriesRaw);
-      if (!caloriesRaw) return;
+      const steps = clampMetricNumber(options.steps);
+      if (!caloriesRaw && !steps) return;
 
       saveDailyEntry(targetDate, entry => {
         entry.activityEntries = Array.isArray(entry.activityEntries) ? entry.activityEntries : [];
@@ -4245,7 +4361,10 @@
           time: options.time || getCurrentTimeValue(),
           caloriesRaw,
           activityType: options.activityType || "strength_gym",
-          steps: 0,
+          steps,
+          durationMinutes: options.durationMinutes || 0,
+          averageHeartRate: options.averageHeartRate || 0,
+          calculatedCalories: options.calculatedCalories || caloriesRaw,
           note: options.note || "Тренировка",
           source: "workout"
         }, targetDate, entry.activityEntries.length));
@@ -4895,9 +5014,9 @@
           ${sortedEntries.map(item => {
             const activityType = normalizeActivityType(item.activityType, item.note, item.source);
             const isStepBased = isStepBasedActivity(activityType);
-            const counted = shouldCountWorkoutCalories({ ...item, activityType }, getDailyEntry(date) || {});
+            const isCardio = isCardioActivityType(activityType);
             const statusText = item.caloriesRaw
-              ? (counted ? "учтено в расходе" : "учтено через шаги")
+              ? (isCardio ? "кардио по пульсу" : "учтено в расходе")
               : "только шаги";
             const isEditing = activityEditingEntryRef?.date === date && activityEditingEntryRef?.entryId === item.id;
             return `
@@ -4906,7 +5025,7 @@
                   <strong>${escapeHtml(item.time || "--:--")}</strong> ${escapeHtml(getActivityTypeLabel(activityType))} — ${item.caloriesRaw || 0} ккал
                 </summary>
                 <div class="muted" style="margin-top:8px;">
-                  Ккал: ${item.caloriesRaw || 0} · Шаги: ${item.steps || 0} · ${statusText}${isStepBased && !counted ? "<br>Кардио не прибавлено отдельно, чтобы избежать двойного учета." : ""}
+                  Ккал: ${item.caloriesRaw || 0} · Шаги тренировки: ${item.steps || 0} · ${statusText}${item.durationMinutes ? ` · ${item.durationMinutes} мин` : ""}${item.averageHeartRate ? ` · ср. пульс ${item.averageHeartRate}` : ""}${isStepBased ? "<br>Шаги этой кардио-тренировки вычитаются из бытовых шагов дня." : ""}
                   ${item.note ? `<br>Комментарий: ${escapeHtml(item.note)}` : ""}
                 </div>
                 <div class="actions" style="margin-top:10px;">
@@ -4931,6 +5050,7 @@
                         <option value="strength_home" ${activityType === "strength_home" ? "selected" : ""}>Силовая дома</option>
                         <option value="treadmill_cardio" ${activityType === "treadmill_cardio" ? "selected" : ""}>Кардио дома / дорожка</option>
                         <option value="outdoor_walk_run" ${activityType === "outdoor_walk_run" ? "selected" : ""}>Ходьба / бег на улице</option>
+                        <option value="cardio_non_step" ${activityType === "cardio_non_step" ? "selected" : ""}>Кардио без шагов</option>
                       </select>
                     </div>
                     <div class="form-field">
@@ -4956,32 +5076,35 @@
 
     function saveTodayActivityEntry() {
       const date = getTodayKey();
+      const totalDailySteps = clampMetricNumber(document.getElementById("dailyStepsInput")?.value);
       const draft = normalizeActivityEntry({
         id: activityEditingEntryRef?.entryId || generateId("activity"),
         time: document.getElementById("dailyActivityTimeInput").value || getCurrentTimeValue(),
         caloriesRaw: document.getElementById("dailyActivityCaloriesInput").value,
         activityType: document.getElementById("dailyActivityTypeInput")?.value || "manual_counted",
-        steps: document.getElementById("dailyStepsInput").value,
+        steps: 0,
         note: String(document.getElementById("dailyActivityNoteInput").value || "").trim()
       }, date);
 
-      if (!(draft.caloriesRaw > 0 || draft.steps > 0)) {
+      if (!(draft.caloriesRaw > 0 || totalDailySteps > 0)) {
         alert("Добавь хотя бы ккал или шаги для активности.");
         return;
       }
 
       saveDailyEntry(date, entry => {
-        entry.stepsIncludeCardio = document.getElementById("stepsIncludeCardioInput")?.checked !== false;
+        entry.totalDailySteps = totalDailySteps;
+        entry.steps = totalDailySteps;
+        entry.stepsIncludeCardio = true;
         entry.activityEntries = Array.isArray(entry.activityEntries) ? entry.activityEntries : [];
-        if (activityEditingEntryRef?.entryId) {
+        if (activityEditingEntryRef?.entryId && draft.caloriesRaw > 0) {
           entry.activityEntries = entry.activityEntries.map(item => item.id === activityEditingEntryRef.entryId ? draft : item);
-        } else {
+        } else if (draft.caloriesRaw > 0) {
           entry.activityEntries.push(draft);
         }
         return entry;
       });
 
-      const message = activityEditingEntryRef?.entryId ? "Активность обновлена" : "Активность добавлена";
+      const message = activityEditingEntryRef?.entryId ? "Активность обновлена" : "Активность сохранена";
       resetActivityDraftState();
       showToast(message);
     }
@@ -4995,7 +5118,7 @@
       document.getElementById("dailyActivityTimeInput").value = item.time || getCurrentTimeValue();
       document.getElementById("dailyActivityCaloriesInput").value = item.caloriesRaw || "";
       document.getElementById("dailyActivityTypeInput").value = normalizeActivityType(item.activityType, item.note, item.source);
-      document.getElementById("dailyStepsInput").value = item.steps || "";
+      document.getElementById("dailyStepsInput").value = entry.totalDailySteps || entry.steps || "";
       const stepsIncludeInput = document.getElementById("stepsIncludeCardioInput");
       if (stepsIncludeInput) stepsIncludeInput.checked = entry.stepsIncludeCardio !== false;
       document.getElementById("dailyActivityNoteInput").value = item.note || "";
@@ -5214,8 +5337,8 @@
       setValue("dailyHipsInput", safe.hips);
       setValue("dailyManualBodyFatInput", safe.manualBodyFatPercent);
       setValue("dailyManualFatMassInput", safe.manualFatMass);
-      setValue("dailyActivityCaloriesInput", safe.activityCaloriesRaw || safe.activityCalories);
-      setValue("dailyStepsInput", safe.steps);
+      setValue("dailyActivityCaloriesInput", activityEditingEntryRef ? document.getElementById("dailyActivityCaloriesInput")?.value : "");
+      setValue("dailyStepsInput", safe.totalDailySteps ?? safe.steps);
       const activityTypeInput = document.getElementById("dailyActivityTypeInput");
       if (activityTypeInput && !activityEditingEntryRef) activityTypeInput.value = "manual_counted";
       const stepsIncludeInput = document.getElementById("stepsIncludeCardioInput");
@@ -5245,7 +5368,7 @@
       }
       const activitySummary = document.getElementById("todayActivitySummary");
       if (activitySummary) {
-        activitySummary.textContent = `Шаги: ${safe.steps || 0} → ${safe.stepCalories || 0} ккал · тренировки в расходе ${safe.countedWorkoutCalories || 0} ккал · не удвоено ${safe.excludedWorkoutCalories || 0} ккал · записей ${safe.activityEntries?.length || 0}`;
+        activitySummary.textContent = `Шаги: ${safe.totalDailySteps || safe.steps || 0} · кардио-шаги ${safe.cardioSteps || 0} · бытовые шаги ${safe.neatSteps || 0} → ${safe.neatCalories || safe.stepCalories || 0} ккал · кардио ${safe.cardioCalories || 0} ккал · силовые ${safe.strengthCalories || 0} ккал`;
       }
       const activityEntriesBox = document.getElementById("todayActivityEntriesBox");
       if (activityEntriesBox) {
@@ -5464,15 +5587,16 @@
         ${balanceSectionState.water ? `<div class="collapsible-panel" style="margin-top:10px;">${renderWaterEntries(entry.date, entry.waterEntries || [])}</div>` : ""}
       `;
       if (activitySummaryBox) {
-        activitySummaryBox.textContent = `Шаги: ${expenditure.steps} → ${expenditure.stepCalories} ккал · тренировки в расходе ${expenditure.countedWorkoutCalories} ккал · записей ${entry.activityEntries?.length || 0}`;
+        activitySummaryBox.textContent = `Шаги: ${expenditure.totalDailySteps} · NEAT ${expenditure.neatSteps} шагов / ${expenditure.neatCalories} ккал · кардио ${expenditure.cardioCalories} ккал · силовые ${expenditure.strengthCalories} ккал`;
       }
       activityCard.innerHTML = `
         <div class="status-panel status-info">
           <strong>Расход за день</strong><br>
           Базовый обмен: ${expenditure.bmr} ккал<br>
-          Шаги: ${expenditure.steps} → ${expenditure.stepCalories} ккал<br>
-          Силовые и не-шаговые активности: ${expenditure.nonStepWorkoutCalories} ккал<br>
-          Кардио: ${expenditure.excludedWorkoutCalories ? "учтено через шаги" : `${expenditure.stepBasedWorkoutCalories} ккал`}<br>
+          Бытовая активность: ${expenditure.neatSteps} шагов → ${expenditure.neatCalories} ккал<br>
+          Кардио: ${expenditure.cardioCalories} ккал<br>
+          Силовые: ${expenditure.strengthCalories} ккал<br>
+          ${expenditure.otherActivityCalories ? `Другая активность: ${expenditure.otherActivityCalories} ккал<br>` : ""}
           Итого расход: ${expenditure.total} ккал
           <div class="muted" style="margin-top:8px;">${expenditure.stepBasedLabel}</div>
         </div>
@@ -5483,14 +5607,19 @@
             <div class="metric-subvalue">${bodyProfile.manualBmr ? "вручную / по анализу" : "ккал в покое"}</div>
           </div>
           <div class="metric-tile">
-            <div class="metric-label">Шаги</div>
-            <div class="metric-value">${entry.stepCalories || 0}</div>
-            <div class="metric-subvalue">${entry.steps || 0} шагов</div>
+            <div class="metric-label">NEAT</div>
+            <div class="metric-value">${entry.neatCalories || entry.stepCalories || 0}</div>
+            <div class="metric-subvalue">${entry.totalDailySteps || entry.steps || 0} всего · ${entry.cardioSteps || 0} кардио · ${entry.neatSteps || 0} бытовые</div>
           </div>
           <div class="metric-tile emphasis">
-            <div class="metric-label">Тренировки</div>
-            <div class="metric-value">${entry.countedWorkoutCalories || 0}</div>
-            <div class="metric-subvalue">${entry.excludedWorkoutCalories || 0} ккал не прибавлено повторно</div>
+            <div class="metric-label">Кардио</div>
+            <div class="metric-value">${entry.cardioCalories || 0}</div>
+            <div class="metric-subvalue">по пульсу и длительности</div>
+          </div>
+          <div class="metric-tile green">
+            <div class="metric-label">Силовые</div>
+            <div class="metric-value">${entry.strengthCalories || 0}</div>
+            <div class="metric-subvalue">ккал с часов</div>
           </div>
         </div>
         ${balanceSectionState.activity ? `<div class="collapsible-panel" style="margin-top:10px;">${renderActivityEntries(entry.date, entry.activityEntries || [])}</div>` : ""}
@@ -5545,6 +5674,10 @@
       drawMetricSeriesChart("balanceFatTrendChart", entries, item => toNumberOrNull(item.fat), "Жиры, г");
       drawMetricSeriesChart("balanceCarbsTrendChart", entries, item => toNumberOrNull(item.carbs), "Углеводы, г");
       drawMetricSeriesChart("balanceTotalBurnTrendChart", entries, item => toNumberOrNull(item.totalBurn), "Общий расход, ккал");
+      drawMetricSeriesChart("balanceBmrTrendChart", entries, item => toNumberOrNull(item.bmr), "BMR, ккал");
+      drawMetricSeriesChart("balanceNeatTrendChart", entries, item => toNumberOrNull(item.neatCalories ?? item.stepCalories), "Бытовая активность, ккал");
+      drawMetricSeriesChart("balanceCardioBurnTrendChart", entries, item => toNumberOrNull(item.cardioCalories), "Кардио, ккал");
+      drawMetricSeriesChart("balanceStrengthBurnTrendChart", entries, item => toNumberOrNull(item.strengthCalories), "Силовые, ккал");
     }
 
     function getBodyCompositionAnalysisEntries() {
@@ -7100,6 +7233,7 @@
         setValue("cardioDurationMinutes", draft.durationMinutes || "");
         setValue("cardioDistanceKm", draft.distanceKm ?? "");
         setValue("cardioAverageHeartRate", draft.averageHeartRate || "");
+        setValue("cardioSteps", draft.steps || "");
         setValue("cardioMaxHeartRate", draft.maxHeartRate || "");
         setValue("cardioCaloriesBurned", draft.caloriesBurned || "");
         setValue("cardioAveragePace", draft.averagePace || "");
@@ -7110,21 +7244,38 @@
           timeInput.value = getCurrentTimeValue();
         }
       }
+      renderCardioCaloriesEstimate();
     }
 
     function collectCardioFormData() {
-      return normalizeCardioWorkoutData({
+      const cardio = normalizeCardioWorkoutData({
         cardioType: document.getElementById("cardioType")?.value || "walking_outdoor",
         locationType: document.getElementById("cardioLocationType")?.value || "outdoor",
         time: document.getElementById("cardioTime")?.value || getCurrentTimeValue(),
         durationMinutes: document.getElementById("cardioDurationMinutes")?.value,
         distanceKm: document.getElementById("cardioDistanceKm")?.value,
         averageHeartRate: document.getElementById("cardioAverageHeartRate")?.value,
+        steps: document.getElementById("cardioSteps")?.value,
         maxHeartRate: document.getElementById("cardioMaxHeartRate")?.value,
-        caloriesBurned: document.getElementById("cardioCaloriesBurned")?.value,
+        caloriesBurned: 0,
         averagePace: document.getElementById("cardioAveragePace")?.value || "",
         note: document.getElementById("cardioNote")?.value || ""
       });
+      cardio.caloriesBurned = calculateCardioCalories(cardio, getDailyMetrics(currentSession.date || getTodayKey()));
+      const caloriesInput = document.getElementById("cardioCaloriesBurned");
+      if (caloriesInput) caloriesInput.value = cardio.caloriesBurned || "";
+      return cardio;
+    }
+
+    function renderCardioCaloriesEstimate() {
+      const box = document.getElementById("cardioCaloriesEstimate");
+      if (!box) return;
+      const cardio = collectCardioFormData();
+      const hasPulse = cardio.averageHeartRate > 0;
+      box.className = `status-panel ${hasPulse ? "status-ok" : "status-warn"}`;
+      box.innerHTML = hasPulse
+        ? `Расчет кардио: <strong>${cardio.caloriesBurned || 0} ккал</strong> · ${cardio.durationMinutes || 0} мин · ср. пульс ${cardio.averageHeartRate} · шаги тренировки ${cardio.steps || 0}`
+        : `Пульс не указан — кардио-ккал не будут добавлены в расход. Шаги тренировки все равно можно сохранить для исключения из бытовых шагов.`;
     }
 
     function getCardioSummaryMotivation(cardioType) {
@@ -7137,8 +7288,8 @@
         alert("Укажи длительность кардио в минутах.");
         return;
       }
-      if (!cardio.caloriesBurned) {
-        alert("Укажи потраченные ккал.");
+      if (!cardio.steps) {
+        alert("Укажи шаги кардио-тренировки. Они нужны, чтобы не считать их повторно как бытовую активность.");
         return;
       }
 
@@ -7158,9 +7309,11 @@
       appendWorkoutActivityEntry(historyItem.date, {
         time: cardio.time,
         caloriesRaw: cardio.caloriesBurned,
-        activityType: cardio.cardioType === "treadmill"
-          ? "treadmill_cardio"
-          : (cardio.cardioType === "walking_outdoor" || cardio.cardioType === "running_outdoor" ? "outdoor_walk_run" : "manual_counted"),
+        activityType: getActivityTypeForCardioType(cardio.cardioType),
+        steps: cardio.steps,
+        durationMinutes: cardio.durationMinutes,
+        averageHeartRate: cardio.averageHeartRate,
+        calculatedCalories: cardio.caloriesBurned,
         note: `Кардио: ${getCardioTypeLabel(cardio.cardioType)}`
       });
       currentSession.pendingSummary = {
@@ -10176,9 +10329,17 @@
             activityEntries: Array.isArray(entry.activityEntries) ? entry.activityEntries : [],
             activityCaloriesRaw: entry.activityCaloriesRaw || 0,
             activityCalories: entry.activityCalories || 0,
+            totalDailySteps: entry.totalDailySteps || entry.steps || 0,
             steps: entry.steps || 0,
             stepsIncludeCardio: entry.stepsIncludeCardio !== false,
             stepCalories: entry.stepCalories || 0,
+            cardioSteps: entry.cardioSteps || 0,
+            neatSteps: entry.neatSteps || 0,
+            neatCalories: entry.neatCalories || entry.stepCalories || 0,
+            cardioCalories: entry.cardioCalories || 0,
+            strengthCalories: entry.strengthCalories || 0,
+            otherActivityCalories: entry.otherActivityCalories || 0,
+            preventedDoubleCountCalories: entry.preventedDoubleCountCalories || 0,
             countedWorkoutCalories: entry.countedWorkoutCalories || 0,
             excludedWorkoutCalories: entry.excludedWorkoutCalories || 0,
             totalDailyExpenditure: entry.totalDailyExpenditure || entry.totalBurn || 0,
