@@ -1388,6 +1388,10 @@
           <div id="nutritionManualForm">
             <div class="form-grid">
               <div class="form-field">
+                <div class="field-label">Дата</div>
+                <input id="mealDateInput" type="date" onchange="changeDailyInputDate(this.value)" />
+              </div>
+              <div class="form-field">
                 <div class="field-label">Название / заметка</div>
                 <input id="mealNameInput" type="text" placeholder="Например: обед, творог, рис с курицей" />
               </div>
@@ -1417,6 +1421,7 @@
               <button class="btn-secondary" onclick="resetNutritionDraftState()">Сбросить</button>
             </div>
           </div>
+          <div id="todayMealEntriesBox" style="margin-top:12px;"></div>
 
           <div class="actions">
             <button class="btn-secondary" onclick="toggleTodayPanel()">Скрыть</button>
@@ -1426,6 +1431,10 @@
         <div id="todayActivityPanel" class="card hidden">
           <h2 class="section-title">Шаги за день и активность</h2>
           <div class="form-grid">
+            <div class="form-field">
+              <div class="field-label">Дата</div>
+              <input id="activityDateInput" type="date" onchange="changeDailyInputDate(this.value)" />
+            </div>
             <div class="form-field">
               <div class="field-label">Время записи</div>
               <input id="dailyActivityTimeInput" type="time" />
@@ -1631,6 +1640,10 @@
               <option value="dumbbell_two">2 гантели</option>
               <option value="bodyweight">Собственный вес</option>
             </select>
+            <select id="gymMetricType" onchange="markGymFormDirty()">
+              <option value="reps">Повторы</option>
+              <option value="time">Секунды</option>
+            </select>
             <input id="gymWeight" type="number" min="0" step="0.1" placeholder="Вес" oninput="markGymFormDirty()" />
             <input id="gymReps" type="number" min="1" step="1" placeholder="Повторы" oninput="markGymFormDirty()" />
           </div>
@@ -1680,7 +1693,18 @@
             <div class="form-grid">
               <input id="sessionExerciseName" type="text" placeholder="Название упражнения" />
               <input id="sessionExerciseSets" type="number" min="1" step="1" placeholder="Подходы" />
-              <input id="sessionExerciseReps" type="number" min="1" step="1" placeholder="Повторы" />
+              <input id="sessionExerciseReps" type="number" min="1" step="1" placeholder="Повторы / секунды" />
+              <select id="sessionExerciseMetric">
+                <option value="reps">Повторы</option>
+                <option value="time">Секунды</option>
+              </select>
+              <select id="sessionExerciseLoadType">
+                <option value="barbell">Штанга / общий вес</option>
+                <option value="machine">Тренажер / общий вес</option>
+                <option value="dumbbell_one">1 гантель</option>
+                <option value="dumbbell_two">2 гантели</option>
+                <option value="bodyweight">Собственный вес</option>
+              </select>
             </div>
             <div class="actions">
               <button class="btn-success" onclick="addExerciseToCurrentSessionPlan()">Добавить упражнение</button>
@@ -1953,6 +1977,11 @@
           Баланс показывает состояние дня: тело, калории, КБЖУ, воду, активность и динамику по ключевым показателям.
         </div>
         <div id="balanceDateNote" class="muted"></div>
+      </div>
+
+      <div class="card">
+        <h2 class="section-title">Сводка</h2>
+        <div id="balancePeriodSummary" class="metric-grid"></div>
       </div>
 
       <div class="card">
@@ -2486,6 +2515,7 @@
     let circuitBuilderBlocks = [];
     let circuitBlockBuilderExercises = [];
     let templateBuilderExercises = [];
+    let selectedDailyInputDate = getTodayKey();
     let selectedStatsView = "total";
     let restTimerInterval = null;
     let restTimeLeft = 90;
@@ -4313,6 +4343,21 @@
       return ensureTodayEntry();
     }
 
+    function getSelectedDailyInputDate() {
+      return selectedDailyInputDate || getTodayKey();
+    }
+
+    function getSelectedDailyInputEntry() {
+      return getDailyMetrics(getSelectedDailyInputDate(), true) || createEmptyDailyMetrics(getSelectedDailyInputDate());
+    }
+
+    function changeDailyInputDate(date) {
+      selectedDailyInputDate = date || getTodayKey();
+      nutritionEditingMealRef = null;
+      activityEditingEntryRef = null;
+      renderAll();
+    }
+
     function getDailyEntry(date = getTodayKey()) {
       return getDailyMetrics(date, true) || createEmptyDailyMetrics(date);
     }
@@ -4744,10 +4789,11 @@
     function addManualMealToToday() {
       try {
         const meal = getManualMealDraft();
+        const date = getSelectedDailyInputDate();
         validateMealMacros(meal);
-        addMealToDay(getTodayKey(), meal);
+        addMealToDay(date, meal);
         fillManualMealForm(createEmptyMealEntry());
-        showToast("Приём пищи добавлен");
+        showToast(`Приём пищи добавлен: ${date}`);
       } catch (error) {
         alert(error.message || "Не удалось добавить приём пищи");
       }
@@ -4781,8 +4827,10 @@
       if (!meal) return;
 
       nutritionEditingMealRef = { date, mealId };
+      selectedDailyInputDate = date;
       fillManualMealForm(meal);
-      switchScreen("balance");
+      switchScreen("training");
+      toggleTodayPanel("nutrition");
       renderAll();
       showToast("Прием пищи загружен в форму");
     }
@@ -5075,7 +5123,7 @@
     }
 
     function saveTodayActivityEntry() {
-      const date = getTodayKey();
+      const date = getSelectedDailyInputDate();
       const totalDailySteps = clampMetricNumber(document.getElementById("dailyStepsInput")?.value);
       const draft = normalizeActivityEntry({
         id: activityEditingEntryRef?.entryId || generateId("activity"),
@@ -5104,7 +5152,7 @@
         return entry;
       });
 
-      const message = activityEditingEntryRef?.entryId ? "Активность обновлена" : "Активность сохранена";
+      const message = activityEditingEntryRef?.entryId ? "Активность обновлена" : `Активность сохранена: ${date}`;
       resetActivityDraftState();
       showToast(message);
     }
@@ -5327,11 +5375,13 @@
     }
 
     function renderTodayForms(entry) {
-      const safe = entry || getTodayEntry();
+      const safe = getSelectedDailyInputEntry();
       const setValue = (id, value) => {
         const el = document.getElementById(id);
         if (el) el.value = value ?? "";
       };
+      setValue("mealDateInput", safe.date || getTodayKey());
+      setValue("activityDateInput", safe.date || getTodayKey());
       setValue("dailyWeightInput", safe.weight);
       setValue("dailyWaistInput", safe.waist);
       setValue("dailyHipsInput", safe.hips);
@@ -5354,8 +5404,12 @@
       const nutritionSummary = document.getElementById("todayNutritionSummary");
       if (nutritionSummary) {
         nutritionSummary.innerHTML = `
-          Съедено сегодня: ${safe.calories || 0} ккал · Б ${safe.protein || 0} г · Ж ${safe.fat || 0} г · У ${safe.carbs || 0} г · приемов пищи ${safe.meals?.length || 0}
+          ${safe.date}: ${safe.calories || 0} ккал · Б ${safe.protein || 0} г · Ж ${safe.fat || 0} г · У ${safe.carbs || 0} г · приемов пищи ${safe.meals?.length || 0}
         `;
+      }
+      const mealEntriesBox = document.getElementById("todayMealEntriesBox");
+      if (mealEntriesBox) {
+        mealEntriesBox.innerHTML = renderBalanceMeals(safe);
       }
       const waterSummary = document.getElementById("todayWaterSummary");
       if (waterSummary) {
@@ -5468,6 +5522,7 @@
           ? `Анализов сохранено: ${analysisEntries.length}. Последний: ${latestAnalysis.date} · ${getBodyCompositionSourceLabel(latestAnalysis.bodyCompositionSource)} · жир ${formatMetric(latestAnalysis.bodyFatPercent, "%")}.`
           : "Сохрани анализ InBody / умных весов в параметрах тела, и здесь появится отдельная динамика.";
       }
+      renderBalancePeriodSummary();
       const range7dBtn = document.getElementById("balanceRange7dBtn");
       const rangeAllBtn = document.getElementById("balanceRangeAllBtn");
       if (range7dBtn) range7dBtn.classList.toggle("btn-primary", balanceDynamicsRange === "7d");
@@ -5660,6 +5715,57 @@
     function getBalanceDynamicsSlice(entries) {
       if (balanceDynamicsRange === "all") return entries;
       return entries.slice(-7);
+    }
+
+    function getBalancePeriodSummary(entries) {
+      const meaningful = entries.filter(item =>
+        clampMetricNumber(item.calories) > 0 ||
+        clampMetricNumber(item.totalBurn) > 0 ||
+        clampMetricNumber(item.protein) > 0 ||
+        clampMetricNumber(item.water) > 0 ||
+        clampMetricNumber(item.totalDailySteps || item.steps) > 0
+      );
+      const count = meaningful.length || 1;
+      const sum = (selector) => meaningful.reduce((total, item) => total + (Number(selector(item)) || 0), 0);
+      return {
+        days: meaningful.length,
+        avgCalories: Math.round(sum(item => item.calories) / count),
+        avgBurn: Math.round(sum(item => item.totalBurn) / count),
+        avgDeficit: Math.round(sum(item => item.deficit) / count),
+        avgProtein: Math.round(sum(item => item.protein) / count),
+        avgWater: Math.round(sum(item => item.water) / count),
+        avgSteps: Math.round(sum(item => item.totalDailySteps || item.steps) / count)
+      };
+    }
+
+    function renderBalancePeriodSummary() {
+      const box = document.getElementById("balancePeriodSummary");
+      if (!box) return;
+      const allEntries = getBalanceDynamicsEntries();
+      const week = getBalancePeriodSummary(allEntries.slice(-7));
+      const all = getBalancePeriodSummary(allEntries);
+      box.innerHTML = `
+        <div class="metric-tile blue">
+          <div class="metric-label">7 дней</div>
+          <div class="metric-value">${week.days}</div>
+          <div class="metric-subvalue">дней с данными</div>
+        </div>
+        <div class="metric-tile ${isDeficitInSafeRange(week.avgDeficit || 0) ? "green" : "yellow"}">
+          <div class="metric-label">Средний дефицит 7д</div>
+          <div class="metric-value">${Math.abs(week.avgDeficit || 0)}</div>
+          <div class="metric-subvalue">${getEnergyBalanceLabel(week.avgDeficit || 0).toLowerCase()} · расход ${week.avgBurn} · съедено ${week.avgCalories}</div>
+        </div>
+        <div class="metric-tile emphasis">
+          <div class="metric-label">Белок / вода 7д</div>
+          <div class="metric-value">${week.avgProtein} г</div>
+          <div class="metric-subvalue">вода ${week.avgWater} мл · шаги ${week.avgSteps}</div>
+        </div>
+        <div class="metric-tile">
+          <div class="metric-label">Весь период</div>
+          <div class="metric-value">${all.days}</div>
+          <div class="metric-subvalue">ср. дефицит ${Math.abs(all.avgDeficit || 0)} · белок ${all.avgProtein} г</div>
+        </div>
+      `;
     }
 
     function renderBalanceDynamicsCharts() {
@@ -6565,6 +6671,16 @@
       return record;
     }
 
+    function getCustomExerciseMeta(split, exerciseName) {
+      const cleanName = normalizeExerciseName(exerciseName).toLowerCase();
+      const splitName = String(split || "").trim();
+      if (!cleanName || !Array.isArray(customExerciseCatalog)) return null;
+      return customExerciseCatalog.find(item =>
+        item.name.toLowerCase() === cleanName &&
+        (!splitName || item.split === splitName)
+      ) || customExerciseCatalog.find(item => item.name.toLowerCase() === cleanName) || null;
+    }
+
     function getLoadTypeLabel(loadType) {
       if (loadType === "barbell") return "Штанга";
       if (loadType === "machine") return "Тренажер";
@@ -7425,7 +7541,9 @@
       const exercise = getSelectedWorkoutExerciseName();
       const loadType = document.getElementById("gymLoadType").value;
       const currentCircuitTemplate = getCurrentCircuitExerciseTemplate();
-      const metric = isCircuitWorkout() && currentCircuitTemplate ? currentCircuitTemplate.metric : "reps";
+      const customMeta = getCustomExerciseMeta(currentSession.split, exercise);
+      const metricInput = document.getElementById("gymMetricType")?.value || "reps";
+      const metric = isCircuitWorkout() && currentCircuitTemplate ? currentCircuitTemplate.metric : (metricInput || customMeta?.metric || "reps");
       const reps = parseInt(document.getElementById("gymReps").value);
       let enteredWeight = 0;
 
@@ -7515,8 +7633,9 @@
       const nextExerciseName = getNextExerciseName();
       const completedExercises = getCompletedExercisesCount();
       const volumeToday = getCurrentSessionVolume();
-      const currentMetric = isCircuitWorkout() && currentCircuitTemplate ? currentCircuitTemplate.metric : "reps";
-      const currentLoadType = isCircuitWorkout() && currentCircuitTemplate ? currentCircuitTemplate.loadType : null;
+      const customMeta = getCustomExerciseMeta(currentSession.split, exerciseName);
+      const currentMetric = isCircuitWorkout() && currentCircuitTemplate ? currentCircuitTemplate.metric : (customMeta?.metric || "reps");
+      const currentLoadType = isCircuitWorkout() && currentCircuitTemplate ? currentCircuitTemplate.loadType : (customMeta?.loadType || null);
 
       const headerInfo = [];
       if (currentSession.date) headerInfo.push(currentSession.date);
@@ -7598,8 +7717,13 @@
         : "Истории по упражнению пока нет";
 
       const loadTypeSelect = document.getElementById("gymLoadType");
+      const metricTypeSelect = document.getElementById("gymMetricType");
       const repsInput = document.getElementById("gymReps");
       const weightInput = document.getElementById("gymWeight");
+      if (metricTypeSelect) {
+        metricTypeSelect.value = currentMetric;
+        metricTypeSelect.disabled = isCircuitWorkout() && !!currentCircuitTemplate;
+      }
       repsInput.placeholder = currentMetric === "time" ? "Секунды" : "Повторы";
       if (currentLoadType) loadTypeSelect.value = currentLoadType;
       weightInput.disabled = loadTypeSelect.value === "bodyweight";
@@ -7616,11 +7740,14 @@
       const exerciseName = getCurrentExerciseName();
       const stats = getExerciseStats(exerciseName);
       const currentCircuitTemplate = getCurrentCircuitExerciseTemplate();
-      const currentMetric = isCircuitWorkout() && currentCircuitTemplate ? currentCircuitTemplate.metric : "reps";
-      const currentLoadType = isCircuitWorkout() && currentCircuitTemplate ? currentCircuitTemplate.loadType : "barbell";
+      const customMeta = getCustomExerciseMeta(currentSession.split, exerciseName);
+      const currentMetric = isCircuitWorkout() && currentCircuitTemplate ? currentCircuitTemplate.metric : (customMeta?.metric || "reps");
+      const currentLoadType = isCircuitWorkout() && currentCircuitTemplate ? currentCircuitTemplate.loadType : (customMeta?.loadType || "barbell");
 
       if (!stats) {
         document.getElementById("gymLoadType").value = currentLoadType;
+        const metricTypeInput = document.getElementById("gymMetricType");
+        if (metricTypeInput) metricTypeInput.value = currentMetric;
         document.getElementById("gymWeight").value = "";
         document.getElementById("gymReps").value = currentMetric === "time" && currentCircuitTemplate ? 30 : "";
         const customInput = document.getElementById("gymCustomExercise");
@@ -7630,7 +7757,9 @@
         return;
       }
 
-      document.getElementById("gymLoadType").value = currentCircuitTemplate ? currentLoadType : stats.last.loadType;
+      document.getElementById("gymLoadType").value = currentCircuitTemplate || customMeta ? currentLoadType : stats.last.loadType;
+      const metricTypeInput = document.getElementById("gymMetricType");
+      if (metricTypeInput) metricTypeInput.value = currentMetric;
       document.getElementById("gymWeight").value = document.getElementById("gymLoadType").value === "bodyweight" ? "" : stats.last.enteredWeight;
       document.getElementById("gymReps").value = stats.last.reps;
       const customInput = document.getElementById("gymCustomExercise");
@@ -7646,6 +7775,8 @@
 
       document.getElementById("gymExerciseSelect").value = set.exercise;
       document.getElementById("gymLoadType").value = set.loadType;
+      const metricTypeInput = document.getElementById("gymMetricType");
+      if (metricTypeInput) metricTypeInput.value = set.metric || "reps";
       document.getElementById("gymWeight").value = set.loadType === "bodyweight" ? "" : set.enteredWeight;
       document.getElementById("gymReps").value = set.reps;
       const customInput = document.getElementById("gymCustomExercise");
@@ -7757,7 +7888,9 @@
 
       saveCustomExercise(currentSession.split, name, {
         loadType: document.getElementById("gymLoadType").value,
-        metric: isCircuitWorkout() && getCurrentCircuitExerciseTemplate()?.metric === "time" ? "time" : "reps"
+        metric: isCircuitWorkout() && getCurrentCircuitExerciseTemplate()?.metric === "time"
+          ? "time"
+          : (document.getElementById("gymMetricType")?.value || "reps")
       });
 
       if (isCircuitWorkout()) {
@@ -7767,8 +7900,8 @@
           if (!existsInBlock) {
             currentBlock.exercises.push({
               exercise: name,
-              metric: "reps",
-              loadType: "machine"
+              metric: document.getElementById("gymMetricType")?.value || "reps",
+              loadType: document.getElementById("gymLoadType")?.value || "machine"
             });
           }
           currentSession.planExercises = currentBlock.exercises;
@@ -7781,7 +7914,7 @@
           currentSession.planExercises.push({
             exercise: name,
             targetSets: 3,
-            targetReps: 10
+            targetReps: document.getElementById("gymMetricType")?.value === "time" ? 30 : 10
           });
         }
       }
@@ -8748,8 +8881,10 @@
 
     function addExerciseToCurrentSessionPlan() {
       const exercise = normalizeExerciseName(document.getElementById("sessionExerciseName").value);
-      const targetSets = parseInt(document.getElementById("sessionExerciseSets").value);
-      const targetReps = parseInt(document.getElementById("sessionExerciseReps").value);
+      const targetSets = parseInt(document.getElementById("sessionExerciseSets").value || (isCircuitWorkout() ? "1" : ""));
+      const targetReps = parseInt(document.getElementById("sessionExerciseReps").value || (isCircuitWorkout() ? (document.getElementById("sessionExerciseMetric")?.value === "time" ? "30" : "10") : ""));
+      const metric = document.getElementById("sessionExerciseMetric")?.value || "reps";
+      const loadType = document.getElementById("sessionExerciseLoadType")?.value || "machine";
 
       if (!exercise) {
         alert("Укажи название упражнения");
@@ -8761,13 +8896,27 @@
         return;
       }
 
-      saveCustomExercise(currentSession.split, exercise, { loadType: "machine", metric: "reps" });
-      currentSession.planExercises.push({ exercise, targetSets, targetReps });
+      saveCustomExercise(currentSession.split, exercise, { loadType, metric });
+
+      if (isCircuitWorkout()) {
+        const currentBlock = getCurrentCircuitBlock();
+        if (currentBlock) {
+          currentBlock.exercises.push({ exercise, metric, loadType });
+          currentSession.planExercises = currentBlock.exercises.map(item => ({
+            exercise: item.exercise,
+            targetSets: 1,
+            targetReps: item.metric === "time" ? 30 : 10
+          }));
+          currentSession.currentExerciseIndex = Math.max(0, currentSession.planExercises.length - 1);
+        }
+      } else {
+        currentSession.planExercises.push({ exercise, targetSets, targetReps });
+      }
       document.getElementById("sessionExerciseName").value = "";
       document.getElementById("sessionExerciseSets").value = "";
       document.getElementById("sessionExerciseReps").value = "";
       renderGymWorkoutView();
-      showToast("Упражнение добавлено в текущий план");
+      showToast(isCircuitWorkout() ? "Упражнение добавлено в текущий круговой блок" : "Упражнение добавлено в текущий план");
     }
 
     function removeExerciseFromCurrentSessionPlan(index) {
@@ -8897,6 +9046,49 @@
         }));
     }
 
+    function getWorkoutSplitNamesSorted() {
+      const names = new Set();
+      getStrengthWorkoutHistory().forEach(workout => {
+        const split = String(workout.split || "").trim();
+        if (split) names.add(split);
+      });
+      return [...names].sort((a, b) => a.localeCompare(b, "ru"));
+    }
+
+    function getWorkoutStatsBySplit(splitName) {
+      const target = String(splitName || "").toLowerCase();
+      const grouped = {};
+
+      getStrengthWorkoutHistory()
+        .filter(workout => String(workout.split || "").toLowerCase() === target)
+        .forEach(workout => {
+          const date = String(workout.date || "Дата не указана");
+          if (!grouped[date]) {
+            grouped[date] = {
+              date,
+              totalVolume: 0,
+              totalSets: 0,
+              uniqueExercises: new Set()
+            };
+          }
+
+          (workout.sets || []).forEach(set => {
+            grouped[date].totalVolume += Number(set.volume) || 0;
+            grouped[date].totalSets += 1;
+            if (set.exercise) grouped[date].uniqueExercises.add(set.exercise);
+          });
+        });
+
+      return Object.values(grouped)
+        .sort((a, b) => String(a.date).localeCompare(String(b.date)))
+        .map(item => ({
+          date: item.date,
+          totalVolume: Math.round(item.totalVolume),
+          totalSets: item.totalSets,
+          uniqueExercises: item.uniqueExercises.size
+        }));
+    }
+
     function getPerformedExerciseNamesSorted() {
       const names = new Set();
       getCompletedStrengthSets().forEach(set => {
@@ -8910,6 +9102,10 @@
       return [
         { value: "total", label: "Общий тоннаж за упражнения" },
         { value: "cardio", label: "Кардио" },
+        ...getWorkoutSplitNamesSorted().map(split => ({
+          value: `split:${split}`,
+          label: `Группа: ${split}`
+        })),
         ...getPerformedExerciseNamesSorted().map(exercise => ({
           value: `exercise:${exercise}`,
           label: exercise
@@ -8920,6 +9116,10 @@
     function normalizeStatsViewValue(value) {
       const raw = String(value || "total");
       if (raw === "total" || raw === "cardio") return raw;
+      if (raw.startsWith("split:")) {
+        const split = raw.slice("split:".length);
+        if (getWorkoutSplitNamesSorted().includes(split)) return raw;
+      }
       if (raw.startsWith("exercise:")) {
         const exercise = raw.slice("exercise:".length);
         if (getPerformedExerciseNamesSorted().includes(exercise)) return raw;
@@ -8960,6 +9160,11 @@
     function getSelectedExerciseFromStatsView() {
       if (!selectedStatsView.startsWith("exercise:")) return "";
       return selectedStatsView.slice("exercise:".length);
+    }
+
+    function getSelectedSplitFromStatsView() {
+      if (!selectedStatsView.startsWith("split:")) return "";
+      return selectedStatsView.slice("split:".length);
     }
 
     function getExerciseVolumeStatsByDay(exerciseName) {
@@ -9050,6 +9255,12 @@
     function renderSelectedStatsChart() {
       if (selectedStatsView === "cardio") {
         renderCardioProgressChart();
+        return;
+      }
+
+      const splitName = getSelectedSplitFromStatsView();
+      if (splitName) {
+        renderSplitVolumeChart(splitName);
         return;
       }
 
@@ -9296,6 +9507,44 @@
       hint.textContent = `Упражнение: ${exerciseName}. Дней на графике: ${summary.days.length}. Всего поднято: ${summary.totalVolume} кг.`;
     }
 
+    function renderSplitVolumeChart(splitName) {
+      const canvas = document.getElementById("progressChart");
+      const hint = document.getElementById("progressChartHint");
+      const description = document.getElementById("statsViewDescription");
+      const days = getWorkoutStatsBySplit(splitName);
+
+      if (description) {
+        description.textContent = `График показывает тоннаж по дням только для группы тренировок «${splitName}».`;
+      }
+
+      if (!days.length) {
+        const ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        renderStatsSummaryCards([
+          { value: "0 кг", label: `Тоннаж: ${splitName}` },
+          { value: "0", label: "Тренировок" },
+          { value: "0", label: "Подходов" }
+        ]);
+        hint.textContent = `По группе «${splitName}» пока нет данных.`;
+        return;
+      }
+
+      drawLineChart(canvas, days.map(item => item.date), days.map(item => item.totalVolume), `${splitName}: тоннаж, кг`);
+      const totalVolume = days.reduce((sum, item) => sum + item.totalVolume, 0);
+      const totalSets = days.reduce((sum, item) => sum + item.totalSets, 0);
+      const bestDay = days.reduce((best, item) => !best || item.totalVolume > best.totalVolume ? item : best, null);
+      const latest = days[days.length - 1];
+
+      renderStatsSummaryCards([
+        { value: formatStatsNumber(totalVolume, "кг"), label: `Общий тоннаж: ${splitName}` },
+        { value: formatStatsNumber(days.length), label: "Тренировок этой группы" },
+        { value: formatStatsNumber(totalSets), label: "Подходов" },
+        { value: bestDay ? bestDay.date : "-", label: bestDay ? `Лучший день: ${formatStatsNumber(bestDay.totalVolume, "кг")}` : "Лучший день" }
+      ]);
+
+      hint.textContent = `Группа: ${splitName}. Последняя тренировка: ${latest.date} · тоннаж ${latest.totalVolume} кг.`;
+    }
+
     function renderCardioProgressChart() {
       const canvas = document.getElementById("progressChart");
       const hint = document.getElementById("progressChartHint");
@@ -9399,6 +9648,16 @@
         box.textContent = items.length
           ? `Кардио: ${items.length} сессий · ${totalMinutes} мин · ${totalCalories} ккал · ${formatStatsNumber(totalDistance, "км")}.`
           : "Кардио-статистика появится после первой кардио-сессии.";
+        return;
+      }
+
+      const splitName = getSelectedSplitFromStatsView();
+      if (splitName) {
+        const days = getWorkoutStatsBySplit(splitName);
+        const totalVolume = days.reduce((sum, item) => sum + item.totalVolume, 0);
+        box.textContent = days.length
+          ? `${splitName}: ${days.length} тренировок · общий тоннаж ${totalVolume} кг · последняя ${days[days.length - 1].date}.`
+          : `${splitName}: пока нет сохраненных тренировок.`;
         return;
       }
 
