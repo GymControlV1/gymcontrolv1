@@ -1507,6 +1507,7 @@
               <option value="Pull">Pull</option>
               <option value="Legs">Legs</option>
             </select>
+            <input id="setupCircuitName" class="hidden" type="text" placeholder="Название круговой тренировки, например Функциональный круг" />
           </div>
           <div class="actions">
             <button class="btn-primary" onclick="continueToWarmup()">Продолжить</button>
@@ -1523,11 +1524,12 @@
             </div>
           </div>
           <div class="muted" style="margin-bottom:10px;">
-            Собери блоки. В каждом блоке укажи упражнения, количество кругов и отдых между кругами.
+            Собери блоки. В каждом блоке укажи упражнения, количество кругов, сколько проходов по всем упражнениям нужно сделать внутри круга, и отдых между проходами.
           </div>
           <div class="form-grid">
             <input id="circuitBlockName" type="text" placeholder="Название блока (необязательно)" />
             <input id="circuitBlockRounds" type="number" min="1" step="1" placeholder="Кругов в блоке" />
+            <input id="circuitBlockPasses" type="number" min="1" step="1" placeholder="Подходов на упражнение" />
             <input id="circuitBlockRest" type="number" min="0" step="5" placeholder="Отдых между кругами, сек" />
             <input id="circuitExerciseSearch" type="text" placeholder="Быстрый поиск упражнения" oninput="updateCircuitExerciseOptions()" />
             <select id="circuitExerciseSelect"></select>
@@ -3985,6 +3987,7 @@
         circuitBlocks: [],
         currentCircuitBlockIndex: 0,
         currentCircuitRoundIndex: 0,
+        currentCircuitPassIndex: 0,
         sets: [],
         cardioDraft: null,
         state: "idle",
@@ -4389,9 +4392,12 @@
     function updateTrainingSetupModeUI() {
       const workoutModeSelect = document.getElementById("setupWorkoutMode");
       const splitSelect = document.getElementById("setupSplit");
+      const circuitNameInput = document.getElementById("setupCircuitName");
       if (!workoutModeSelect || !splitSelect) return;
       const isCardio = workoutModeSelect.value === "cardio";
-      splitSelect.classList.toggle("hidden", isCardio);
+      const isCircuit = workoutModeSelect.value === "circuit";
+      splitSelect.classList.toggle("hidden", isCardio || isCircuit);
+      if (circuitNameInput) circuitNameInput.classList.toggle("hidden", !isCircuit);
     }
 
     function appendWorkoutActivityEntry(date, options = {}) {
@@ -6483,10 +6489,12 @@
       circuitBlockBuilderExercises = [];
       const blockName = document.getElementById("circuitBlockName");
       const rounds = document.getElementById("circuitBlockRounds");
+      const passes = document.getElementById("circuitBlockPasses");
       const rest = document.getElementById("circuitBlockRest");
       const custom = document.getElementById("circuitCustomExercise");
       if (blockName) blockName.value = "";
       if (rounds) rounds.value = "";
+      if (passes) passes.value = "";
       if (rest) rest.value = "";
       if (custom) custom.value = "";
       renderCircuitBuilder();
@@ -6532,7 +6540,7 @@
                 <div>
                   <strong>Блок ${index + 1}${block.name ? ` · ${escapeHtml(block.name)}` : ""}</strong>
                   <div class="muted" style="margin-top:6px;">
-                    Кругов: ${block.rounds} · Отдых: ${block.restSeconds} сек
+                    Кругов: ${block.rounds} · Подходов на упражнение: ${block.setsPerExercise || 1} · Отдых: ${block.restSeconds} сек
                   </div>
                   <div class="muted" style="margin-top:8px;">
                     ${block.exercises.map((item, i) => `${i + 1}. ${escapeHtml(item.exercise)} — ${item.metric === "time" ? "время" : "повторы"}`).join("<br>")}
@@ -6584,6 +6592,7 @@
 
     function saveCircuitBlock() {
       const rounds = parseInt(document.getElementById("circuitBlockRounds").value, 10);
+      const setsPerExercise = parseInt(document.getElementById("circuitBlockPasses").value || "1", 10);
       const restSeconds = parseInt(document.getElementById("circuitBlockRest").value || "0", 10);
       const name = normalizeExerciseName(document.getElementById("circuitBlockName").value);
 
@@ -6597,10 +6606,16 @@
         return;
       }
 
+      if (Number.isNaN(setsPerExercise) || setsPerExercise < 1) {
+        alert("Укажи количество подходов на упражнение");
+        return;
+      }
+
       circuitBuilderBlocks.push({
         id: Date.now() + Math.random(),
         name,
         rounds,
+        setsPerExercise,
         restSeconds,
         exercises: circuitBlockBuilderExercises.map(item => ({ ...item }))
       });
@@ -6629,6 +6644,7 @@
       }));
       currentSession.currentCircuitBlockIndex = 0;
       currentSession.currentCircuitRoundIndex = 0;
+      currentSession.currentCircuitPassIndex = 0;
       currentSession.currentExerciseIndex = 0;
       currentSession.planExercises = currentSession.circuitBlocks[0].exercises.map(item => ({
         exercise: item.exercise,
@@ -6783,6 +6799,11 @@
       return block.exercises[currentSession.currentExerciseIndex] || null;
     }
 
+    function getCurrentCircuitPassCount() {
+      const block = getCurrentCircuitBlock();
+      return Math.max(1, parseInt(block?.setsPerExercise || "1", 10) || 1);
+    }
+
     function isCircuitWorkout() {
       return currentSession.workoutMode === "circuit";
     }
@@ -6915,7 +6936,7 @@
       return parts.join(" ");
     }
 
-    function buildSet({ date, split, exercise, loadType, enteredWeight, reps, metric = "reps", circuitBlockIndex = null, circuitRoundIndex = null }) {
+    function buildSet({ date, split, exercise, loadType, enteredWeight, reps, metric = "reps", circuitBlockIndex = null, circuitRoundIndex = null, circuitPassIndex = null }) {
       const multiplier = getMultiplier(loadType);
       const totalWeight = enteredWeight * multiplier;
       const volume = metric === "time" ? 0 : totalWeight * reps;
@@ -6931,7 +6952,8 @@
         volume,
         metric,
         circuitBlockIndex,
-        circuitRoundIndex
+        circuitRoundIndex,
+        circuitPassIndex
       };
     }
 
@@ -7173,13 +7195,16 @@
       currentSession.workoutType = currentSession.workoutMode === "cardio" ? "cardio" : "strength";
       currentSession.split = currentSession.workoutMode === "cardio"
         ? "Кардио"
-        : document.getElementById("setupSplit").value;
+        : currentSession.workoutMode === "circuit"
+          ? (normalizeExerciseName(document.getElementById("setupCircuitName")?.value || "") || "Круговая тренировка")
+          : document.getElementById("setupSplit").value;
       currentSession.fromScheduledWorkoutId = null;
       currentSession.planExercises = [];
       currentSession.currentExerciseIndex = 0;
       currentSession.circuitBlocks = [];
       currentSession.currentCircuitBlockIndex = 0;
       currentSession.currentCircuitRoundIndex = 0;
+      currentSession.currentCircuitPassIndex = 0;
       currentSession.sets = [];
       currentSession.cardioDraft = null;
       currentSession.pendingSummary = null;
@@ -7567,8 +7592,21 @@
         reps,
         metric,
         circuitBlockIndex: isCircuitWorkout() ? currentSession.currentCircuitBlockIndex : null,
-        circuitRoundIndex: isCircuitWorkout() ? currentSession.currentCircuitRoundIndex : null
+        circuitRoundIndex: isCircuitWorkout() ? currentSession.currentCircuitRoundIndex : null,
+        circuitPassIndex: isCircuitWorkout() ? currentSession.currentCircuitPassIndex : null
       });
+    }
+
+    function advanceCircuitAfterSavedSet() {
+      const block = getCurrentCircuitBlock();
+      if (!block) return false;
+      if (currentSession.currentExerciseIndex < block.exercises.length - 1) {
+        currentSession.currentExerciseIndex += 1;
+        resetEditorMode();
+        currentSession.exerciseFeedback = "";
+        return true;
+      }
+      return false;
     }
 
     function commitGymSet(options = {}) {
@@ -7593,6 +7631,7 @@
       }
 
       currentSession.sets.push(newSet);
+      currentSession.lastMotivation = getMotivationForSet(newSet, false);
       if (!preserveMotivation) {
         currentSession.lastMotivation = "";
         currentSession.exerciseFeedback = "";
@@ -7607,8 +7646,13 @@
       }
 
       if (isCircuitWorkout()) {
-        renderGymWorkoutView();
-        if (toastMessage) showToast(toastMessage);
+        const moved = advanceCircuitAfterSavedSet();
+        saveData();
+        renderTrainingScreen();
+        fillGymFormDefaults();
+        if (toastMessage) {
+          showToast(moved ? "Подход сохранен, открыто следующее упражнение" : "Подход сохранен. Заверши проход, чтобы начать отдых");
+        }
         return newSet;
       }
 
@@ -7636,6 +7680,8 @@
       const customMeta = getCustomExerciseMeta(currentSession.split, exerciseName);
       const currentMetric = isCircuitWorkout() && currentCircuitTemplate ? currentCircuitTemplate.metric : (customMeta?.metric || "reps");
       const currentLoadType = isCircuitWorkout() && currentCircuitTemplate ? currentCircuitTemplate.loadType : (customMeta?.loadType || null);
+      const currentPassNumber = (currentSession.currentCircuitPassIndex || 0) + 1;
+      const passCount = getCurrentCircuitPassCount();
 
       const headerInfo = [];
       if (currentSession.date) headerInfo.push(currentSession.date);
@@ -7643,6 +7689,7 @@
       if (isCircuitWorkout()) {
         headerInfo.push(`Блок ${currentSession.currentCircuitBlockIndex + 1} из ${currentSession.circuitBlocks.length}`);
         headerInfo.push(`Круг ${currentSession.currentCircuitRoundIndex + 1} из ${(getCurrentCircuitBlock()?.rounds || 1)}`);
+        headerInfo.push(`Подход ${currentPassNumber} из ${passCount}`);
       }
       if (currentExerciseObj) headerInfo.push(`Упражнение ${currentSession.currentExerciseIndex + 1} из ${currentSession.planExercises.length}`);
       document.getElementById("gymHeaderInfo").textContent = headerInfo.join(" · ");
@@ -7653,9 +7700,13 @@
 
       if (currentSession.planExercises.length) {
         progressCard.classList.remove("hidden");
-        progressNote.textContent = nextExerciseName
-          ? `Сейчас: ${exerciseName}. Дальше по плану: ${nextExerciseName}.`
-          : `Сейчас последнее упражнение плана: ${exerciseName}. После него останется заминка.`;
+        progressNote.textContent = isCircuitWorkout()
+          ? (nextExerciseName
+            ? `Сейчас: ${exerciseName}. После сохранения откроется ${nextExerciseName} в этом же подходе.`
+            : `Сейчас последнее упражнение подхода ${currentPassNumber}. После сохранения нажми “Завершить подход”.`)
+          : (nextExerciseName
+            ? `Сейчас: ${exerciseName}. Дальше по плану: ${nextExerciseName}.`
+            : `Сейчас последнее упражнение плана: ${exerciseName}. После него останется заминка.`);
         progressGrid.innerHTML = `
           <div class="session-progress-item">
             <div class="session-progress-value">${currentSession.currentExerciseIndex + 1}/${currentSession.planExercises.length}</div>
@@ -7665,6 +7716,12 @@
             <div class="session-progress-value">${completedExercises}</div>
             <div class="session-progress-label">Упражнений уже начато</div>
           </div>
+          ${isCircuitWorkout() ? `
+            <div class="session-progress-item">
+              <div class="session-progress-value">${currentPassNumber}/${passCount}</div>
+              <div class="session-progress-label">Подход внутри круга</div>
+            </div>
+          ` : ""}
           <div class="session-progress-item">
             <div class="session-progress-value">${currentSession.sets.length}</div>
             <div class="session-progress-label">Подходов за тренировку</div>
@@ -7701,14 +7758,17 @@
 
       document.getElementById("gymExerciseTitle").textContent = exerciseName || "Упражнение";
       document.getElementById("gymExerciseMeta").textContent = isCircuitWorkout()
-        ? `${currentMetric === "time" ? "Фиксируй секунды" : "Фиксируй вес и повторы"} · Сделано подходов в упражнении: ${getDoneSetsForExercise(exerciseName)}`
+        ? `${currentMetric === "time" ? "Фиксируй секунды" : "Фиксируй вес и повторы"} · Круг ${currentSession.currentCircuitRoundIndex + 1}, подход ${currentPassNumber}, упражнение ${currentSession.currentExerciseIndex + 1}/${currentSession.planExercises.length}`
         : currentExerciseObj
           ? `Цель: ${currentExerciseObj.targetSets}×${currentExerciseObj.targetReps} · Сделано подходов: ${getDoneSetsForExercise(exerciseName)}/${currentExerciseObj.targetSets}`
           : "Свободная тренировка";
-      document.getElementById("completeExerciseBtn").textContent = currentSession.planExercises.length
-        ? "Завершить упражнение"
-        : "Перейти к отдыху";
-      document.getElementById("completeCircuitRoundBtn").classList.toggle("hidden", !isCircuitWorkout());
+      document.getElementById("completeExerciseBtn").textContent = isCircuitWorkout()
+        ? "Завершить подход"
+        : currentSession.planExercises.length
+          ? "Завершить упражнение"
+          : "Перейти к отдыху";
+      document.getElementById("completeCircuitRoundBtn").textContent = isCircuitWorkout() ? "Завершить круг" : "Завершить круг";
+      document.getElementById("completeCircuitRoundBtn").classList.toggle("hidden", !isCircuitWorkout() || currentSession.currentCircuitPassIndex < passCount - 1);
       document.getElementById("completeCircuitBlockBtn").classList.toggle("hidden", !isCircuitWorkout());
 
       const stats = getExerciseStats(exerciseName);
@@ -7999,7 +8059,7 @@
             <div>
               <strong>${index + 1}. ${set.exercise}</strong> — ${getSetResultText(set)}
               <div class="muted">
-                ${isCircuitWorkout() && set.circuitBlockIndex !== null ? `Блок ${set.circuitBlockIndex + 1} · Круг ${set.circuitRoundIndex + 1} · ` : ""}${getLoadTypeLabel(set.loadType)}${set.metric === "time" ? "" : ` · тоннаж ${set.volume} кг`}
+                ${isCircuitWorkout() && set.circuitBlockIndex !== null ? `Блок ${set.circuitBlockIndex + 1} · Круг ${set.circuitRoundIndex + 1} · Подход ${(set.circuitPassIndex || 0) + 1} · ` : ""}${getLoadTypeLabel(set.loadType)}${set.metric === "time" ? "" : ` · тоннаж ${set.volume} кг`}
               </div>
             </div>
             <div class="inline-actions">
@@ -8115,30 +8175,17 @@
         }
       }
 
+      if (isCircuitWorkout()) {
+        completeCircuitPass();
+        return;
+      }
+
       const doneSets = currentSession.sets.filter(
         set => set.exercise.toLowerCase() === exerciseName.toLowerCase()
       );
 
       if (!doneSets.length) {
         alert("Сначала сохрани хотя бы один подход");
-        return;
-      }
-
-      if (isCircuitWorkout()) {
-        currentSession.lastMotivation = getExerciseCompletionMotivation(exerciseName);
-        currentSession.exerciseFeedback = getExerciseCompletionFeedback(exerciseName);
-
-        const block = getCurrentCircuitBlock();
-        if (block && currentSession.currentExerciseIndex < block.exercises.length - 1) {
-          currentSession.currentExerciseIndex += 1;
-          resetEditorMode();
-          renderGymWorkoutView();
-          fillGymFormDefaults();
-          showToast("Переход к следующему упражнению круга");
-        } else {
-          renderGymWorkoutView();
-          showToast("Последнее упражнение круга выполнено. Заверши круг.");
-        }
         return;
       }
 
@@ -8162,6 +8209,11 @@
 
       if (pendingRestAction && pendingRestAction.type === "after-circuit-round") {
         hint.textContent = `Отдых между кругами. После таймера начнется следующий круг блока ${pendingRestAction.blockIndex + 1}.`;
+        return;
+      }
+
+      if (pendingRestAction && pendingRestAction.type === "after-circuit-pass") {
+        hint.textContent = `Отдых между подходами внутри круга. После таймера откроется первое упражнение следующего подхода.`;
         return;
       }
 
@@ -8207,11 +8259,60 @@
       renderTrainingScreen();
     }
 
+    function getCircuitSetsForCurrentPass() {
+      return currentSession.sets.filter(set =>
+        set.circuitBlockIndex === currentSession.currentCircuitBlockIndex &&
+        set.circuitRoundIndex === currentSession.currentCircuitRoundIndex &&
+        (set.circuitPassIndex || 0) === (currentSession.currentCircuitPassIndex || 0)
+      );
+    }
+
+    function completeCircuitPass() {
+      if (!isCircuitWorkout()) return;
+      const block = getCurrentCircuitBlock();
+      if (!block) return;
+
+      const passSets = getCircuitSetsForCurrentPass();
+      const completedExerciseNames = new Set(passSets.map(set => String(set.exercise || "").toLowerCase()));
+      const missing = block.exercises
+        .map(item => item.exercise)
+        .filter(name => !completedExerciseNames.has(String(name || "").toLowerCase()));
+
+      if (missing.length) {
+        alert(`Сначала сохрани подходы для всех упражнений текущего подхода. Не хватает: ${missing.join(", ")}`);
+        return;
+      }
+
+      const passCount = getCurrentCircuitPassCount();
+      if (currentSession.currentCircuitPassIndex < passCount - 1) {
+        currentSession.state = "timer";
+        pendingRestAction = {
+          type: "after-circuit-pass",
+          blockIndex: currentSession.currentCircuitBlockIndex,
+          roundIndex: currentSession.currentCircuitRoundIndex
+        };
+        restTimeLeft = block.restSeconds || 90;
+        startRestTimer();
+        saveData();
+        renderTrainingScreen();
+        showToast("Подход по кругу завершен, начинается отдых");
+        return;
+      }
+
+      showToast("Все подходы текущего круга сделаны. Теперь можно завершить круг.");
+      renderGymWorkoutView();
+    }
+
     function completeCircuitRound() {
       if (!isCircuitWorkout()) return;
 
       const block = getCurrentCircuitBlock();
       if (!block) return;
+
+      if (currentSession.currentCircuitPassIndex < getCurrentCircuitPassCount() - 1) {
+        alert("Сначала заверши все подходы текущего круга.");
+        return;
+      }
 
       const roundSets = currentSession.sets.filter(
         set => set.circuitBlockIndex === currentSession.currentCircuitBlockIndex && set.circuitRoundIndex === currentSession.currentCircuitRoundIndex
@@ -8230,6 +8331,7 @@
         };
         restTimeLeft = block.restSeconds || 90;
         startRestTimer();
+        saveData();
         renderTrainingScreen();
         showToast("Круг завершен, начинается отдых");
         return;
@@ -8261,12 +8363,14 @@
         };
         restTimeLeft = block.restSeconds || 120;
         startRestTimer();
+        saveData();
         renderTrainingScreen();
         showToast("Блок завершен, начинается отдых");
         return;
       }
 
       currentSession.state = "cooldown";
+      saveData();
       renderTrainingScreen();
       showToast("Все блоки круговой тренировки завершены");
     }
@@ -8305,6 +8409,7 @@
         circuitBlocks: currentSession.workoutMode === "circuit" ? currentSession.circuitBlocks.map(block => ({
           name: block.name,
           rounds: block.rounds,
+          setsPerExercise: block.setsPerExercise || 1,
           restSeconds: block.restSeconds,
           exercises: block.exercises.map(item => ({ ...item }))
         })) : [],
@@ -8432,6 +8537,7 @@
         circuitBlocks: [],
         currentCircuitBlockIndex: 0,
         currentCircuitRoundIndex: 0,
+        currentCircuitPassIndex: 0,
         sets: [],
         cardioDraft: null,
         state: "idle",
@@ -8505,9 +8611,22 @@
         return;
       }
 
+      if (pendingRestAction && pendingRestAction.type === "after-circuit-pass") {
+        pendingRestAction = null;
+        currentSession.currentCircuitPassIndex += 1;
+        currentSession.currentExerciseIndex = 0;
+        currentSession.state = "workout";
+        saveData();
+        renderTrainingScreen();
+        fillGymFormDefaults();
+        showToast("Следующий подход внутри круга начался");
+        return;
+      }
+
       if (pendingRestAction && pendingRestAction.type === "after-circuit-round") {
         pendingRestAction = null;
         currentSession.currentCircuitRoundIndex += 1;
+        currentSession.currentCircuitPassIndex = 0;
         currentSession.currentExerciseIndex = 0;
         currentSession.planExercises = getCurrentCircuitBlock().exercises.map(item => ({
           exercise: item.exercise,
@@ -8515,6 +8634,7 @@
           targetReps: item.metric === "time" ? 30 : 10
         }));
         currentSession.state = "workout";
+        saveData();
         renderTrainingScreen();
         fillGymFormDefaults();
         showToast("Новый круг начался");
@@ -8525,10 +8645,12 @@
         pendingRestAction = null;
         currentSession.currentCircuitBlockIndex += 1;
         currentSession.currentCircuitRoundIndex = 0;
+        currentSession.currentCircuitPassIndex = 0;
         currentSession.currentExerciseIndex = 0;
         const block = getCurrentCircuitBlock();
         if (!block) {
           currentSession.state = "cooldown";
+          saveData();
           renderTrainingScreen();
           return;
         }
@@ -8538,6 +8660,7 @@
           targetReps: item.metric === "time" ? 30 : 10
         }));
         currentSession.state = "workout";
+        saveData();
         renderTrainingScreen();
         fillGymFormDefaults();
         showToast("Начался следующий блок");
@@ -9828,7 +9951,7 @@
           setsHtml += `
             <div class="muted" style="margin-bottom:8px;">
               • ${set.exercise} — ${getSetResultText(set)}
-              (${set.circuitBlockIndex !== null && set.circuitBlockIndex !== undefined ? `Блок ${set.circuitBlockIndex + 1}, круг ${set.circuitRoundIndex + 1}, ` : ""}${getLoadTypeLabel(set.loadType)}${set.metric === "time" ? "" : `, тоннаж ${set.volume} кг`})
+              (${set.circuitBlockIndex !== null && set.circuitBlockIndex !== undefined ? `Блок ${set.circuitBlockIndex + 1}, круг ${set.circuitRoundIndex + 1}, подход ${(set.circuitPassIndex || 0) + 1}, ` : ""}${getLoadTypeLabel(set.loadType)}${set.metric === "time" ? "" : `, тоннаж ${set.volume} кг`})
             </div>
           `;
         });
@@ -9907,7 +10030,7 @@
         const details = workout.sets.map((set, index) => `
           <div class="muted" style="margin-bottom:8px;">
             ${index + 1}. ${escapeHtml(set.exercise)} — ${getSetResultText(set)}
-            (${set.circuitBlockIndex !== null && set.circuitBlockIndex !== undefined ? `Блок ${set.circuitBlockIndex + 1}, круг ${set.circuitRoundIndex + 1}, ` : ""}${getLoadTypeLabel(set.loadType)}${set.metric === "time" ? "" : `, тоннаж ${set.volume} кг`})
+            (${set.circuitBlockIndex !== null && set.circuitBlockIndex !== undefined ? `Блок ${set.circuitBlockIndex + 1}, круг ${set.circuitRoundIndex + 1}, подход ${(set.circuitPassIndex || 0) + 1}, ` : ""}${getLoadTypeLabel(set.loadType)}${set.metric === "time" ? "" : `, тоннаж ${set.volume} кг`})
           </div>
         `).join("");
 
