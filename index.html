@@ -2400,6 +2400,7 @@
         <div id="profileBackupsPanel" class="collapsible-panel hidden">
           <div class="actions full">
             <button class="btn-primary" onclick="exportData()">Сохранить все</button>
+            <button class="btn-secondary" onclick="exportBalanceHistoryCsv()">История Баланса CSV</button>
             <button class="btn-secondary" onclick="exportWorkoutsData()">Только тренировки</button>
             <button class="btn-secondary" onclick="exportPlansData()">Только планы</button>
             <button class="btn-secondary" onclick="exportNutritionData()">Только КБЖУ</button>
@@ -10616,6 +10617,26 @@
       URL.revokeObjectURL(url);
     }
 
+    function downloadTextExport(filename, text, type = "text/plain;charset=utf-8") {
+      const blob = new Blob([text], { type });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function csvCell(value) {
+      if (value === null || value === undefined) return "";
+      const text = String(value).replaceAll('"', '""');
+      return /[;"\n\r]/.test(text) ? `"${text}"` : text;
+    }
+
+    function buildCsv(rows) {
+      return "\uFEFF" + rows.map(row => row.map(csvCell).join(";")).join("\n");
+    }
+
     function buildExportEnvelope(section, payload) {
       return {
         profileId: currentProfileId,
@@ -10624,6 +10645,92 @@
         exportedAt: new Date().toISOString(),
         ...payload
       };
+    }
+
+    function getBalanceHistoryRows() {
+      const header = [
+        "Дата",
+        "Вес, кг",
+        "Талия, см",
+        "Бедра, см",
+        "% жира",
+        "Жировая масса, кг",
+        "Безжировая масса, кг",
+        "Скелетная мышечная масса, кг",
+        "Висцеральный жир",
+        "Вода организма, %",
+        "Калории",
+        "Белки, г",
+        "Жиры, г",
+        "Углеводы, г",
+        "Вода, мл",
+        "Жидкости, мл",
+        "Шаги всего",
+        "Кардио-шаги",
+        "Бытовые шаги",
+        "BMR, ккал",
+        "NEAT, ккал",
+        "Кардио, ккал",
+        "Силовые, ккал",
+        "Другая активность, ккал",
+        "Засчитанная активность, ккал",
+        "Расход всего, ккал",
+        "Дефицит/профицит, ккал",
+        "Приемов пищи",
+        "Записей активности",
+        "Записей воды",
+        "Источник состава тела",
+        "Обновлено"
+      ];
+
+      const rows = Object.entries(dailyMetricsByDate || {})
+        .sort(([dateA], [dateB]) => dateA.localeCompare(dateB))
+        .map(([date, entry]) => {
+          const safe = recalculateDailyEntry({
+            ...createEmptyDailyMetrics(date),
+            ...(entry || {}),
+            meals: Array.isArray(entry?.meals) ? entry.meals.map(item => ({ ...item })) : [],
+            activityEntries: Array.isArray(entry?.activityEntries) ? entry.activityEntries.map(item => ({ ...item })) : [],
+            waterEntries: Array.isArray(entry?.waterEntries) ? entry.waterEntries.map(item => ({ ...item })) : []
+          });
+
+          return [
+            date,
+            safe.weight,
+            safe.waist,
+            safe.hips,
+            safe.bodyFatPercent,
+            safe.fatMass,
+            safe.leanMass,
+            safe.skeletalMuscleMass,
+            safe.visceralFat,
+            safe.bodyWaterPercent,
+            safe.calories || 0,
+            safe.protein || 0,
+            safe.fat || 0,
+            safe.carbs || 0,
+            safe.water || 0,
+            safe.liquids || 0,
+            safe.totalDailySteps || safe.steps || 0,
+            safe.cardioSteps || 0,
+            safe.neatSteps || 0,
+            safe.bmr || 0,
+            safe.neatCalories || safe.stepCalories || 0,
+            safe.cardioCalories || 0,
+            safe.strengthCalories || 0,
+            safe.otherActivityCalories || 0,
+            safe.activityCalories || safe.countedWorkoutCalories || 0,
+            safe.totalDailyExpenditure || safe.totalBurn || 0,
+            safe.deficit || 0,
+            safe.meals?.length || 0,
+            safe.activityEntries?.length || 0,
+            safe.waterEntries?.length || 0,
+            getBodyCompositionSourceLabel(safe.bodyCompositionSource || "auto"),
+            safe.updatedAt || ""
+          ];
+        });
+
+      return [header, ...rows];
     }
 
     function collectBodyMetricsExport() {
@@ -10671,6 +10778,21 @@
       });
 
       downloadJsonExport(`gymcontrol-backup-${getProfileExportSlug()}.json`, data);
+    }
+
+    function exportBalanceHistoryCsv() {
+      const rows = getBalanceHistoryRows();
+      if (rows.length <= 1) {
+        alert("Истории Баланса пока нет");
+        return;
+      }
+
+      downloadTextExport(
+        `gymcontrol-balance-history-${getProfileExportSlug()}.csv`,
+        buildCsv(rows),
+        "text/csv;charset=utf-8"
+      );
+      showToast("История Баланса сохранена в CSV");
     }
 
     function exportWorkoutsData() {
