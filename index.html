@@ -2330,6 +2330,7 @@
         <div class="actions full">
           <button class="btn-primary" onclick="syncAllCloudData(true)">Синхронизировать сейчас</button>
           <button class="btn-secondary" onclick="refreshAllCloudData(true)">Обновить из облака</button>
+          <button class="btn-secondary" onclick="forceUploadLocalProfileData(true)">Спасти данные этого устройства в облако</button>
         </div>
         <div id="cloudSyncStatus" class="muted" style="margin-top:10px;"></div>
       </div>
@@ -5987,6 +5988,33 @@
       };
     }
 
+    function getEmergencyBackupStorageKey(profileId = currentProfileId) {
+      return `gymcontrolEmergencyBackup:${profileId || "anonymous"}`;
+    }
+
+    function buildFullLocalBackupEnvelope(reason = "manual") {
+      return buildExportEnvelope("all", {
+        reason,
+        workoutHistory,
+        customExercisesBySplit,
+        customExerciseCatalog,
+        scheduledWorkouts,
+        templates,
+        feedbackEntries,
+        pendingCloudWorkouts,
+        pendingCloudDeletedWorkoutIds,
+        dailyMetricsByDate,
+        bodyProfile,
+        workoutSettings
+      });
+    }
+
+    function saveEmergencyLocalBackup(reason = "manual") {
+      const backup = buildFullLocalBackupEnvelope(reason);
+      localStorage.setItem(getEmergencyBackupStorageKey(), JSON.stringify(backup));
+      return backup;
+    }
+
     function isCloudProfileSnapshotEmpty(snapshot) {
       const safe = snapshot || {};
       const hasCustomExercises = Object.keys(safe.customExercisesBySplit || {}).some(key => Array.isArray(safe.customExercisesBySplit[key]) && safe.customExercisesBySplit[key].length)
@@ -6016,6 +6044,65 @@
         pendingProfileSyncTimeout = null;
         syncCloudProfileData(false);
       }, 800);
+    }
+
+    async function forceUploadLocalProfileData(manual = false) {
+      if (!shouldUseCloudProfileSync()) {
+        alert("Нужен вход через Google и подключенное облако.");
+        return false;
+      }
+
+      const localSnapshot = buildCloudProfileSnapshot();
+      if (isCloudProfileSnapshotEmpty(localSnapshot)) {
+        alert("На этом устройстве нет локальных данных Баланса/профиля для отправки.");
+        return false;
+      }
+
+      if (manual) {
+        const confirmed = confirm(
+          "Это аварийная отправка: приложение возьмет данные с этого устройства и отправит их в Google Sheets, не загружая старые данные из облака перед этим. Продолжить?"
+        );
+        if (!confirmed) return false;
+      }
+
+      const backup = saveEmergencyLocalBackup("before_force_upload");
+      try {
+        downloadJsonExport(`gymcontrol-emergency-backup-${getProfileExportSlug()}.json`, backup);
+      } catch (error) {
+        console.warn("Не удалось скачать аварийный бэкап, копия сохранена в localStorage", error);
+      }
+
+      try {
+        const result = await callCloudApi({
+          action: "saveProfileData",
+          user: getCloudUserPayload(),
+          profileData: localSnapshot
+        });
+
+        if (!result.ok) {
+          throw new Error(result.error || "Не удалось отправить локальные данные в облако");
+        }
+
+        cloudConfig.lastSyncAt = new Date().toLocaleString("ru-RU");
+        cloudConfig.lastSyncError = "";
+        saveCloudConfig();
+        saveData({ skipCloudProfileSync: true });
+        renderAll();
+        renderCloudSyncSettings();
+        if (manual) {
+          alert("Локальные данные этого устройства отправлены в облако. Теперь на компьютере можно нажать “Обновить из облака”.");
+        }
+        return true;
+      } catch (error) {
+        cloudConfig.lastSyncError = error.message || "Ошибка аварийной отправки";
+        saveCloudConfig();
+        saveData({ skipCloudProfileSync: true });
+        renderCloudSyncSettings();
+        if (manual) {
+          alert(`Не удалось отправить данные в облако: ${cloudConfig.lastSyncError}. Аварийная копия сохранена на этом устройстве.`);
+        }
+        return false;
+      }
     }
 
     async function syncCloudProfileData(manual = false) {
@@ -10763,19 +10850,7 @@
     }
 
     function exportData() {
-      const data = buildExportEnvelope("all", {
-        workoutHistory,
-        customExercisesBySplit,
-        customExerciseCatalog,
-        scheduledWorkouts,
-        templates,
-        feedbackEntries,
-        pendingCloudWorkouts,
-        pendingCloudDeletedWorkoutIds,
-        dailyMetricsByDate,
-        bodyProfile,
-        workoutSettings
-      });
+      const data = buildFullLocalBackupEnvelope("manual_export");
 
       downloadJsonExport(`gymcontrol-backup-${getProfileExportSlug()}.json`, data);
     }
