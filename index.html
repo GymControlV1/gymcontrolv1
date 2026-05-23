@@ -2331,6 +2331,17 @@
           <button class="btn-primary" onclick="syncAllCloudData(true)">Синхронизировать сейчас</button>
           <button class="btn-secondary" onclick="refreshAllCloudData(true)">Обновить из облака</button>
           <button class="btn-secondary" onclick="forceUploadLocalProfileData(true)">Спасти данные этого устройства в облако</button>
+          <button class="btn-secondary" onclick="showEmergencyBackupPanel()">Показать аварийный JSON</button>
+        </div>
+        <div id="emergencyBackupPanel" class="collapsible-panel hidden" style="margin-top:12px;">
+          <div class="muted" style="margin-bottom:8px;">
+            Если облако не принимает данные с телефона, скопируй этот JSON или отправь его себе. На компьютере вставь его в блоке «Резервные копии и импорт».
+          </div>
+          <textarea id="emergencyBackupText" readonly rows="8" style="font-family:monospace;font-size:12px;"></textarea>
+          <div class="actions full" style="margin-top:8px;">
+            <button class="btn-secondary" onclick="copyEmergencyBackupText()">Скопировать JSON</button>
+            <button class="btn-secondary" onclick="shareEmergencyBackupText()">Поделиться</button>
+          </div>
         </div>
         <div id="cloudSyncStatus" class="muted" style="margin-top:10px;"></div>
       </div>
@@ -2410,6 +2421,12 @@
             <button class="btn-secondary" onclick="exportWaterData()">Только вода</button>
             <button class="btn-secondary" onclick="exportCustomExercisesData()">Пользовательские упражнения</button>
             <button class="btn-secondary" onclick="document.getElementById('importFile').click()">Импорт JSON</button>
+          </div>
+          <div style="margin-top:12px;">
+            <textarea id="importJsonText" rows="6" placeholder="Сюда можно вставить аварийный JSON с телефона"></textarea>
+            <div class="actions full" style="margin-top:8px;">
+              <button class="btn-secondary" onclick="importDataFromText()">Импортировать вставленный JSON</button>
+            </div>
           </div>
         </div>
         <input id="importFile" class="file-input" type="file" accept=".json,application/json" onchange="importData(event)" />
@@ -6015,6 +6032,76 @@
       return backup;
     }
 
+    function getEmergencyBackupText(reason = "manual_rescue") {
+      const backup = saveEmergencyLocalBackup(reason);
+      return JSON.stringify(backup, null, 2);
+    }
+
+    function showEmergencyBackupPanel(reason = "manual_rescue") {
+      const panel = document.getElementById("emergencyBackupPanel");
+      const textarea = document.getElementById("emergencyBackupText");
+      if (!panel || !textarea) return;
+
+      textarea.value = getEmergencyBackupText(reason);
+      panel.classList.remove("hidden");
+      textarea.focus();
+      textarea.select();
+      showToast("Аварийный JSON подготовлен");
+    }
+
+    async function copyEmergencyBackupText() {
+      const textarea = document.getElementById("emergencyBackupText");
+      if (!textarea?.value) {
+        showEmergencyBackupPanel("manual_rescue");
+      }
+
+      const freshTextarea = document.getElementById("emergencyBackupText");
+      const copied = await copyTextToClipboard(freshTextarea?.value || "");
+      if (copied) {
+        showToast("JSON скопирован");
+      } else {
+        freshTextarea?.focus();
+        freshTextarea?.select();
+        alert("Не удалось скопировать автоматически. Выдели текст в поле и скопируй вручную.");
+      }
+    }
+
+    async function shareEmergencyBackupText() {
+      const textarea = document.getElementById("emergencyBackupText");
+      const text = textarea?.value || getEmergencyBackupText("manual_share");
+      const filename = `gymcontrol-emergency-backup-${getProfileExportSlug()}.json`;
+
+      try {
+        if (navigator.canShare && window.File) {
+          const file = new File([text], filename, { type: "application/json" });
+          if (navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              title: "GymControl backup",
+              text: "Аварийная копия GymControl",
+              files: [file]
+            });
+            return;
+          }
+        }
+
+        if (navigator.share) {
+          await navigator.share({
+            title: "GymControl backup",
+            text
+          });
+          return;
+        }
+
+        const copied = await copyTextToClipboard(text);
+        if (copied) showToast("JSON скопирован");
+        else alert("Поделиться не получилось. Скопируй JSON вручную из поля.");
+      } catch (error) {
+        if (error?.name !== "AbortError") {
+          alert("Не удалось поделиться. Скопируй JSON вручную из поля.");
+        }
+      }
+    }
+
     function isCloudProfileSnapshotEmpty(snapshot) {
       const safe = snapshot || {};
       const hasCustomExercises = Object.keys(safe.customExercisesBySplit || {}).some(key => Array.isArray(safe.customExercisesBySplit[key]) && safe.customExercisesBySplit[key].length)
@@ -6065,12 +6152,7 @@
         if (!confirmed) return false;
       }
 
-      const backup = saveEmergencyLocalBackup("before_force_upload");
-      try {
-        downloadJsonExport(`gymcontrol-emergency-backup-${getProfileExportSlug()}.json`, backup);
-      } catch (error) {
-        console.warn("Не удалось скачать аварийный бэкап, копия сохранена в localStorage", error);
-      }
+      saveEmergencyLocalBackup("before_force_upload");
 
       try {
         const result = await callCloudApi({
@@ -6099,7 +6181,8 @@
         saveData({ skipCloudProfileSync: true });
         renderCloudSyncSettings();
         if (manual) {
-          alert(`Не удалось отправить данные в облако: ${cloudConfig.lastSyncError}. Аварийная копия сохранена на этом устройстве.`);
+          showEmergencyBackupPanel("failed_force_upload");
+          alert(`Не удалось отправить данные в облако: ${cloudConfig.lastSyncError}. Ниже появился аварийный JSON: его можно скопировать и импортировать на компьютере.`);
         }
         return false;
       }
@@ -10954,6 +11037,45 @@
       }));
     }
 
+    function applyImportedData(parsed) {
+      if (parsed.section && parsed.section !== "all") {
+        alert("Этот файл содержит только часть данных. Для импорта полного профиля используй резервную копию «Сохранить все».");
+        return false;
+      }
+
+      const confirmed = confirm("Импорт заменит текущие данные. Продолжить?");
+      if (!confirmed) return false;
+
+      applyProfileData(parsed);
+      saveData();
+      renderAll();
+      showToast("Данные импортированы");
+      return true;
+    }
+
+    function importDataFromText() {
+      if (!currentProfileId) {
+        alert("Сначала создай или выбери профиль");
+        return;
+      }
+
+      const textarea = document.getElementById("importJsonText");
+      const raw = String(textarea?.value || "").trim();
+      if (!raw) {
+        alert("Вставь JSON в поле импорта");
+        return;
+      }
+
+      try {
+        const parsed = JSON.parse(raw);
+        if (applyImportedData(parsed) && textarea) {
+          textarea.value = "";
+        }
+      } catch {
+        alert("Не удалось импортировать текст. Проверь, что вставлен полный JSON.");
+      }
+    }
+
     function importData(event) {
       if (!currentProfileId) {
         alert("Сначала создай или выбери профиль");
@@ -10968,18 +11090,7 @@
       reader.onload = function(e) {
         try {
           const parsed = JSON.parse(e.target.result);
-          if (parsed.section && parsed.section !== "all") {
-            alert("Этот файл содержит только часть данных. Для импорта полного профиля используй резервную копию «Сохранить все».");
-            return;
-          }
-          const confirmed = confirm("Импорт заменит текущие данные. Продолжить?");
-          if (!confirmed) return;
-
-          applyProfileData(parsed);
-
-          saveData();
-          renderAll();
-          showToast("Данные импортированы");
+          applyImportedData(parsed);
         } catch {
           alert("Не удалось импортировать файл. Проверь JSON.");
         } finally {
