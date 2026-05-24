@@ -2331,6 +2331,7 @@
           <button class="btn-primary" onclick="syncAllCloudData(true)">Синхронизировать сейчас</button>
           <button class="btn-secondary" onclick="refreshAllCloudData(true)">Обновить из облака</button>
           <button class="btn-secondary" onclick="forceUploadLocalProfileData(true)">Спасти данные этого устройства в облако</button>
+          <button class="btn-secondary" onclick="resetCloudScriptUrlToDefault(true)">Исправить URL облака</button>
           <button class="btn-secondary" onclick="showEmergencyBackupPanel()">Показать аварийный JSON</button>
         </div>
         <div id="emergencyBackupPanel" class="collapsible-panel hidden" style="margin-top:12px;">
@@ -3939,15 +3940,40 @@
       }
     }
 
+    function isValidCloudScriptUrl(url) {
+      const cleanUrl = String(url || "").trim();
+      if (!cleanUrl) return false;
+
+      try {
+        const parsed = new URL(cleanUrl);
+        return parsed.hostname === "script.google.com"
+          && /^\/macros\/s\/[^/]+\/exec$/.test(parsed.pathname);
+      } catch {
+        return false;
+      }
+    }
+
+    function getSafeCloudScriptUrl(url) {
+      const cleanUrl = String(url || "").trim();
+      return isValidCloudScriptUrl(cleanUrl) ? cleanUrl : DEFAULT_GOOGLE_SCRIPT_URL;
+    }
+
     function loadCloudConfig() {
       const parsed = JSON.parse(localStorage.getItem(CLOUD_CONFIG_KEY) || "null");
+      const savedUrl = parsed?.scriptUrl || DEFAULT_GOOGLE_SCRIPT_URL;
+      const safeUrl = getSafeCloudScriptUrl(savedUrl);
       cloudConfig = {
         scriptUrl: DEFAULT_GOOGLE_SCRIPT_URL,
         autoSync: true,
         lastSyncAt: "",
         lastSyncError: "",
-        ...(parsed || {})
+        ...(parsed || {}),
+        scriptUrl: safeUrl,
+        lastSyncError: safeUrl === savedUrl ? (parsed?.lastSyncError || "") : ""
       };
+      if (safeUrl !== savedUrl) {
+        saveCloudConfig();
+      }
     }
 
     function saveCloudConfig() {
@@ -5929,11 +5955,21 @@
 
     function saveCloudScriptUrl() {
       const input = document.getElementById("cloudScriptUrl");
-      cloudConfig.scriptUrl = String(input?.value || "").trim();
+      cloudConfig.scriptUrl = getSafeCloudScriptUrl(input?.value || "");
       cloudConfig.lastSyncError = "";
       saveCloudConfig();
       renderCloudSyncSettings();
       showToast("URL Google Apps Script сохранен");
+    }
+
+    function resetCloudScriptUrlToDefault(manual = false) {
+      cloudConfig.scriptUrl = DEFAULT_GOOGLE_SCRIPT_URL;
+      cloudConfig.lastSyncError = "";
+      saveCloudConfig();
+      renderCloudSyncSettings();
+      if (manual) {
+        alert("URL облака исправлен на рабочий адрес Apps Script. Теперь можно попробовать синхронизацию снова.");
+      }
     }
 
     function toggleCloudAutoSync(value) {
@@ -5943,8 +5979,12 @@
     }
 
     async function callCloudApi(payload) {
-      const url = getCloudScriptUrl();
+      let url = getCloudScriptUrl();
       if (!url) throw new Error("Не указан URL Google Apps Script");
+      if (!isValidCloudScriptUrl(url)) {
+        resetCloudScriptUrlToDefault(false);
+        url = getCloudScriptUrl();
+      }
 
       const response = await fetch(url, {
         method: "POST",
