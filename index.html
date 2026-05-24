@@ -6001,6 +6001,23 @@
       return response.json();
     }
 
+    function sendCloudApiBeacon(payload) {
+      let url = getCloudScriptUrl();
+      if (!url || !navigator.sendBeacon) return false;
+      if (!isValidCloudScriptUrl(url)) {
+        resetCloudScriptUrlToDefault(false);
+        url = getCloudScriptUrl();
+      }
+
+      try {
+        const blob = new Blob([JSON.stringify(payload)], { type: "text/plain" });
+        return navigator.sendBeacon(url, blob);
+      } catch (error) {
+        console.warn("Beacon cloud upload failed", error);
+        return false;
+      }
+    }
+
     async function pingCloudScript() {
       try {
         const result = await callCloudApi({ action: "ping" });
@@ -6193,13 +6210,14 @@
       }
 
       saveEmergencyLocalBackup("before_force_upload");
+      const uploadPayload = {
+        action: "saveProfileData",
+        user: getCloudUserPayload(),
+        profileData: localSnapshot
+      };
 
       try {
-        const result = await callCloudApi({
-          action: "saveProfileData",
-          user: getCloudUserPayload(),
-          profileData: localSnapshot
-        });
+        const result = await callCloudApi(uploadPayload);
 
         if (!result.ok) {
           throw new Error(result.error || "Не удалось отправить локальные данные в облако");
@@ -6216,6 +6234,20 @@
         }
         return true;
       } catch (error) {
+        const beaconQueued = sendCloudApiBeacon(uploadPayload);
+        if (beaconQueued) {
+          cloudConfig.lastSyncAt = `${new Date().toLocaleString("ru-RU")} (отправлено без подтверждения)`;
+          cloudConfig.lastSyncError = "";
+          saveCloudConfig();
+          saveData({ skipCloudProfileSync: true });
+          renderAll();
+          renderCloudSyncSettings();
+          if (manual) {
+            alert("Safari не дал прочитать ответ облака, но резервная отправка поставлена в очередь. Подожди 20-30 секунд и проверь данные на компьютере через “Обновить из облака”.");
+          }
+          return true;
+        }
+
         cloudConfig.lastSyncError = error.message || "Ошибка аварийной отправки";
         saveCloudConfig();
         saveData({ skipCloudProfileSync: true });
