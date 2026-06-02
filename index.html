@@ -1303,6 +1303,15 @@
             </div>
           </div>
           <div id="todaySummaryBox" class="muted"></div>
+          <div class="form-grid" style="margin-top:12px;">
+            <div class="form-field">
+              <div class="field-label">Дата дневника</div>
+              <input id="dailyJournalDateInput" type="date" onchange="changeDailyInputDate(this.value)" />
+            </div>
+          </div>
+          <div class="muted" style="margin-top:8px;">
+            Выбери прошедший день, чтобы добавить или исправить воду, КБЖУ и активность.
+          </div>
           <div class="actions full" style="margin-top:12px;">
             <button class="btn-secondary" onclick="toggleTodayPanel('body')">+ Вес/талия</button>
             <button class="btn-secondary" onclick="toggleTodayPanel('water')">+ Вода</button>
@@ -1315,7 +1324,7 @@
           <h2 class="section-title">Вес и замеры</h2>
           <div class="form-grid">
             <div class="form-field">
-              <div class="field-label">Вес сегодня, кг</div>
+              <div class="field-label">Вес, кг</div>
               <input id="dailyWeightInput" type="number" min="0" step="0.1" placeholder="Необязательно" />
             </div>
             <div class="form-field">
@@ -1359,6 +1368,10 @@
           <h2 class="section-title">Вода</h2>
           <div class="muted" id="todayWaterSummary" style="margin-bottom:10px;"></div>
           <div class="form-grid" style="margin-bottom:10px;">
+            <div class="form-field">
+              <div class="field-label">Дата</div>
+              <input id="waterDateInput" type="date" onchange="changeDailyInputDate(this.value)" />
+            </div>
             <div class="form-field">
               <div class="field-label">Время записи</div>
               <input id="waterTimeInput" type="time" />
@@ -2330,6 +2343,7 @@
         <div class="actions full">
           <button class="btn-primary" onclick="syncAllCloudData(true)">Синхронизировать сейчас</button>
           <button class="btn-secondary" onclick="refreshAllCloudData(true)">Обновить из облака</button>
+          <button class="btn-success" onclick="uploadLocalProfileDataWithoutRead(true)">Отправить локальные данные в облако</button>
           <button class="btn-secondary" onclick="forceUploadLocalProfileData(true)">Спасти данные этого устройства в облако</button>
           <button class="btn-secondary" onclick="resetCloudScriptUrlToDefault(true)">Исправить URL облака</button>
           <button class="btn-secondary" onclick="showEmergencyBackupPanel()">Показать аварийный JSON</button>
@@ -4403,6 +4417,7 @@
       selectedDailyInputDate = date || getTodayKey();
       nutritionEditingMealRef = null;
       activityEditingEntryRef = null;
+      waterEditingEntryRef = null;
       renderAll();
     }
 
@@ -4750,7 +4765,7 @@
     }
 
     function saveTodayBodyEntry() {
-      const date = getTodayKey();
+      const date = getSelectedDailyInputDate();
       saveDailyEntry(date, entry => {
         const selectedSource = document.getElementById("dailyBodyCompositionSourceInput").value || "auto";
         const manualBodyFatPercent = toNumberOrNull(document.getElementById("dailyManualBodyFatInput").value);
@@ -4767,7 +4782,7 @@
         return entry;
       });
       const latestWeight = toNumberOrNull(document.getElementById("dailyWeightInput").value);
-      if (latestWeight !== null) {
+      if (date === getTodayKey() && latestWeight !== null) {
         bodyProfile = {
           ...getEmptyBodyProfile(),
           ...bodyProfile,
@@ -4775,7 +4790,7 @@
         };
         saveData();
       }
-      showToast("Замеры сохранены");
+      showToast(`Замеры сохранены: ${date}`);
     }
 
     function resetNutritionDraftState(keepMode = false) {
@@ -5213,6 +5228,7 @@
       const item = (entry.activityEntries || []).find(activity => activity.id === entryId);
       if (!item) return;
 
+      selectedDailyInputDate = date;
       activityEditingEntryRef = { date, entryId };
       document.getElementById("dailyActivityTimeInput").value = item.time || getCurrentTimeValue();
       document.getElementById("dailyActivityCaloriesInput").value = item.caloriesRaw || "";
@@ -5270,7 +5286,7 @@
     }
 
     function addWaterQuick(amount) {
-      const date = getTodayKey();
+      const date = getSelectedDailyInputDate();
       const waterTime = document.getElementById("waterTimeInput")?.value || getCurrentTimeValue();
       const waterNote = String(document.getElementById("waterNoteInput")?.value || "").trim();
       saveDailyEntry(date, entry => {
@@ -5292,6 +5308,7 @@
       const item = (entry.waterEntries || []).find(water => water.id === entryId);
       if (!item) return;
 
+      selectedDailyInputDate = date;
       waterEditingEntryRef = { date, entryId };
       document.getElementById("waterTimeInput").value = item.time || getCurrentTimeValue();
       document.getElementById("waterNoteInput").value = item.note || "";
@@ -5431,8 +5448,10 @@
         const el = document.getElementById(id);
         if (el) el.value = value ?? "";
       };
+      setValue("dailyJournalDateInput", safe.date || getTodayKey());
       setValue("mealDateInput", safe.date || getTodayKey());
       setValue("activityDateInput", safe.date || getTodayKey());
+      setValue("waterDateInput", safe.date || getTodayKey());
       setValue("dailyWeightInput", safe.weight);
       setValue("dailyWaistInput", safe.waist);
       setValue("dailyHipsInput", safe.hips);
@@ -6018,6 +6037,35 @@
       }
     }
 
+    async function sendCloudApiNoCors(payload) {
+      let url = getCloudScriptUrl();
+      if (!url) return false;
+      if (!isValidCloudScriptUrl(url)) {
+        resetCloudScriptUrlToDefault(false);
+        url = getCloudScriptUrl();
+      }
+
+      try {
+        await fetch(url, {
+          method: "POST",
+          mode: "no-cors",
+          headers: {
+            "Content-Type": "text/plain;charset=utf-8"
+          },
+          body: JSON.stringify(payload)
+        });
+        return true;
+      } catch (error) {
+        console.warn("No-CORS cloud upload failed", error);
+        return false;
+      }
+    }
+
+    async function sendCloudApiBlind(payload) {
+      if (sendCloudApiBeacon(payload)) return true;
+      return sendCloudApiNoCors(payload);
+    }
+
     async function pingCloudScript() {
       try {
         const result = await callCloudApi({ action: "ping" });
@@ -6234,7 +6282,7 @@
         }
         return true;
       } catch (error) {
-        const beaconQueued = sendCloudApiBeacon(uploadPayload);
+        const beaconQueued = await sendCloudApiBlind(uploadPayload);
         if (beaconQueued) {
           cloudConfig.lastSyncAt = `${new Date().toLocaleString("ru-RU")} (отправлено без подтверждения)`;
           cloudConfig.lastSyncError = "";
@@ -6258,6 +6306,56 @@
         }
         return false;
       }
+    }
+
+    async function uploadLocalProfileDataWithoutRead(manual = false) {
+      if (!shouldUseCloudProfileSync()) {
+        alert("Нужен вход через Google и подключенное облако.");
+        return false;
+      }
+
+      const localSnapshot = buildCloudProfileSnapshot();
+      if (isCloudProfileSnapshotEmpty(localSnapshot)) {
+        alert("На этом устройстве нет локальных данных Баланса/профиля для отправки.");
+        return false;
+      }
+
+      if (manual) {
+        const confirmed = confirm(
+          "Отправить текущие локальные данные этого устройства в облако без предварительного чтения Google Sheets? Это полезно после импорта аварийного JSON, чтобы не подтянуть старую версию обратно."
+        );
+        if (!confirmed) return false;
+      }
+
+      saveEmergencyLocalBackup("before_blind_upload");
+      const uploadPayload = {
+        action: "saveProfileData",
+        user: getCloudUserPayload(),
+        profileData: localSnapshot
+      };
+      const queued = await sendCloudApiBlind(uploadPayload);
+
+      if (!queued) {
+        cloudConfig.lastSyncError = "Не удалось отправить локальные данные без чтения ответа";
+        saveCloudConfig();
+        saveData({ skipCloudProfileSync: true });
+        renderCloudSyncSettings();
+        showEmergencyBackupPanel("failed_blind_upload");
+        alert("Не удалось отправить данные в облако. Ниже подготовлен аварийный JSON, чтобы прогресс не потерялся.");
+        return false;
+      }
+
+      cloudConfig.lastSyncAt = `${new Date().toLocaleString("ru-RU")} (локальные данные отправлены без чтения ответа)`;
+      cloudConfig.lastSyncError = "";
+      saveCloudConfig();
+      saveData({ skipCloudProfileSync: true });
+      renderAll();
+      renderCloudSyncSettings();
+
+      if (manual) {
+        alert("Локальные данные отправлены в облако. Подожди 20-30 секунд, затем на другом устройстве нажми “Обновить из облака”.");
+      }
+      return true;
     }
 
     async function syncCloudProfileData(manual = false) {
@@ -7547,7 +7645,6 @@
         alert("Сначала создай или выбери профиль");
         return;
       }
-      unlockAudio();
       if (!workoutHistory.length) {
         alert("История тренировок пока пуста");
         return;
@@ -7558,29 +7655,74 @@
         alert("В истории пока нет силовой тренировки для быстрого повтора");
         return;
       }
-      const grouped = {};
+      startFromHistoryWorkout(lastWorkout.id);
+    }
 
-      lastWorkout.sets.forEach(set => {
+    function getHistoryWorkoutById(workoutId) {
+      return workoutHistory.find(item => String(item.id) === String(workoutId)) || null;
+    }
+
+    function buildPlanExercisesFromHistoryWorkout(workout) {
+      const grouped = {};
+      (workout?.sets || []).forEach(set => {
         if (!grouped[set.exercise]) {
           grouped[set.exercise] = {
             exercise: set.exercise,
             targetSets: 0,
-            targetReps: set.reps
+            targetReps: set.metric === "time" ? (set.seconds || set.reps || 30) : (set.reps || 1)
           };
         }
         grouped[set.exercise].targetSets += 1;
-        if (set.reps > grouped[set.exercise].targetReps) {
-          grouped[set.exercise].targetReps = set.reps;
+        const resultValue = set.metric === "time" ? (set.seconds || set.reps || 30) : (set.reps || 1);
+        if (resultValue > grouped[set.exercise].targetReps) {
+          grouped[set.exercise].targetReps = resultValue;
         }
       });
+      return Object.values(grouped);
+    }
+
+    function startFromHistoryWorkout(workoutId) {
+      if (!currentProfileId) {
+        alert("Сначала создай или выбери профиль");
+        return;
+      }
+
+      const workout = getHistoryWorkoutById(workoutId);
+      if (!workout || isCardioWorkoutRecord(workout)) {
+        alert("Для быстрого повтора выбери сохраненную силовую тренировку.");
+        return;
+      }
+
+      unlockAudio();
+      const isCircuit = workout.workoutMode === "circuit" && Array.isArray(workout.circuitBlocks) && workout.circuitBlocks.length > 0;
+      const circuitBlocks = isCircuit
+        ? workout.circuitBlocks.map(block => ({
+            name: block.name || "",
+            rounds: Math.max(1, parseInt(block.rounds || "1", 10) || 1),
+            setsPerExercise: Math.max(1, parseInt(block.setsPerExercise || "1", 10) || 1),
+            restSeconds: Math.max(0, parseInt(block.restSeconds || "120", 10) || 0),
+            exercises: (block.exercises || []).map(item => ({ ...item }))
+          }))
+        : [];
+      const firstCircuitBlock = circuitBlocks[0];
 
       currentSession.date = new Date().toISOString().slice(0, 10);
-      currentSession.split = lastWorkout.split;
-      currentSession.workoutMode = "regular";
+      currentSession.split = workout.split;
+      currentSession.workoutMode = isCircuit ? "circuit" : "regular";
       currentSession.workoutType = "strength";
       currentSession.fromScheduledWorkoutId = null;
-      currentSession.planExercises = Object.values(grouped);
+      currentSession.planExercises = isCircuit
+        ? (firstCircuitBlock?.exercises || []).map(item => ({
+            exercise: item.exercise,
+            targetSets: 1,
+            targetReps: item.metric === "time" ? 30 : 10
+          }))
+        : buildPlanExercisesFromHistoryWorkout(workout);
       currentSession.currentExerciseIndex = 0;
+      currentSession.circuitBlocks = circuitBlocks;
+      currentSession.currentCircuitBlockIndex = 0;
+      currentSession.currentCircuitRoundIndex = 0;
+      currentSession.currentCircuitPassIndex = 0;
       currentSession.sets = [];
       currentSession.cardioDraft = null;
       currentSession.pendingSummary = null;
@@ -7591,6 +7733,7 @@
       currentSession.exerciseFeedback = "";
       currentSession.state = "warmup";
       renderTrainingScreen();
+      showToast(isCircuit ? "Круговая тренировка загружена из истории" : "Тренировка загружена из истории");
     }
 
     function finishWarmup() {
@@ -9174,29 +9317,29 @@
         alert("В истории пока нет силовой тренировки для создания плана");
         return;
       }
-      const grouped = {};
+      createPlanFromHistoryWorkout(lastWorkout.id);
+    }
 
-      lastWorkout.sets.forEach(set => {
-        if (!grouped[set.exercise]) {
-          grouped[set.exercise] = {
-            exercise: set.exercise,
-            targetSets: 0,
-            targetReps: set.reps
-          };
-        }
-        grouped[set.exercise].targetSets += 1;
-        if (set.reps > grouped[set.exercise].targetReps) {
-          grouped[set.exercise].targetReps = set.reps;
-        }
-      });
+    function createPlanFromHistoryWorkout(workoutId) {
+      if (!currentProfileId) {
+        alert("Сначала создай или выбери профиль");
+        return;
+      }
 
+      const workout = getHistoryWorkoutById(workoutId);
+      if (!workout || isCardioWorkoutRecord(workout)) {
+        alert("Для создания плана выбери сохраненную силовую тренировку.");
+        return;
+      }
+
+      switchScreen("plans");
       document.getElementById("planBuilderCard").classList.remove("hidden");
       document.getElementById("planDate").valueAsDate = new Date();
-      document.getElementById("planSplit").value = lastWorkout.split;
+      document.getElementById("planSplit").value = workout.split;
       updatePlanExerciseOptions();
-      planBuilderExercises = Object.values(grouped);
+      planBuilderExercises = buildPlanExercisesFromHistoryWorkout(workout);
       renderPlanBuilder();
-      showToast("Конструктор заполнен по прошлой тренировке");
+      showToast("Конструктор заполнен по выбранной тренировке");
     }
 
     function togglePlanExerciseEditor() {
@@ -10210,6 +10353,8 @@
               </div>
             </div>
             <div class="inline-actions">
+              <button class="btn-primary" onclick="startFromHistoryWorkout(${workout.id}); switchScreen('training')">Начать снова</button>
+              <button class="btn-secondary" onclick="createPlanFromHistoryWorkout(${workout.id})">Создать план</button>
               <button class="btn-danger" onclick="deleteHistoryWorkout(${workout.id})">Удалить</button>
             </div>
           </div>
@@ -10292,6 +10437,10 @@
                 Общий тоннаж: ${totalVolume} кг
               </div>
               <div>${details}</div>
+              <div class="actions" style="margin-top:10px;">
+                <button class="btn-primary" onclick="startFromHistoryWorkout(${workout.id}); switchScreen('training')">Начать снова</button>
+                <button class="btn-secondary" onclick="createPlanFromHistoryWorkout(${workout.id})">Создать план</button>
+              </div>
             </div>
           </details>
         `;
