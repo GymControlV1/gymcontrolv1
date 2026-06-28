@@ -1855,6 +1855,33 @@
         </div>
       </div>
 
+      <div class="card">
+        <div class="section-head">
+          <h2 class="section-title">Готовые программы</h2>
+        </div>
+        <div id="readyProgramsList"></div>
+      </div>
+
+      <div id="readyProgramPreviewCard" class="card hidden">
+        <div class="section-head">
+          <h2 class="section-title">Просмотр программы</h2>
+          <div class="section-head-actions">
+            <button class="btn-secondary" onclick="hideReadyProgramPreview()">Скрыть</button>
+          </div>
+        </div>
+        <div id="readyProgramPreviewContent"></div>
+      </div>
+
+      <div id="readyProgramScheduleCard" class="card hidden">
+        <div class="section-head">
+          <h2 class="section-title">Добавить программу в план</h2>
+          <div class="section-head-actions">
+            <button class="btn-secondary" onclick="hideReadyProgramSchedule()">Скрыть</button>
+          </div>
+        </div>
+        <div id="readyProgramScheduleContent"></div>
+      </div>
+
       <div id="planBuilderCard" class="card hidden">
         <div class="section-head">
           <h2 class="section-title">Конструктор плана</h2>
@@ -2531,6 +2558,7 @@
       workoutMode: "regular",
       workoutType: "strength",
       fromScheduledWorkoutId: null,
+      sourceProgramId: null,
       planExercises: [],
       currentExerciseIndex: 0,
       circuitBlocks: [],
@@ -2551,6 +2579,8 @@
     let circuitBuilderBlocks = [];
     let circuitBlockBuilderExercises = [];
     let templateBuilderExercises = [];
+    let readyProgramPreviewId = "";
+    let readyProgramScheduleId = "";
     let selectedDailyInputDate = getTodayKey();
     let selectedStatsView = "total";
     let restTimerInterval = null;
@@ -2659,6 +2689,63 @@
           { exercise: "Жим ногами", targetSets: 3, targetReps: 10 },
           { exercise: "Жим гантелей сидя", targetSets: 3, targetReps: 10 },
           { exercise: "Разведение гантелей в стороны", targetSets: 3, targetReps: 12 }
+        ]
+      }
+    ];
+
+    const READY_PROGRAMS = [
+      {
+        id: "v-shape-3-days",
+        title: "V-форма 3 дня",
+        description: "Силовая программа для акцента на ширину спины, плечи и сохранение мышечной массы. Подходит для тренировок в зале до 60 минут. Без упражнений с высокой осевой нагрузкой на поясницу.",
+        warning: "В программе специально исключены становая тяга, приседания со штангой, тяга штанги в наклоне, армейский жим стоя и гиперэкстензия с дополнительным весом.",
+        warmup: "Суставная гимнастика — 5 минут",
+        defaultWeekdays: [1, 3, 5],
+        days: [
+          {
+            dayIndex: 1,
+            title: "День 1 — Спина + задняя дельта + пресс",
+            split: "Спина + Бицепс",
+            exercises: [
+              { exercise: "Тяга верхнего блока широким хватом", targetSets: 4, targetReps: "8–12", loadType: "cable", metric: "reps" },
+              { exercise: "Тяга гантели одной рукой к поясу", targetSets: 4, targetReps: 10, loadType: "dumbbell_one", metric: "reps" },
+              { exercise: "Тяга горизонтального блока", targetSets: 3, targetReps: "10–12", loadType: "cable", metric: "reps" },
+              { exercise: "Обратная бабочка", targetSets: 4, targetReps: "12–15", loadType: "machine", metric: "reps" },
+              { exercise: "Face Pull", targetSets: 3, targetReps: 15, loadType: "cable", metric: "reps" },
+              { exercise: "Подъем ног в висе", targetSets: 3, targetReps: "12–15", loadType: "bodyweight", metric: "reps" },
+              { exercise: "Махи гантелями в стороны", targetSets: 2, targetReps: 20, loadType: "dumbbell_two", metric: "reps" }
+            ]
+          },
+          {
+            dayIndex: 2,
+            title: "День 2 — Грудь + плечи + трицепс",
+            split: "Грудь + Трицепс",
+            exercises: [
+              { exercise: "Жим гантелей на наклонной скамье 30°", targetSets: 4, targetReps: "8–10", loadType: "dumbbell_two", metric: "reps" },
+              { exercise: "Жим гантелей на горизонтальной скамье", targetSets: 3, targetReps: "8–10", loadType: "dumbbell_two", metric: "reps" },
+              { exercise: "Бабочка / Pec Deck", targetSets: 3, targetReps: "12–15", loadType: "machine", metric: "reps" },
+              { exercise: "Махи гантелями в стороны", targetSets: 4, targetReps: 15, loadType: "dumbbell_two", metric: "reps" },
+              { exercise: "Обратная бабочка", targetSets: 3, targetReps: 15, loadType: "machine", metric: "reps" },
+              { exercise: "Подъем одной гантели двумя руками из-за головы сидя", targetSets: 3, targetReps: "10–12", loadType: "dumbbell_one", metric: "reps" },
+              { exercise: "Разгибание рук на верхнем блоке, канат", targetSets: 3, targetReps: "12–15", loadType: "cable", metric: "reps" }
+            ]
+          },
+          {
+            dayIndex: 3,
+            title: "День 3 — Ноги + плечи + бицепс + корпус",
+            split: "Плечи + Ноги",
+            exercises: [
+              { exercise: "Жим ногами", targetSets: 4, targetReps: 12, loadType: "machine", metric: "reps" },
+              { exercise: "Болгарские выпады с гантелями", targetSets: 3, targetReps: 10, loadType: "dumbbell_two", metric: "reps" },
+              { exercise: "Сгибание ног сидя", targetSets: 3, targetReps: 12, loadType: "machine", metric: "reps" },
+              { exercise: "Разгибание ног", targetSets: 3, targetReps: 12, loadType: "machine", metric: "reps" },
+              { exercise: "Жим гантелей сидя", targetSets: 4, targetReps: 10, loadType: "dumbbell_two", metric: "reps" },
+              { exercise: "Махи гантелями в стороны", targetSets: 4, targetReps: 15, loadType: "dumbbell_two", metric: "reps" },
+              { exercise: "Подъем EZ-штанги на бицепс", targetSets: 3, targetReps: 10, loadType: "barbell", metric: "reps" },
+              { exercise: "Молотки с гантелями", targetSets: 3, targetReps: 12, loadType: "dumbbell_two", metric: "reps" },
+              { exercise: "Планка на локтях", targetSets: 3, targetReps: "45–60 сек", loadType: "bodyweight", metric: "time" }
+            ]
+          }
         ]
       }
     ];
@@ -4041,6 +4128,7 @@
         workoutMode: "regular",
         workoutType: "strength",
         fromScheduledWorkoutId: null,
+        sourceProgramId: null,
         planExercises: [],
         currentExerciseIndex: 0,
         circuitBlocks: [],
@@ -7041,10 +7129,28 @@
     function getLoadTypeLabel(loadType) {
       if (loadType === "barbell") return "Штанга";
       if (loadType === "machine") return "Тренажер";
+      if (loadType === "cable") return "Блок";
       if (loadType === "dumbbell_one") return "1 гантель";
       if (loadType === "dumbbell_two") return "2 гантели";
       if (loadType === "bodyweight") return "Собственный вес";
       return "Нагрузка";
+    }
+
+    function formatPlanExerciseTarget(item) {
+      const sets = item?.targetSets || 0;
+      const rawTarget = String(item?.targetReps || "").trim();
+      if (item?.metric === "time") {
+        const timeTarget = /сек/i.test(rawTarget) ? rawTarget : `${rawTarget} сек`;
+        return `${sets} × ${timeTarget}`;
+      }
+      return `${sets} × ${rawTarget}`;
+    }
+
+    function formatPlanExerciseLine(item, index) {
+      const labels = [];
+      if (item?.loadType) labels.push(getLoadTypeLabel(item.loadType));
+      if (item?.metric === "time") labels.push("на время");
+      return `${index + 1}. ${escapeHtml(item.exercise)} — ${escapeHtml(formatPlanExerciseTarget(item))}${labels.length ? ` · ${labels.join(", ")}` : ""}`;
     }
 
     function getMultiplier(loadType) {
@@ -7540,6 +7646,7 @@
           ? (normalizeExerciseName(document.getElementById("setupCircuitName")?.value || "") || "Круговая тренировка")
           : document.getElementById("setupSplit").value;
       currentSession.fromScheduledWorkoutId = null;
+      currentSession.sourceProgramId = null;
       currentSession.planExercises = [];
       currentSession.currentExerciseIndex = 0;
       currentSession.circuitBlocks = [];
@@ -7603,8 +7710,10 @@
               <strong>${plan.date}</strong>
               <div style="margin-top:4px;">${escapeHtml(plan.title || plan.split)}</div>
               <div style="margin-top:6px;"><span class="badge">${plan.split}</span></div>
+              ${plan.sourceProgramTitle ? `<div class="muted" style="margin-top:6px;">${escapeHtml(plan.sourceProgramTitle)} · ${escapeHtml(plan.programDayTitle || "")}</div>` : ""}
+              ${plan.warmup ? `<div class="muted" style="margin-top:6px;">Разминка: ${escapeHtml(plan.warmup)}</div>` : ""}
               <div class="muted" style="margin-top:8px;">
-                ${plan.exercises.map((item, i) => `${i + 1}. ${item.exercise} — ${item.targetSets}×${item.targetReps}`).join("<br>")}
+                ${plan.exercises.map((item, i) => formatPlanExerciseLine(item, i)).join("<br>")}
               </div>
             </div>
             <div class="inline-actions">
@@ -7627,6 +7736,7 @@
       currentSession.workoutType = "strength";
       currentSession.fromScheduledWorkoutId = plan.id;
       currentSession.planExercises = plan.exercises.map(item => ({ ...item }));
+      currentSession.sourceProgramId = plan.sourceProgramId || null;
       currentSession.currentExerciseIndex = 0;
       currentSession.sets = [];
       currentSession.cardioDraft = null;
@@ -7711,11 +7821,14 @@
       currentSession.workoutMode = isCircuit ? "circuit" : "regular";
       currentSession.workoutType = "strength";
       currentSession.fromScheduledWorkoutId = null;
+      currentSession.sourceProgramId = null;
       currentSession.planExercises = isCircuit
         ? (firstCircuitBlock?.exercises || []).map(item => ({
             exercise: item.exercise,
             targetSets: 1,
-            targetReps: item.metric === "time" ? 30 : 10
+            targetReps: item.metric === "time" ? 30 : 10,
+            metric: item.metric,
+            loadType: item.loadType
           }))
         : buildPlanExercisesFromHistoryWorkout(workout);
       currentSession.currentExerciseIndex = 0;
@@ -8064,8 +8177,9 @@
       const completedExercises = getCompletedExercisesCount();
       const volumeToday = getCurrentSessionVolume();
       const customMeta = getCustomExerciseMeta(currentSession.split, exerciseName);
-      const currentMetric = isCircuitWorkout() && currentCircuitTemplate ? currentCircuitTemplate.metric : (customMeta?.metric || "reps");
-      const currentLoadType = isCircuitWorkout() && currentCircuitTemplate ? currentCircuitTemplate.loadType : (customMeta?.loadType || null);
+      const planMeta = currentExerciseObj || {};
+      const currentMetric = isCircuitWorkout() && currentCircuitTemplate ? currentCircuitTemplate.metric : (planMeta.metric || customMeta?.metric || "reps");
+      const currentLoadType = isCircuitWorkout() && currentCircuitTemplate ? currentCircuitTemplate.loadType : (planMeta.loadType || customMeta?.loadType || null);
       const currentPassNumber = (currentSession.currentCircuitPassIndex || 0) + 1;
       const passCount = getCurrentCircuitPassCount();
 
@@ -8146,7 +8260,7 @@
       document.getElementById("gymExerciseMeta").textContent = isCircuitWorkout()
         ? `${currentMetric === "time" ? "Фиксируй секунды" : "Фиксируй вес и повторы"} · Круг ${currentSession.currentCircuitRoundIndex + 1}, подход ${currentPassNumber}, упражнение ${currentSession.currentExerciseIndex + 1}/${currentSession.planExercises.length}`
         : currentExerciseObj
-          ? `Цель: ${currentExerciseObj.targetSets}×${currentExerciseObj.targetReps} · Сделано подходов: ${getDoneSetsForExercise(exerciseName)}/${currentExerciseObj.targetSets}`
+          ? `Цель: ${formatPlanExerciseTarget(currentExerciseObj)} · Сделано подходов: ${getDoneSetsForExercise(exerciseName)}/${currentExerciseObj.targetSets}`
           : "Свободная тренировка";
       document.getElementById("completeExerciseBtn").textContent = isCircuitWorkout()
         ? "Завершить подход"
@@ -8185,10 +8299,11 @@
     function fillGymFormDefaults() {
       const exerciseName = getCurrentExerciseName();
       const stats = getExerciseStats(exerciseName);
+      const currentExerciseObj = getCurrentExerciseObject();
       const currentCircuitTemplate = getCurrentCircuitExerciseTemplate();
       const customMeta = getCustomExerciseMeta(currentSession.split, exerciseName);
-      const currentMetric = isCircuitWorkout() && currentCircuitTemplate ? currentCircuitTemplate.metric : (customMeta?.metric || "reps");
-      const currentLoadType = isCircuitWorkout() && currentCircuitTemplate ? currentCircuitTemplate.loadType : (customMeta?.loadType || "barbell");
+      const currentMetric = isCircuitWorkout() && currentCircuitTemplate ? currentCircuitTemplate.metric : (currentExerciseObj?.metric || customMeta?.metric || "reps");
+      const currentLoadType = isCircuitWorkout() && currentCircuitTemplate ? currentCircuitTemplate.loadType : (currentExerciseObj?.loadType || customMeta?.loadType || "barbell");
 
       if (!stats) {
         document.getElementById("gymLoadType").value = currentLoadType;
@@ -8203,7 +8318,7 @@
         return;
       }
 
-      document.getElementById("gymLoadType").value = currentCircuitTemplate || customMeta ? currentLoadType : stats.last.loadType;
+      document.getElementById("gymLoadType").value = currentCircuitTemplate || currentExerciseObj?.loadType || customMeta ? currentLoadType : stats.last.loadType;
       const metricTypeInput = document.getElementById("gymMetricType");
       if (metricTypeInput) metricTypeInput.value = currentMetric;
       document.getElementById("gymWeight").value = document.getElementById("gymLoadType").value === "bodyweight" ? "" : stats.last.enteredWeight;
@@ -8918,6 +9033,7 @@
         workoutMode: "regular",
         workoutType: "strength",
         fromScheduledWorkoutId: null,
+        sourceProgramId: null,
         planExercises: [],
         currentExerciseIndex: 0,
         circuitBlocks: [],
@@ -9095,9 +9211,203 @@
 
     function renderPlansScreen() {
       updatePlanExerciseOptions();
+      renderReadyPrograms();
+      renderReadyProgramPreview();
+      renderReadyProgramSchedule();
       renderPlanBuilder();
       renderPlannedWorkouts();
       renderTemplateToPlanList();
+    }
+
+    function getReadyProgram(programId) {
+      return READY_PROGRAMS.find(program => program.id === programId) || null;
+    }
+
+    function toDateInputValue(date) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    }
+
+    function getWeekdayLabel(value) {
+      const labels = {
+        1: "Понедельник",
+        2: "Вторник",
+        3: "Среда",
+        4: "Четверг",
+        5: "Пятница",
+        6: "Суббота",
+        0: "Воскресенье"
+      };
+      return labels[value] || "День недели";
+    }
+
+    function getWeekdayOptionsHtml(selected) {
+      return [1, 2, 3, 4, 5, 6, 0]
+        .map(value => `<option value="${value}" ${Number(selected) === value ? "selected" : ""}>${getWeekdayLabel(value)}</option>`)
+        .join("");
+    }
+
+    function getNextDateForWeekday(weekday, fromDate = new Date()) {
+      const target = Number(weekday);
+      const date = new Date(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate());
+      const diff = (target - date.getDay() + 7) % 7;
+      date.setDate(date.getDate() + diff);
+      return toDateInputValue(date);
+    }
+
+    function renderReadyPrograms() {
+      const box = document.getElementById("readyProgramsList");
+      if (!box) return;
+
+      box.innerHTML = "";
+
+      READY_PROGRAMS.forEach(program => {
+        const div = document.createElement("div");
+        div.className = "list-item";
+        div.innerHTML = `
+          <div class="list-top">
+            <div>
+              <strong>${escapeHtml(program.title)}</strong>
+              <div class="muted" style="margin-top:6px;">${escapeHtml(program.description)}</div>
+              <div style="margin-top:8px;">
+                ${program.days.map(day => `<span class="badge">${escapeHtml(day.title)}</span>`).join(" ")}
+              </div>
+              <div class="muted" style="margin-top:8px;">Разминка: ${escapeHtml(program.warmup)}</div>
+            </div>
+            <div class="inline-actions">
+              <button class="btn-secondary" onclick="showReadyProgramPreview('${program.id}')">Посмотреть</button>
+              <button class="btn-success" onclick="showReadyProgramSchedule('${program.id}')">Добавить в план</button>
+            </div>
+          </div>
+        `;
+        box.appendChild(div);
+      });
+    }
+
+    function showReadyProgramPreview(programId) {
+      readyProgramPreviewId = programId;
+      document.getElementById("readyProgramPreviewCard")?.classList.remove("hidden");
+      renderReadyProgramPreview();
+    }
+
+    function hideReadyProgramPreview() {
+      readyProgramPreviewId = "";
+      document.getElementById("readyProgramPreviewCard")?.classList.add("hidden");
+    }
+
+    function renderReadyProgramPreview() {
+      const card = document.getElementById("readyProgramPreviewCard");
+      const box = document.getElementById("readyProgramPreviewContent");
+      if (!card || !box) return;
+
+      const program = getReadyProgram(readyProgramPreviewId);
+      if (!program) {
+        card.classList.add("hidden");
+        box.innerHTML = "";
+        return;
+      }
+
+      box.innerHTML = `
+        <div class="muted">${escapeHtml(program.description)}</div>
+        <div class="note warning" style="margin-top:12px;">${escapeHtml(program.warning)}</div>
+        <div class="muted" style="margin-top:12px;">Разминка перед каждой тренировкой: ${escapeHtml(program.warmup)}</div>
+        <div style="margin-top:12px;">
+          ${program.days.map(day => `
+            <div class="list-item">
+              <strong>${escapeHtml(day.title)}</strong>
+              <div style="margin-top:6px;"><span class="badge">${escapeHtml(day.split)}</span></div>
+              <div class="muted" style="margin-top:8px;">
+                ${day.exercises.map((item, index) => formatPlanExerciseLine(item, index)).join("<br>")}
+              </div>
+            </div>
+          `).join("")}
+        </div>
+      `;
+    }
+
+    function showReadyProgramSchedule(programId) {
+      readyProgramScheduleId = programId;
+      document.getElementById("readyProgramScheduleCard")?.classList.remove("hidden");
+      renderReadyProgramSchedule();
+    }
+
+    function hideReadyProgramSchedule() {
+      readyProgramScheduleId = "";
+      document.getElementById("readyProgramScheduleCard")?.classList.add("hidden");
+    }
+
+    function renderReadyProgramSchedule() {
+      const card = document.getElementById("readyProgramScheduleCard");
+      const box = document.getElementById("readyProgramScheduleContent");
+      if (!card || !box) return;
+
+      const program = getReadyProgram(readyProgramScheduleId);
+      if (!program) {
+        card.classList.add("hidden");
+        box.innerHTML = "";
+        return;
+      }
+
+      box.innerHTML = `
+        <div class="muted">Выбери дни недели. Приложение добавит три ближайшие тренировки в календарь, а потом каждую дату можно будет перенести отдельно.</div>
+        <div class="form-grid" style="margin-top:12px;">
+          ${program.days.map((day, index) => `
+            <label>
+              <span>${escapeHtml(day.title)}</span>
+              <select id="readyProgramWeekday${day.dayIndex}">
+                ${getWeekdayOptionsHtml(program.defaultWeekdays[index])}
+              </select>
+            </label>
+          `).join("")}
+        </div>
+        <div class="actions" style="margin-top:12px;">
+          <button class="btn-success" onclick="addReadyProgramToCalendar('${program.id}')">Добавить в календарь</button>
+        </div>
+      `;
+    }
+
+    function addReadyProgramToCalendar(programId) {
+      if (!currentProfileId) {
+        alert("Сначала создай или выбери профиль");
+        return;
+      }
+
+      const program = getReadyProgram(programId);
+      if (!program) return;
+
+      const weekdays = program.days.map(day => Number(document.getElementById(`readyProgramWeekday${day.dayIndex}`)?.value));
+      const uniqueWeekdays = new Set(weekdays);
+      if (uniqueWeekdays.size !== weekdays.length) {
+        alert("Выбери разные дни недели для трёх тренировок, чтобы план не наложился сам на себя.");
+        return;
+      }
+
+      const createdAt = new Date().toISOString();
+      program.days.forEach((day, index) => {
+        scheduledWorkouts.unshift({
+          id: Date.now() + index + Math.random(),
+          title: `${program.title}: ${day.title}`,
+          date: getNextDateForWeekday(weekdays[index]),
+          split: day.split,
+          exercises: day.exercises.map(item => ({ ...item })),
+          warmup: program.warmup,
+          sourceType: "ready-program",
+          sourceProgramId: program.id,
+          sourceProgramTitle: program.title,
+          programDayIndex: day.dayIndex,
+          programDayTitle: day.title,
+          status: "scheduled",
+          createdAt,
+          completedWorkoutId: null
+        });
+      });
+
+      saveData();
+      hideReadyProgramSchedule();
+      renderPlansScreen();
+      showToast("Программа добавлена в календарь");
     }
 
     function showPlanBuilder() {
@@ -9202,7 +9512,7 @@
           <div class="list-top">
             <div>
               <strong>${index + 1}. ${item.exercise}</strong>
-              <div class="muted">Цель: ${item.targetSets} × ${item.targetReps}</div>
+              <div class="muted">Цель: ${formatPlanExerciseTarget(item)}</div>
             </div>
             <div class="inline-actions">
               <button class="btn-danger" onclick="removePlanBuilderExercise(${index})">Удалить</button>
@@ -9271,14 +9581,18 @@
           <div class="list-top">
             <div>
               <strong>${plan.date}</strong>
+              <div style="margin-top:4px;">${escapeHtml(plan.title || plan.split)}</div>
               <div style="margin-top:6px;"><span class="badge">${plan.split}</span></div>
               <div style="margin-top:6px;"><span class="badge ${badgeClass}">${plan.status === "completed" ? "Выполнена" : plan.status === "skipped" ? "Пропущена" : "Запланирована"}</span></div>
+              ${plan.sourceProgramTitle ? `<div class="muted" style="margin-top:6px;">${escapeHtml(plan.sourceProgramTitle)} · ${escapeHtml(plan.programDayTitle || "")}</div>` : ""}
+              ${plan.warmup ? `<div class="muted" style="margin-top:6px;">Разминка: ${escapeHtml(plan.warmup)}</div>` : ""}
               <div class="muted" style="margin-top:8px;">
-                ${plan.exercises.map((item, i) => `${i + 1}. ${item.exercise} — ${item.targetSets}×${item.targetReps}`).join("<br>")}
+                ${plan.exercises.map((item, i) => formatPlanExerciseLine(item, i)).join("<br>")}
               </div>
             </div>
             <div class="inline-actions">
               ${plan.status === "scheduled" ? `<button class="btn-primary" onclick="startScheduledWorkout(${plan.id}); switchScreen('training')">Начать</button>` : ""}
+              ${plan.status === "scheduled" ? `<button class="btn-secondary" onclick="reschedulePlannedWorkout(${plan.id})">Перенести</button>` : ""}
               ${plan.status === "scheduled" ? `<button class="btn-warning" onclick="markScheduledWorkoutSkipped(${plan.id})">Пропустить</button>` : ""}
               <button class="btn-danger" onclick="deleteScheduledWorkout(${plan.id})">Удалить</button>
             </div>
@@ -9286,6 +9600,24 @@
         `;
         box.appendChild(div);
       });
+    }
+
+    function reschedulePlannedWorkout(planId) {
+      const plan = scheduledWorkouts.find(item => item.id === planId);
+      if (!plan) return;
+
+      const nextDate = prompt("Новая дата тренировки (ГГГГ-ММ-ДД)", plan.date || getTodayKey());
+      if (nextDate === null) return;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(nextDate)) {
+        alert("Укажи дату в формате ГГГГ-ММ-ДД");
+        return;
+      }
+
+      plan.date = nextDate;
+      plan.updatedAt = new Date().toISOString();
+      saveData();
+      renderPlansScreen();
+      showToast("Дата тренировки обновлена");
     }
 
     function deleteScheduledWorkout(planId) {
@@ -9366,7 +9698,7 @@
           <div class="list-top">
             <div>
               <strong>${index + 1}. ${item.exercise}</strong>
-              <div class="muted">Цель: ${item.targetSets} × ${item.targetReps} · Сделано: ${done}</div>
+              <div class="muted">Цель: ${formatPlanExerciseTarget(item)} · Сделано: ${done}</div>
               ${isCurrent ? '<div class="muted" style="margin-top:4px;">Сейчас активно</div>' : ""}
             </div>
             <div class="inline-actions">
@@ -9414,12 +9746,14 @@
           currentSession.planExercises = currentBlock.exercises.map(item => ({
             exercise: item.exercise,
             targetSets: 1,
-            targetReps: item.metric === "time" ? 30 : 10
+            targetReps: item.metric === "time" ? 30 : 10,
+            metric: item.metric,
+            loadType: item.loadType
           }));
           currentSession.currentExerciseIndex = Math.max(0, currentSession.planExercises.length - 1);
         }
       } else {
-        currentSession.planExercises.push({ exercise, targetSets, targetReps });
+        currentSession.planExercises.push({ exercise, targetSets, targetReps, metric, loadType });
       }
       document.getElementById("sessionExerciseName").value = "";
       document.getElementById("sessionExerciseSets").value = "";
@@ -9470,7 +9804,7 @@
               <strong>${template.name}</strong>
               <div style="margin-top:6px;"><span class="badge">${template.split}</span></div>
               <div class="muted" style="margin-top:8px;">
-                ${template.exercises.map((item, i) => `${i + 1}. ${item.exercise} — ${item.targetSets}×${item.targetReps}`).join("<br>")}
+                ${template.exercises.map((item, i) => formatPlanExerciseLine(item, i)).join("<br>")}
               </div>
             </div>
             <div class="inline-actions">
@@ -10704,7 +11038,7 @@
           <div class="list-top">
             <div>
               <strong>${index + 1}. ${item.exercise}</strong>
-              <div class="muted">Цель: ${item.targetSets} × ${item.targetReps}</div>
+              <div class="muted">Цель: ${formatPlanExerciseTarget(item)}</div>
             </div>
             <div class="inline-actions">
               <button class="btn-danger" onclick="removeTemplateBuilderExercise(${index})">Удалить</button>
@@ -10766,7 +11100,7 @@
               <strong>${template.name}</strong>
               <div style="margin-top:6px;"><span class="badge">${template.split}</span></div>
               <div class="muted" style="margin-top:8px;">
-                ${template.exercises.map((item, i) => `${i + 1}. ${item.exercise} — ${item.targetSets}×${item.targetReps}`).join("<br>")}
+                ${template.exercises.map((item, i) => formatPlanExerciseLine(item, i)).join("<br>")}
               </div>
             </div>
             <div class="inline-actions">
@@ -10803,7 +11137,7 @@
               <strong>${program.title}</strong>
               <div style="margin-top:6px;"><span class="badge">${program.split}</span></div>
               <div class="muted" style="margin-top:8px;">
-                ${program.exercises.map((item, i) => `${i + 1}. ${item.exercise} — ${item.targetSets}×${item.targetReps}`).join("<br>")}
+                ${program.exercises.map((item, i) => formatPlanExerciseLine(item, i)).join("<br>")}
               </div>
             </div>
             <div class="inline-actions">
