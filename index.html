@@ -876,6 +876,52 @@
       min-height: 56px;
     }
 
+    .rir-control {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.18);
+    }
+
+    .rir-buttons {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .rir-buttons button {
+      min-width: 0;
+      min-height: 44px;
+      padding: 9px 6px;
+      border-radius: 12px;
+      font-size: 13px;
+    }
+
+    .rir-buttons button.active {
+      background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+      color: white;
+      border-color: rgba(255,255,255,0.5);
+    }
+
+    .warmup-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      width: auto;
+      color: #dbeafe;
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .warmup-toggle input {
+      width: auto;
+      margin: 0;
+    }
+
     .overlay-toast {
       position: fixed;
       top: 18px;
@@ -1554,6 +1600,7 @@
             <select id="circuitExerciseLoadType">
               <option value="barbell">Штанга / общий вес</option>
               <option value="machine">Тренажер / общий вес</option>
+              <option value="cable">Блок / кроссовер</option>
               <option value="dumbbell_one">1 гантель</option>
               <option value="dumbbell_two">2 гантели</option>
               <option value="bodyweight">Собственный вес / без веса</option>
@@ -1651,6 +1698,7 @@
             <select id="gymLoadType" onchange="markGymFormDirty()">
               <option value="barbell">Штанга / общий вес</option>
               <option value="machine">Тренажер / общий вес</option>
+              <option value="cable">Блок / кроссовер</option>
               <option value="dumbbell_one">1 гантель</option>
               <option value="dumbbell_two">2 гантели</option>
               <option value="bodyweight">Собственный вес</option>
@@ -1661,6 +1709,26 @@
             </select>
             <input id="gymWeight" type="number" min="0" step="0.1" placeholder="Вес" oninput="markGymFormDirty()" />
             <input id="gymReps" type="number" min="1" step="1" placeholder="Повторы" oninput="markGymFormDirty()" />
+          </div>
+
+          <div class="rir-control">
+            <label class="warmup-toggle">
+              <input id="gymWarmupSet" type="checkbox" onchange="toggleWarmupSetInput()" />
+              Разминочный подход
+            </label>
+            <div id="rirControlBody">
+              <div class="muted">RIR — сколько повторений осталось “в запасе” после подхода. Можно оставить пустым.</div>
+              <input id="gymRir" type="hidden" value="" />
+              <div class="rir-buttons" style="margin-top:8px;">
+                <button type="button" class="btn-secondary" data-rir-value="" onclick="setRirValue('')">—</button>
+                <button type="button" class="btn-secondary" data-rir-value="0" onclick="setRirValue('0')">0</button>
+                <button type="button" class="btn-secondary" data-rir-value="1" onclick="setRirValue('1')">1</button>
+                <button type="button" class="btn-secondary" data-rir-value="2" onclick="setRirValue('2')">2</button>
+                <button type="button" class="btn-secondary" data-rir-value="3" onclick="setRirValue('3')">3</button>
+                <button type="button" class="btn-secondary" data-rir-value="4" onclick="setRirValue('4')">4</button>
+                <button type="button" class="btn-secondary" data-rir-value="5" onclick="setRirValue('5')">5+</button>
+              </div>
+            </div>
           </div>
 
           <div class="quick-grid">
@@ -1716,6 +1784,7 @@
               <select id="sessionExerciseLoadType">
                 <option value="barbell">Штанга / общий вес</option>
                 <option value="machine">Тренажер / общий вес</option>
+                <option value="cable">Блок / кроссовер</option>
                 <option value="dumbbell_one">1 гантель</option>
                 <option value="dumbbell_two">2 гантели</option>
                 <option value="bodyweight">Собственный вес</option>
@@ -2504,6 +2573,7 @@
             <select id="profileExerciseLoadType">
               <option value="barbell">Штанга / общий вес</option>
               <option value="machine">Тренажер / общий вес</option>
+              <option value="cable">Блок / кроссовер</option>
               <option value="dumbbell_one">1 гантель</option>
               <option value="dumbbell_two">2 гантели</option>
               <option value="bodyweight">Собственный вес / без веса</option>
@@ -2559,6 +2629,9 @@
       workoutType: "strength",
       fromScheduledWorkoutId: null,
       sourceProgramId: null,
+      sourceProgramTitle: "",
+      programDayIndex: null,
+      programDayTitle: "",
       planExercises: [],
       currentExerciseIndex: 0,
       circuitBlocks: [],
@@ -2693,6 +2766,100 @@
       }
     ];
 
+    const PPL_BASIC_PROGRAM = {
+      id: "ppl-basic-6-cycle",
+      title: "PPL — базовый Push / Pull / Legs",
+      description: "Простая базовая программа для зала на гипертрофию, сохранение силы и понятную двойную прогрессию. Цикл из 6 тренировок продолжается последовательно, даже если между тренировками были пропуски.",
+      warning: "Ориентир интенсивности: рабочие подходы обычно RIR 2, последний подход изоляции можно RIR 1. Не нужно постоянно тренироваться до отказа.",
+      warmup: "Перед первым тяжелым упражнением сделай 2–3 разминочных подхода с постепенным увеличением веса.",
+      tags: ["6 тренировок в цикле", "50–60 мин", "тренажерный зал", "гипертрофия + сила", "Push · Pull · Legs × 2"],
+      cycle: true,
+      defaultStartDate: "2026-08-31",
+      days: [
+        {
+          dayIndex: 1,
+          title: "Push A — грудь + плечи + трицепс",
+          split: "Push",
+          muscles: ["грудь", "плечи", "трицепс"],
+          exercises: [
+            { exercise: "Жим гантелей на наклонной скамье 30°", targetSets: 3, targetReps: "6–10", minReps: 6, maxReps: 10, targetRir: 2, restSeconds: 150, loadType: "dumbbell_two", metric: "reps" },
+            { exercise: "Жим гантелей на горизонтальной скамье", targetSets: 3, targetReps: "8–12", minReps: 8, maxReps: 12, targetRir: 2, restSeconds: 120, loadType: "dumbbell_two", metric: "reps" },
+            { exercise: "Жим гантелей сидя", targetSets: 2, targetReps: "8–12", minReps: 8, maxReps: 12, targetRir: 2, restSeconds: 120, loadType: "dumbbell_two", metric: "reps" },
+            { exercise: "Махи гантелями в стороны", targetSets: 3, targetReps: "12–20", minReps: 12, maxReps: 20, targetRir: 2, restSeconds: 75, loadType: "dumbbell_two", metric: "reps" },
+            { exercise: "Разгибание рук на верхнем блоке, канат", targetSets: 3, targetReps: "10–15", minReps: 10, maxReps: 15, targetRir: 2, restSeconds: 75, loadType: "cable", metric: "reps" }
+          ]
+        },
+        {
+          dayIndex: 2,
+          title: "Pull A — спина + задняя дельта + бицепс",
+          split: "Pull",
+          muscles: ["спина", "задняя дельта", "бицепс"],
+          exercises: [
+            { exercise: "Тяга верхнего блока широким или средним хватом", targetSets: 3, targetReps: "6–10", minReps: 6, maxReps: 10, targetRir: 2, restSeconds: 150, loadType: "cable", metric: "reps" },
+            { exercise: "Тяга горизонтального блока", targetSets: 3, targetReps: "8–12", minReps: 8, maxReps: 12, targetRir: 2, restSeconds: 120, loadType: "cable", metric: "reps" },
+            { exercise: "Обратная бабочка", targetSets: 2, targetReps: "12–20", minReps: 12, maxReps: 20, targetRir: 2, restSeconds: 75, loadType: "machine", metric: "reps" },
+            { exercise: "Подъем EZ-штанги на бицепс", targetSets: 3, targetReps: "8–12", minReps: 8, maxReps: 12, targetRir: 2, restSeconds: 90, loadType: "barbell", metric: "reps" },
+            { exercise: "Молотки с гантелями", targetSets: 2, targetReps: "10–15", minReps: 10, maxReps: 15, targetRir: 2, restSeconds: 75, loadType: "dumbbell_two", metric: "reps" }
+          ]
+        },
+        {
+          dayIndex: 3,
+          title: "Legs A — ноги + пресс",
+          split: "Legs",
+          muscles: ["ноги", "пресс"],
+          exercises: [
+            { exercise: "Жим ногами", targetSets: 3, targetReps: "8–12", minReps: 8, maxReps: 12, targetRir: 2, restSeconds: 150, loadType: "machine", metric: "reps" },
+            { exercise: "Болгарские выпады с гантелями", targetSets: 2, targetReps: "8–12 на каждую ногу", minReps: 8, maxReps: 12, targetRir: 2, restSeconds: 120, loadType: "dumbbell_two", metric: "reps" },
+            { exercise: "Разгибание ног", targetSets: 2, targetReps: "10–15", minReps: 10, maxReps: 15, targetRir: 2, restSeconds: 90, loadType: "machine", metric: "reps" },
+            { exercise: "Сгибание ног сидя", targetSets: 3, targetReps: "10–15", minReps: 10, maxReps: 15, targetRir: 2, restSeconds: 90, loadType: "machine", metric: "reps" },
+            { exercise: "Подъем на носки", targetSets: 3, targetReps: "10–15", minReps: 10, maxReps: 15, targetRir: 2, restSeconds: 75, loadType: "machine", metric: "reps" },
+            { exercise: "Планка", targetSets: 2, targetReps: "45–60 сек", minReps: 45, maxReps: 60, targetRir: null, restSeconds: 60, loadType: "bodyweight", metric: "time" }
+          ]
+        },
+        {
+          dayIndex: 4,
+          title: "Push B — грудь + плечи + трицепс",
+          split: "Push",
+          muscles: ["грудь", "плечи", "трицепс"],
+          exercises: [
+            { exercise: "Жим гантелей на наклонной скамье 30°", targetSets: 3, targetReps: "8–12", minReps: 8, maxReps: 12, targetRir: 2, restSeconds: 120, loadType: "dumbbell_two", metric: "reps" },
+            { exercise: "Бабочка / Pec Deck", targetSets: 3, targetReps: "10–15", minReps: 10, maxReps: 15, targetRir: 2, restSeconds: 90, loadType: "machine", metric: "reps" },
+            { exercise: "Жим гантелей сидя", targetSets: 3, targetReps: "8–12", minReps: 8, maxReps: 12, targetRir: 2, restSeconds: 120, loadType: "dumbbell_two", metric: "reps" },
+            { exercise: "Махи гантелями в стороны", targetSets: 3, targetReps: "12–20", minReps: 12, maxReps: 20, targetRir: 2, restSeconds: 75, loadType: "dumbbell_two", metric: "reps" },
+            { exercise: "Подъем одной гантели двумя руками из-за головы сидя", targetSets: 2, targetReps: "10–15", minReps: 10, maxReps: 15, targetRir: 2, restSeconds: 90, loadType: "dumbbell_one", metric: "reps" },
+            { exercise: "Разгибание рук на верхнем блоке, канат", targetSets: 2, targetReps: "10–15", minReps: 10, maxReps: 15, targetRir: 2, restSeconds: 75, loadType: "cable", metric: "reps" }
+          ]
+        },
+        {
+          dayIndex: 5,
+          title: "Pull B — спина + задняя дельта + бицепс",
+          split: "Pull",
+          muscles: ["спина", "задняя дельта", "бицепс"],
+          exercises: [
+            { exercise: "Тяга верхнего блока нейтральным или узким хватом", targetSets: 3, targetReps: "8–12", minReps: 8, maxReps: 12, targetRir: 2, restSeconds: 120, loadType: "cable", metric: "reps" },
+            { exercise: "Тяга гантели одной рукой к поясу", targetSets: 3, targetReps: "8–12", minReps: 8, maxReps: 12, targetRir: 2, restSeconds: 120, loadType: "dumbbell_one", metric: "reps" },
+            { exercise: "Face Pull", targetSets: 2, targetReps: "12–20", minReps: 12, maxReps: 20, targetRir: 2, restSeconds: 75, loadType: "cable", metric: "reps" },
+            { exercise: "Подъем EZ-штанги на бицепс", targetSets: 3, targetReps: "8–12", minReps: 8, maxReps: 12, targetRir: 2, restSeconds: 90, loadType: "barbell", metric: "reps" },
+            { exercise: "Молотки с гантелями", targetSets: 2, targetReps: "10–15", minReps: 10, maxReps: 15, targetRir: 2, restSeconds: 75, loadType: "dumbbell_two", metric: "reps" }
+          ]
+        },
+        {
+          dayIndex: 6,
+          title: "Legs B — ноги + пресс",
+          split: "Legs",
+          muscles: ["ноги", "пресс"],
+          exercises: [
+            { exercise: "Румынская тяга с гантелями", targetSets: 3, targetReps: "8–12", minReps: 8, maxReps: 12, targetRir: 2, restSeconds: 150, loadType: "dumbbell_two", metric: "reps" },
+            { exercise: "Жим ногами", targetSets: 3, targetReps: "10–15", minReps: 10, maxReps: 15, targetRir: 2, restSeconds: 150, loadType: "machine", metric: "reps" },
+            { exercise: "Сгибание ног сидя", targetSets: 3, targetReps: "10–15", minReps: 10, maxReps: 15, targetRir: 2, restSeconds: 90, loadType: "machine", metric: "reps" },
+            { exercise: "Разгибание ног", targetSets: 2, targetReps: "12–15", minReps: 12, maxReps: 15, targetRir: 2, restSeconds: 90, loadType: "machine", metric: "reps" },
+            { exercise: "Подъем на носки", targetSets: 3, targetReps: "12–20", minReps: 12, maxReps: 20, targetRir: 2, restSeconds: 75, loadType: "machine", metric: "reps" },
+            { exercise: "Подъем ног / коленей в висе", targetSets: 2, targetReps: "10–15", minReps: 10, maxReps: 15, targetRir: 2, restSeconds: 60, loadType: "bodyweight", metric: "reps" }
+          ]
+        }
+      ]
+    };
+
     const READY_PROGRAMS = [
       {
         id: "v-shape-3-days",
@@ -2747,7 +2914,8 @@
             ]
           }
         ]
-      }
+      },
+      PPL_BASIC_PROGRAM
     ];
 
     const baseExercisesBySplit = {
@@ -2955,7 +3123,7 @@
     }
 
     function normalizeCustomExerciseLoadType(value) {
-      const allowed = ["barbell", "machine", "dumbbell_one", "dumbbell_two", "bodyweight"];
+      const allowed = ["barbell", "machine", "cable", "dumbbell_one", "dumbbell_two", "bodyweight"];
       return allowed.includes(value) ? value : "machine";
     }
 
@@ -3189,16 +3357,55 @@
       return getWorkoutType(workout) === "cardio";
     }
 
+    function normalizeRirValue(value) {
+      if (value === "" || value === null || value === undefined) return null;
+      const numeric = Number(value);
+      if (!Number.isFinite(numeric)) return null;
+      return Math.max(0, Math.min(5, Math.round(numeric)));
+    }
+
+    function normalizeSetRecord(set) {
+      const safe = set || {};
+      const metric = safe.metric || "reps";
+      const loadType = safe.loadType || "barbell";
+      const enteredWeight = clampMetricNumber(safe.enteredWeight);
+      const totalWeight = clampMetricNumber(safe.totalWeight || enteredWeight * getMultiplier(loadType));
+      const reps = Math.max(0, parseInt(safe.reps || "0", 10) || 0);
+      const isWarmup = safe.isWarmup === true;
+      return {
+        ...safe,
+        id: safe.id || Date.now() + Math.random(),
+        loadType,
+        enteredWeight,
+        totalWeight,
+        reps,
+        metric,
+        volume: isWarmup || metric === "time" ? 0 : clampMetricNumber(safe.volume || totalWeight * reps),
+        rir: normalizeRirValue(safe.rir),
+        isWarmup,
+        minReps: toNumberOrNull(safe.minReps),
+        maxReps: toNumberOrNull(safe.maxReps),
+        targetRir: normalizeRirValue(safe.targetRir),
+        restSeconds: toNumberOrNull(safe.restSeconds)
+      };
+    }
+
     function normalizeWorkoutRecord(workout) {
       const safe = workout || {};
       const workoutType = getWorkoutType(safe);
+      const normalizedSets = Array.isArray(safe.sets) ? safe.sets.map(normalizeSetRecord) : [];
+      const rirValues = normalizedSets
+        .filter(set => !set.isWarmup && set.rir !== null && set.rir !== undefined)
+        .map(set => normalizeRirValue(set.rir))
+        .filter(value => value !== null);
       return {
         ...safe,
         split: workoutType === "cardio" ? "Кардио" : String(safe.split || ""),
         workoutMode: workoutType === "cardio" ? "cardio" : String(safe.workoutMode || "regular"),
         workoutType,
         circuitBlocks: Array.isArray(safe.circuitBlocks) ? safe.circuitBlocks : [],
-        sets: Array.isArray(safe.sets) ? safe.sets : [],
+        sets: normalizedSets,
+        averageRir: safe.averageRir ?? (rirValues.length ? roundTo(rirValues.reduce((sum, value) => sum + value, 0) / rirValues.length, 1) : null),
         cardio: workoutType === "cardio" ? normalizeCardioWorkoutData(safe.cardio) : null
       };
     }
@@ -4129,6 +4336,9 @@
         workoutType: "strength",
         fromScheduledWorkoutId: null,
         sourceProgramId: null,
+        sourceProgramTitle: "",
+        programDayIndex: null,
+        programDayTitle: "",
         planExercises: [],
         currentExerciseIndex: 0,
         circuitBlocks: [],
@@ -7150,7 +7360,47 @@
       const labels = [];
       if (item?.loadType) labels.push(getLoadTypeLabel(item.loadType));
       if (item?.metric === "time") labels.push("на время");
+      if (item?.restSeconds) labels.push(`отдых ${item.restSeconds} сек`);
+      if (item?.targetRir !== null && item?.targetRir !== undefined) labels.push(`цель RIR ${item.targetRir}`);
       return `${index + 1}. ${escapeHtml(item.exercise)} — ${escapeHtml(formatPlanExerciseTarget(item))}${labels.length ? ` · ${labels.join(", ")}` : ""}`;
+    }
+
+    function getRepRangeFromPlanExercise(item) {
+      if (!item) return { minReps: null, maxReps: null };
+      const directMin = toNumberOrNull(item.minReps);
+      const directMax = toNumberOrNull(item.maxReps);
+      if (directMin !== null || directMax !== null) {
+        return {
+          minReps: directMin,
+          maxReps: directMax ?? directMin
+        };
+      }
+
+      const text = String(item.targetReps || "");
+      const match = text.match(/(\d+)\s*[–-]\s*(\d+)/);
+      if (match) {
+        return {
+          minReps: Number(match[1]),
+          maxReps: Number(match[2])
+        };
+      }
+
+      const single = toNumberOrNull(item.targetReps);
+      return {
+        minReps: single,
+        maxReps: single
+      };
+    }
+
+    function getCurrentExerciseProgramMeta(exerciseName = getCurrentExerciseName()) {
+      const current = getCurrentExerciseObject();
+      if (current && current.exercise === exerciseName) return current;
+      return currentSession.planExercises.find(item => item.exercise === exerciseName) || null;
+    }
+
+    function getCurrentExerciseRestSeconds(fallback = 90) {
+      const current = getCurrentExerciseProgramMeta();
+      return Math.max(0, parseInt(current?.restSeconds || fallback, 10) || fallback);
     }
 
     function getMultiplier(loadType) {
@@ -7158,10 +7408,12 @@
     }
 
     function getSetResultText(set) {
+      const rirText = set?.rir === null || set?.rir === undefined ? "" : ` · RIR ${set.rir >= 5 ? "5+" : set.rir}`;
+      const warmupText = set?.isWarmup ? " · разминка" : "";
       if (set.metric === "time") {
-        return `${set.reps} сек`;
+        return `${set.reps} сек${warmupText}${set?.isWarmup ? "" : rirText}`;
       }
-      return `${getDisplayWeightText(set)} × ${set.reps}`;
+      return `${getDisplayWeightText(set)} × ${set.reps}${warmupText}${set?.isWarmup ? "" : rirText}`;
     }
 
     function getDisplayWeightText(set) {
@@ -7196,15 +7448,15 @@
 
     function getAllSets() {
       const allSets = [];
-      getStrengthWorkoutHistory().forEach(workout => workout.sets.forEach(set => allSets.push(set)));
-      currentSession.sets.forEach(set => allSets.push(set));
+      getStrengthWorkoutHistory().forEach(workout => workout.sets.filter(set => !set.isWarmup).forEach(set => allSets.push(set)));
+      currentSession.sets.filter(set => !set.isWarmup).forEach(set => allSets.push(set));
       return allSets;
     }
 
     function getHistoricalSetsForExercise(exerciseName) {
       return getStrengthWorkoutHistory()
         .flatMap(workout => workout.sets)
-        .filter(set => set.exercise.toLowerCase() === exerciseName.toLowerCase());
+        .filter(set => !set.isWarmup && set.exercise.toLowerCase() === exerciseName.toLowerCase());
     }
 
     function getExerciseStats(exerciseName) {
@@ -7229,6 +7481,47 @@
       });
 
       return { last, previous, best };
+    }
+
+    function getWorkoutExerciseSummary(workout, exerciseName) {
+      const sets = (workout?.sets || []).filter(set =>
+        !set.isWarmup &&
+        set.exercise.toLowerCase() === String(exerciseName || "").toLowerCase()
+      );
+      if (!sets.length) return null;
+      let best = sets[0];
+      sets.forEach(set => {
+        if (set.totalWeight > best.totalWeight || (set.totalWeight === best.totalWeight && set.reps > best.reps)) {
+          best = set;
+        }
+      });
+      const rirValues = sets
+        .map(set => normalizeRirValue(set.rir))
+        .filter(value => value !== null);
+      return {
+        date: workout.date || "",
+        sets,
+        best,
+        averageRir: rirValues.length ? roundTo(rirValues.reduce((sum, value) => sum + value, 0) / rirValues.length, 1) : null
+      };
+    }
+
+    function getLastExerciseWorkoutSummaries(exerciseName, limit = 2) {
+      return getStrengthWorkoutHistory()
+        .map(workout => getWorkoutExerciseSummary(workout, exerciseName))
+        .filter(Boolean)
+        .slice(0, limit);
+    }
+
+    function getBestQualitySet(exerciseName) {
+      const matched = getHistoricalSetsForExercise(exerciseName)
+        .filter(set => normalizeRirValue(set.rir) !== null && normalizeRirValue(set.rir) >= 1);
+      if (!matched.length) return null;
+      return matched.reduce((best, set) => {
+        if (set.totalWeight > best.totalWeight) return set;
+        if (set.totalWeight === best.totalWeight && set.reps > best.reps) return set;
+        return best;
+      }, matched[0]);
     }
 
     function getCurrentExerciseObject() {
@@ -7263,13 +7556,13 @@
 
     function getDoneSetsForExercise(exerciseName) {
       return currentSession.sets.filter(
-        set => set.exercise.toLowerCase() === exerciseName.toLowerCase()
+        set => !set.isWarmup && set.exercise.toLowerCase() === exerciseName.toLowerCase()
       ).length;
     }
 
     function getCompletedExercisesCount() {
       if (!currentSession.planExercises.length) {
-        return [...new Set(currentSession.sets.map(set => set.exercise.toLowerCase()))].length;
+        return [...new Set(currentSession.sets.filter(set => !set.isWarmup).map(set => set.exercise.toLowerCase()))].length;
       }
 
       return currentSession.planExercises.filter(item => {
@@ -7337,9 +7630,97 @@
       return `После упражнения удели внимание: ${fallback.join(", ")}.`;
     }
 
+    function getWorkingSetsForExerciseToday(exerciseName) {
+      return currentSession.sets.filter(set =>
+        !set.isWarmup &&
+        set.metric !== "time" &&
+        set.exercise.toLowerCase() === String(exerciseName || "").toLowerCase()
+      );
+    }
+
+    function getAverageRir(sets) {
+      const values = (sets || [])
+        .map(set => normalizeRirValue(set.rir))
+        .filter(value => value !== null);
+      if (!values.length) return null;
+      return values.reduce((sum, value) => sum + value, 0) / values.length;
+    }
+
+    function getProgressionWeightStep(loadType) {
+      if (loadType === "barbell") return 2.5;
+      if (loadType === "dumbbell_one" || loadType === "dumbbell_two") return 2;
+      if (loadType === "machine" || loadType === "cable") return 2.5;
+      return 0;
+    }
+
+    function formatSuggestedWeightValue(weight, loadType) {
+      if (!weight || loadType === "bodyweight") return "";
+      const rounded = roundTo(weight, 1);
+      if (loadType === "dumbbell_two") return `${rounded} кг на гантель`;
+      if (loadType === "dumbbell_one") return `${rounded} кг`;
+      return `${rounded} кг`;
+    }
+
+    function getProgressionRecommendation(exerciseName) {
+      const meta = getCurrentExerciseProgramMeta(exerciseName);
+      const range = getRepRangeFromPlanExercise(meta);
+      const minReps = range.minReps;
+      const maxReps = range.maxReps;
+
+      if (!meta || meta.metric === "time" || minReps === null || maxReps === null) {
+        return "";
+      }
+
+      const targetSets = Math.max(1, parseInt(meta.targetSets || "1", 10) || 1);
+      const allToday = getWorkingSetsForExerciseToday(exerciseName);
+      const sets = allToday.slice(-targetSets);
+
+      if (!sets.length) {
+        return "Статус прогрессии: недостаточно данных.";
+      }
+
+      if (sets.length < targetSets) {
+        return `Статус прогрессии: набираем данные (${sets.length}/${targetSets} рабочих подходов).`;
+      }
+
+      const lastSet = sets[sets.length - 1];
+      const averageRir = getAverageRir(sets);
+      const lastRir = normalizeRirValue(lastSet.rir);
+      const tooHeavy = sets.some(set => set.reps < minReps && (normalizeRirValue(set.rir) === 0 || normalizeRirValue(set.rir) === 1));
+      const allAtTop = sets.every(set => set.reps >= maxReps);
+      const veryEasy = sets.some(set => set.reps >= maxReps && normalizeRirValue(set.rir) !== null && normalizeRirValue(set.rir) >= 4);
+      const nextWeight = lastSet.enteredWeight + getProgressionWeightStep(lastSet.loadType);
+      const nextWeightText = formatSuggestedWeightValue(nextWeight, lastSet.loadType);
+
+      if (tooHeavy) {
+        return "Статус прогрессии: нагрузка может быть слишком тяжелой для целевого диапазона. На следующей тренировке можно закрепить технику или немного снизить вес.";
+      }
+
+      if (veryEasy && nextWeightText) {
+        return `Статус прогрессии: вес, вероятно, слишком легкий. Можно увеличить нагрузку, например попробовать ${nextWeightText}.`;
+      }
+
+      if (allAtTop && lastRir !== null && lastRir >= 1) {
+        if (averageRir !== null && averageRir >= 1.5 && nextWeightText) {
+          return `Статус прогрессии: готов к увеличению веса. На следующей тренировке можно попробовать ${nextWeightText}.`;
+        }
+        return "Статус прогрессии: верхняя граница повторений достигнута. Можно рассмотреть повышение веса, но лучше ориентироваться на запас RIR 1–2.";
+      }
+
+      if (allAtTop && lastRir === 0) {
+        return "Статус прогрессии: верхняя граница повторений достигнута, но последний подход был до отказа. Закрепи этот вес с RIR 1–2.";
+      }
+
+      if (allAtTop && lastRir === null) {
+        return "Статус прогрессии: можно рассмотреть увеличение веса. Для более точной рекомендации указывай RIR.";
+      }
+
+      return "Статус прогрессии: набираем повторения в заданном диапазоне.";
+    }
+
     function getExerciseCompletionFeedback(exerciseName) {
       const doneSets = currentSession.sets.filter(
-        set => set.exercise.toLowerCase() === exerciseName.toLowerCase()
+        set => !set.isWarmup && set.exercise.toLowerCase() === exerciseName.toLowerCase()
       );
       const historical = getHistoricalSetsForExercise(exerciseName);
 
@@ -7379,14 +7760,16 @@
         parts.push("Это первое сохраненное выполнение этого упражнения.");
       }
 
+      const progression = getProgressionRecommendation(exerciseName);
+      if (progression) parts.push(progression);
       parts.push(getStretchAdviceForExercise(exerciseName, currentSession.split));
       return parts.join(" ");
     }
 
-    function buildSet({ date, split, exercise, loadType, enteredWeight, reps, metric = "reps", circuitBlockIndex = null, circuitRoundIndex = null, circuitPassIndex = null }) {
+    function buildSet({ date, split, exercise, loadType, enteredWeight, reps, metric = "reps", rir = null, isWarmup = false, minReps = null, maxReps = null, targetRir = null, restSeconds = null, circuitBlockIndex = null, circuitRoundIndex = null, circuitPassIndex = null }) {
       const multiplier = getMultiplier(loadType);
       const totalWeight = enteredWeight * multiplier;
-      const volume = metric === "time" ? 0 : totalWeight * reps;
+      const volume = isWarmup || metric === "time" ? 0 : totalWeight * reps;
       return {
         id: Date.now() + Math.random(),
         date,
@@ -7398,6 +7781,12 @@
         reps,
         volume,
         metric,
+        rir: isWarmup ? null : normalizeRirValue(rir),
+        isWarmup: !!isWarmup,
+        minReps: toNumberOrNull(minReps),
+        maxReps: toNumberOrNull(maxReps),
+        targetRir: normalizeRirValue(targetRir),
+        restSeconds: toNumberOrNull(restSeconds),
         circuitBlockIndex,
         circuitRoundIndex,
         circuitPassIndex
@@ -7647,6 +8036,9 @@
           : document.getElementById("setupSplit").value;
       currentSession.fromScheduledWorkoutId = null;
       currentSession.sourceProgramId = null;
+      currentSession.sourceProgramTitle = "";
+      currentSession.programDayIndex = null;
+      currentSession.programDayTitle = "";
       currentSession.planExercises = [];
       currentSession.currentExerciseIndex = 0;
       currentSession.circuitBlocks = [];
@@ -7737,6 +8129,9 @@
       currentSession.fromScheduledWorkoutId = plan.id;
       currentSession.planExercises = plan.exercises.map(item => ({ ...item }));
       currentSession.sourceProgramId = plan.sourceProgramId || null;
+      currentSession.sourceProgramTitle = plan.sourceProgramTitle || "";
+      currentSession.programDayIndex = plan.programDayIndex || null;
+      currentSession.programDayTitle = plan.programDayTitle || "";
       currentSession.currentExerciseIndex = 0;
       currentSession.sets = [];
       currentSession.cardioDraft = null;
@@ -7774,12 +8169,18 @@
 
     function buildPlanExercisesFromHistoryWorkout(workout) {
       const grouped = {};
-      (workout?.sets || []).forEach(set => {
+      (workout?.sets || []).filter(set => !set.isWarmup).forEach(set => {
         if (!grouped[set.exercise]) {
           grouped[set.exercise] = {
             exercise: set.exercise,
             targetSets: 0,
-            targetReps: set.metric === "time" ? (set.seconds || set.reps || 30) : (set.reps || 1)
+            targetReps: set.metric === "time" ? (set.seconds || set.reps || 30) : (set.reps || 1),
+            minReps: set.minReps ?? null,
+            maxReps: set.maxReps ?? null,
+            targetRir: set.targetRir ?? null,
+            restSeconds: set.restSeconds ?? null,
+            metric: set.metric || "reps",
+            loadType: set.loadType || "barbell"
           };
         }
         grouped[set.exercise].targetSets += 1;
@@ -7822,6 +8223,9 @@
       currentSession.workoutType = "strength";
       currentSession.fromScheduledWorkoutId = null;
       currentSession.sourceProgramId = null;
+      currentSession.sourceProgramTitle = "";
+      currentSession.programDayIndex = null;
+      currentSession.programDayTitle = "";
       currentSession.planExercises = isCircuit
         ? (firstCircuitBlock?.exercises || []).map(item => ({
             exercise: item.exercise,
@@ -8044,6 +8448,40 @@
       currentSession.formDirty = false;
     }
 
+    function updateRirButtons() {
+      const input = document.getElementById("gymRir");
+      const selected = input ? String(input.value || "") : "";
+      document.querySelectorAll("[data-rir-value]").forEach(button => {
+        button.classList.toggle("active", String(button.dataset.rirValue || "") === selected);
+      });
+    }
+
+    function setRirValue(value, markDirtyFlag = true) {
+      const input = document.getElementById("gymRir");
+      if (input) input.value = value === "" ? "" : String(normalizeRirValue(value) ?? "");
+      updateRirButtons();
+      if (markDirtyFlag) markGymFormDirty();
+    }
+
+    function toggleWarmupSetInput(markDirtyFlag = true) {
+      const isWarmup = document.getElementById("gymWarmupSet")?.checked === true;
+      const rirBody = document.getElementById("rirControlBody");
+      if (rirBody) rirBody.classList.toggle("hidden", isWarmup);
+      if (isWarmup) {
+        setRirValue("", false);
+      } else {
+        updateRirButtons();
+      }
+      if (markDirtyFlag) markGymFormDirty();
+    }
+
+    function resetSetMetaInputs(options = {}) {
+      const warmupInput = document.getElementById("gymWarmupSet");
+      if (warmupInput) warmupInput.checked = options.isWarmup === true;
+      setRirValue(options.rir ?? "", false);
+      toggleWarmupSetInput(false);
+    }
+
     function getSelectedWorkoutExerciseName() {
       const customInput = document.getElementById("gymCustomExercise");
       const customName = normalizeExerciseName(customInput?.value || "");
@@ -8064,10 +8502,14 @@
     function buildGymSetDraft() {
       const exercise = getSelectedWorkoutExerciseName();
       const loadType = document.getElementById("gymLoadType").value;
+      const currentExerciseObj = getCurrentExerciseProgramMeta(exercise);
       const currentCircuitTemplate = getCurrentCircuitExerciseTemplate();
       const customMeta = getCustomExerciseMeta(currentSession.split, exercise);
       const metricInput = document.getElementById("gymMetricType")?.value || "reps";
-      const metric = isCircuitWorkout() && currentCircuitTemplate ? currentCircuitTemplate.metric : (metricInput || customMeta?.metric || "reps");
+      const metric = isCircuitWorkout() && currentCircuitTemplate ? currentCircuitTemplate.metric : (currentExerciseObj?.metric || metricInput || customMeta?.metric || "reps");
+      const range = getRepRangeFromPlanExercise(currentExerciseObj);
+      const isWarmup = document.getElementById("gymWarmupSet")?.checked === true;
+      const rir = normalizeRirValue(document.getElementById("gymRir")?.value);
       const reps = parseInt(document.getElementById("gymReps").value);
       let enteredWeight = 0;
 
@@ -8090,6 +8532,12 @@
         enteredWeight,
         reps,
         metric,
+        rir,
+        isWarmup,
+        minReps: range.minReps,
+        maxReps: range.maxReps,
+        targetRir: currentExerciseObj?.targetRir ?? null,
+        restSeconds: currentExerciseObj?.restSeconds ?? null,
         circuitBlockIndex: isCircuitWorkout() ? currentSession.currentCircuitBlockIndex : null,
         circuitRoundIndex: isCircuitWorkout() ? currentSession.currentCircuitRoundIndex : null,
         circuitPassIndex: isCircuitWorkout() ? currentSession.currentCircuitPassIndex : null
@@ -8160,7 +8608,7 @@
         type: "after-set",
         exerciseName: newSet.exercise
       };
-      restTimeLeft = 90;
+      restTimeLeft = newSet.restSeconds || getCurrentExerciseRestSeconds(90);
       startRestTimer();
       renderTrainingScreen();
       if (toastMessage) showToast(toastMessage);
@@ -8257,10 +8705,18 @@
       }
 
       document.getElementById("gymExerciseTitle").textContent = exerciseName || "Упражнение";
+      const programMetaParts = currentExerciseObj
+        ? [
+            `Цель: ${formatPlanExerciseTarget(currentExerciseObj)}`,
+            `Сделано подходов: ${getDoneSetsForExercise(exerciseName)}/${currentExerciseObj.targetSets}`,
+            currentExerciseObj.targetRir !== null && currentExerciseObj.targetRir !== undefined ? `RIR ${currentExerciseObj.targetRir}` : "",
+            currentExerciseObj.restSeconds ? `отдых ${currentExerciseObj.restSeconds} сек` : ""
+          ].filter(Boolean)
+        : [];
       document.getElementById("gymExerciseMeta").textContent = isCircuitWorkout()
         ? `${currentMetric === "time" ? "Фиксируй секунды" : "Фиксируй вес и повторы"} · Круг ${currentSession.currentCircuitRoundIndex + 1}, подход ${currentPassNumber}, упражнение ${currentSession.currentExerciseIndex + 1}/${currentSession.planExercises.length}`
         : currentExerciseObj
-          ? `Цель: ${formatPlanExerciseTarget(currentExerciseObj)} · Сделано подходов: ${getDoneSetsForExercise(exerciseName)}/${currentExerciseObj.targetSets}`
+          ? programMetaParts.join(" · ")
           : "Свободная тренировка";
       document.getElementById("completeExerciseBtn").textContent = isCircuitWorkout()
         ? "Завершить подход"
@@ -8272,9 +8728,17 @@
       document.getElementById("completeCircuitBlockBtn").classList.toggle("hidden", !isCircuitWorkout());
 
       const stats = getExerciseStats(exerciseName);
-      document.getElementById("gymExerciseStats").textContent = stats
-        ? `Последний раз: ${getSetResultText(stats.last)} · Лучший: ${getSetResultText(stats.best)}`
+      const summaries = getLastExerciseWorkoutSummaries(exerciseName, 2);
+      const bestQuality = getBestQualitySet(exerciseName);
+      const statsText = stats
+        ? [
+            summaries[0] ? `Последняя тренировка ${summaries[0].date}: ${summaries[0].sets.map(getSetResultText).join(" / ")}${summaries[0].averageRir !== null ? ` · средний RIR ${summaries[0].averageRir}` : ""}` : "",
+            summaries[1] ? `Предыдущая ${summaries[1].date}: ${summaries[1].sets.map(getSetResultText).join(" / ")}` : "",
+            `Лучший рабочий подход: ${getSetResultText(stats.best)}`,
+            bestQuality ? `Лучший качественный подход: ${getSetResultText(bestQuality)}` : ""
+          ].filter(Boolean).join(" · ")
         : "Истории по упражнению пока нет";
+      document.getElementById("gymExerciseStats").textContent = statsText;
 
       const loadTypeSelect = document.getElementById("gymLoadType");
       const metricTypeSelect = document.getElementById("gymMetricType");
@@ -8294,6 +8758,8 @@
       setLiveMotivation(currentSession.lastMotivation);
       document.getElementById("planExerciseManagerCard").classList.toggle("hidden", !currentSession.planExercises.length);
       document.getElementById("planExerciseEditorBody").classList.toggle("hidden", !currentSession.planEditorOpen);
+      toggleWarmupSetInput(false);
+      updateRirButtons();
     }
 
     function fillGymFormDefaults() {
@@ -8311,6 +8777,7 @@
         if (metricTypeInput) metricTypeInput.value = currentMetric;
         document.getElementById("gymWeight").value = "";
         document.getElementById("gymReps").value = currentMetric === "time" && currentCircuitTemplate ? 30 : "";
+        resetSetMetaInputs();
         const customInput = document.getElementById("gymCustomExercise");
         if (customInput) customInput.value = "";
         clearGymFormDirty();
@@ -8323,6 +8790,7 @@
       if (metricTypeInput) metricTypeInput.value = currentMetric;
       document.getElementById("gymWeight").value = document.getElementById("gymLoadType").value === "bodyweight" ? "" : stats.last.enteredWeight;
       document.getElementById("gymReps").value = stats.last.reps;
+      resetSetMetaInputs();
       const customInput = document.getElementById("gymCustomExercise");
       if (customInput) customInput.value = "";
       clearGymFormDirty();
@@ -8340,6 +8808,7 @@
       if (metricTypeInput) metricTypeInput.value = set.metric || "reps";
       document.getElementById("gymWeight").value = set.loadType === "bodyweight" ? "" : set.enteredWeight;
       document.getElementById("gymReps").value = set.reps;
+      resetSetMetaInputs({ rir: set.rir ?? "", isWarmup: set.isWarmup === true });
       const customInput = document.getElementById("gymCustomExercise");
       if (customInput) customInput.value = "";
       clearGymFormDirty();
@@ -8560,7 +9029,7 @@
             <div>
               <strong>${index + 1}. ${set.exercise}</strong> — ${getSetResultText(set)}
               <div class="muted">
-                ${isCircuitWorkout() && set.circuitBlockIndex !== null ? `Блок ${set.circuitBlockIndex + 1} · Круг ${set.circuitRoundIndex + 1} · Подход ${(set.circuitPassIndex || 0) + 1} · ` : ""}${getLoadTypeLabel(set.loadType)}${set.metric === "time" ? "" : ` · тоннаж ${set.volume} кг`}
+                ${isCircuitWorkout() && set.circuitBlockIndex !== null ? `Блок ${set.circuitBlockIndex + 1} · Круг ${set.circuitRoundIndex + 1} · Подход ${(set.circuitPassIndex || 0) + 1} · ` : ""}${getLoadTypeLabel(set.loadType)}${set.metric === "time" || set.isWarmup ? "" : ` · тоннаж ${set.volume} кг`}
               </div>
             </div>
             <div class="inline-actions">
@@ -8638,7 +9107,7 @@
 
     function getExerciseCompletionMotivation(exerciseName) {
       const doneSets = currentSession.sets.filter(
-        set => set.exercise.toLowerCase() === exerciseName.toLowerCase()
+        set => !set.isWarmup && set.exercise.toLowerCase() === exerciseName.toLowerCase()
       );
 
       if (!doneSets.length) {
@@ -8697,7 +9166,7 @@
         type: "after-exercise",
         exerciseName
       };
-      restTimeLeft = 90;
+      restTimeLeft = getCurrentExerciseRestSeconds(90);
       startRestTimer();
       saveData();
       renderTrainingScreen();
@@ -8899,6 +9368,13 @@
 
       const totalVolume = currentSession.sets.reduce((sum, set) => sum + set.volume, 0);
       const exercises = [...new Set(currentSession.sets.map(set => set.exercise))];
+      const rirValues = currentSession.sets
+        .filter(set => !set.isWarmup && set.rir !== null && set.rir !== undefined)
+        .map(set => normalizeRirValue(set.rir))
+        .filter(value => value !== null);
+      const averageRir = rirValues.length
+        ? roundTo(rirValues.reduce((sum, value) => sum + value, 0) / rirValues.length, 1)
+        : null;
 
       const historyItem = {
         id: Date.now(),
@@ -8907,6 +9383,11 @@
         split: currentSession.split,
         workoutMode: currentSession.workoutMode,
         workoutType: "strength",
+        sourceProgramId: currentSession.sourceProgramId,
+        sourceProgramTitle: currentSession.sourceProgramTitle,
+        programDayIndex: currentSession.programDayIndex,
+        programDayTitle: currentSession.programDayTitle,
+        averageRir,
         circuitBlocks: currentSession.workoutMode === "circuit" ? currentSession.circuitBlocks.map(block => ({
           name: block.name,
           rounds: block.rounds,
@@ -8932,6 +9413,7 @@
           scheduled.status = "completed";
           scheduled.completedWorkoutId = historyItem.id;
           scheduled.completedAt = new Date().toISOString();
+          scheduleNextReadyProgramWorkoutAfterCompletion(scheduled);
         }
       }
 
@@ -8943,6 +9425,7 @@
         exercises: exercises.length,
         sets: currentSession.sets.length,
         totalVolume,
+        averageRir,
         motivation: getWorkoutSummaryMotivation(currentSession.split)
       };
 
@@ -9006,7 +9489,7 @@
           ${data.workoutMode === "circuit" ? `Блоков: ${data.blocks}<br>` : ""}
           Упражнений: ${data.exercises}<br>
           Подходов: ${data.sets}<br>
-          Общий тоннаж: ${data.totalVolume} кг
+          Общий тоннаж: ${data.totalVolume} кг${data.averageRir !== null && data.averageRir !== undefined ? `<br>Средний RIR рабочих подходов: ${data.averageRir}` : ""}
         </div>
       `;
 
@@ -9034,6 +9517,9 @@
         workoutType: "strength",
         fromScheduledWorkoutId: null,
         sourceProgramId: null,
+        sourceProgramTitle: "",
+        programDayIndex: null,
+        programDayTitle: "",
         planExercises: [],
         currentExerciseIndex: 0,
         circuitBlocks: [],
@@ -9133,7 +9619,9 @@
         currentSession.planExercises = getCurrentCircuitBlock().exercises.map(item => ({
           exercise: item.exercise,
           targetSets: 1,
-          targetReps: item.metric === "time" ? 30 : 10
+          targetReps: item.metric === "time" ? 30 : 10,
+          metric: item.metric || "reps",
+          loadType: item.loadType || "machine"
         }));
         currentSession.state = "workout";
         saveData();
@@ -9159,7 +9647,9 @@
         currentSession.planExercises = block.exercises.map(item => ({
           exercise: item.exercise,
           targetSets: 1,
-          targetReps: item.metric === "time" ? 30 : 10
+          targetReps: item.metric === "time" ? 30 : 10,
+          metric: item.metric || "reps",
+          loadType: item.loadType || "machine"
         }));
         currentSession.state = "workout";
         saveData();
@@ -9257,6 +9747,87 @@
       return toDateInputValue(date);
     }
 
+    function addDaysToDateValue(dateValue, days) {
+      const base = dateValue ? new Date(`${dateValue}T00:00:00`) : new Date();
+      if (Number.isNaN(base.getTime())) return getTodayKey();
+      base.setDate(base.getDate() + days);
+      return toDateInputValue(base);
+    }
+
+    function createScheduledWorkoutFromReadyProgramDay(program, day, date, indexOffset = 0) {
+      return {
+        id: Date.now() + indexOffset + Math.random(),
+        title: `${program.title}: ${day.title}`,
+        date,
+        split: day.split,
+        exercises: day.exercises.map(item => ({ ...item })),
+        warmup: program.warmup,
+        sourceType: program.cycle ? "ready-program-cycle" : "ready-program",
+        sourceProgramId: program.id,
+        sourceProgramTitle: program.title,
+        programDayIndex: day.dayIndex,
+        programDayTitle: day.title,
+        status: "scheduled",
+        createdAt: new Date().toISOString(),
+        completedWorkoutId: null
+      };
+    }
+
+    function getReadyProgramDay(program, dayIndex) {
+      return program?.days?.find(day => Number(day.dayIndex) === Number(dayIndex)) || program?.days?.[0] || null;
+    }
+
+    function getNextReadyProgramDay(program, dayIndex) {
+      if (!program?.days?.length) return null;
+      const currentIndex = program.days.findIndex(day => Number(day.dayIndex) === Number(dayIndex));
+      const nextIndex = currentIndex >= 0 ? (currentIndex + 1) % program.days.length : 0;
+      return program.days[nextIndex];
+    }
+
+    function getReadyProgramCompletedWorkouts(programId) {
+      return getStrengthWorkoutHistory()
+        .filter(workout => workout.sourceProgramId === programId)
+        .sort((a, b) => String(b.createdAt || b.date || "").localeCompare(String(a.createdAt || a.date || "")));
+    }
+
+    function getReadyProgramCycleStatus(program) {
+      if (!program?.cycle) return null;
+      const completed = getReadyProgramCompletedWorkouts(program.id);
+      const last = completed[0] || null;
+      const currentDay = last ? getNextReadyProgramDay(program, last.programDayIndex) : getReadyProgramDay(program, 1);
+      const nextDay = getNextReadyProgramDay(program, currentDay?.dayIndex);
+      const lastSameSplit = currentDay
+        ? getStrengthWorkoutHistory().find(workout => workout.split === currentDay.split && workout.id !== last?.id)
+        : null;
+      return {
+        currentDay,
+        nextDay,
+        numberText: currentDay ? `${currentDay.dayIndex} из ${program.days.length}` : "",
+        lastSameSplitDate: lastSameSplit?.date || ""
+      };
+    }
+
+    function scheduleNextReadyProgramWorkoutAfterCompletion(completedPlan) {
+      const program = getReadyProgram(completedPlan?.sourceProgramId);
+      if (!program?.cycle) return null;
+
+      const nextDay = getNextReadyProgramDay(program, completedPlan.programDayIndex);
+      if (!nextDay) return null;
+
+      const nextDate = addDaysToDateValue(completedPlan.date || getTodayKey(), 1);
+      const duplicate = scheduledWorkouts.some(item =>
+        item.status === "scheduled" &&
+        item.sourceProgramId === program.id &&
+        Number(item.programDayIndex) === Number(nextDay.dayIndex) &&
+        String(item.date || "") >= nextDate
+      );
+      if (duplicate) return null;
+
+      const nextPlan = createScheduledWorkoutFromReadyProgramDay(program, nextDay, nextDate, 1000);
+      scheduledWorkouts.unshift(nextPlan);
+      return nextPlan;
+    }
+
     function renderReadyPrograms() {
       const box = document.getElementById("readyProgramsList");
       if (!box) return;
@@ -9264,6 +9835,10 @@
       box.innerHTML = "";
 
       READY_PROGRAMS.forEach(program => {
+        const status = getReadyProgramCycleStatus(program);
+        const badges = program.tags?.length
+          ? program.tags
+          : program.days.map(day => day.title);
         const div = document.createElement("div");
         div.className = "list-item";
         div.innerHTML = `
@@ -9272,8 +9847,17 @@
               <strong>${escapeHtml(program.title)}</strong>
               <div class="muted" style="margin-top:6px;">${escapeHtml(program.description)}</div>
               <div style="margin-top:8px;">
-                ${program.days.map(day => `<span class="badge">${escapeHtml(day.title)}</span>`).join(" ")}
+                ${badges.map(label => `<span class="badge">${escapeHtml(label)}</span>`).join(" ")}
               </div>
+              ${status?.currentDay ? `
+                <div class="note" style="margin-top:10px;">
+                  Текущая тренировка цикла: <strong>${escapeHtml(status.currentDay.title)}</strong><br>
+                  Следующая после нее: ${escapeHtml(status.nextDay?.title || "Push A")}<br>
+                  Номер: ${escapeHtml(status.numberText)}<br>
+                  Основные мышцы: ${escapeHtml((status.currentDay.muscles || []).join(" · ") || status.currentDay.split)}<br>
+                  Последний раз эта группа тренировалась: ${status.lastSameSplitDate ? escapeHtml(status.lastSameSplitDate) : "нет предыдущих тренировок"}
+                </div>
+              ` : ""}
               <div class="muted" style="margin-top:8px;">Разминка: ${escapeHtml(program.warmup)}</div>
             </div>
             <div class="inline-actions">
@@ -9350,6 +9934,25 @@
         return;
       }
 
+      if (program.cycle) {
+        box.innerHTML = `
+          <div class="muted">Выбери дату первой тренировки. Приложение добавит весь цикл из ${program.days.length} тренировок подряд, а дальше после завершения последней тренировки будет подставлять следующий день цикла.</div>
+          <div class="form-grid" style="margin-top:12px;">
+            <label>
+              <span>Дата старта</span>
+              <input id="readyProgramStartDate" type="date" value="${program.defaultStartDate || getTodayKey()}" />
+            </label>
+          </div>
+          <div class="muted" style="margin-top:12px;">
+            ${program.days.map((day, index) => `${addDaysToDateValue(program.defaultStartDate || getTodayKey(), index)} — ${escapeHtml(day.title)}`).join("<br>")}
+          </div>
+          <div class="actions" style="margin-top:12px;">
+            <button class="btn-success" onclick="addReadyProgramToCalendar('${program.id}')">Добавить цикл в календарь</button>
+          </div>
+        `;
+        return;
+      }
+
       box.innerHTML = `
         <div class="muted">Выбери дни недели. Приложение добавит три ближайшие тренировки в календарь, а потом каждую дату можно будет перенести отдельно.</div>
         <div class="form-grid" style="margin-top:12px;">
@@ -9377,6 +9980,29 @@
       const program = getReadyProgram(programId);
       if (!program) return;
 
+      if (program.cycle) {
+        const startDate = document.getElementById("readyProgramStartDate")?.value || program.defaultStartDate || getTodayKey();
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate)) {
+          alert("Укажи дату старта в формате ГГГГ-ММ-ДД");
+          return;
+        }
+
+        program.days.forEach((day, index) => {
+          scheduledWorkouts.unshift(createScheduledWorkoutFromReadyProgramDay(
+            program,
+            day,
+            addDaysToDateValue(startDate, index),
+            index
+          ));
+        });
+
+        saveData();
+        hideReadyProgramSchedule();
+        renderPlansScreen();
+        showToast("Цикл PPL добавлен в календарь");
+        return;
+      }
+
       const weekdays = program.days.map(day => Number(document.getElementById(`readyProgramWeekday${day.dayIndex}`)?.value));
       const uniqueWeekdays = new Set(weekdays);
       if (uniqueWeekdays.size !== weekdays.length) {
@@ -9386,22 +10012,9 @@
 
       const createdAt = new Date().toISOString();
       program.days.forEach((day, index) => {
-        scheduledWorkouts.unshift({
-          id: Date.now() + index + Math.random(),
-          title: `${program.title}: ${day.title}`,
-          date: getNextDateForWeekday(weekdays[index]),
-          split: day.split,
-          exercises: day.exercises.map(item => ({ ...item })),
-          warmup: program.warmup,
-          sourceType: "ready-program",
-          sourceProgramId: program.id,
-          sourceProgramTitle: program.title,
-          programDayIndex: day.dayIndex,
-          programDayTitle: day.title,
-          status: "scheduled",
-          createdAt,
-          completedWorkoutId: null
-        });
+        const plan = createScheduledWorkoutFromReadyProgramDay(program, day, getNextDateForWeekday(weekdays[index]), index);
+        plan.createdAt = createdAt;
+        scheduledWorkouts.unshift(plan);
       });
 
       saveData();
