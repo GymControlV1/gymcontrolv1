@@ -9948,8 +9948,10 @@
 
     function showReadyProgramPreview(programId) {
       readyProgramPreviewId = programId;
-      document.getElementById("readyProgramPreviewCard")?.classList.remove("hidden");
+      const card = document.getElementById("readyProgramPreviewCard");
+      card?.classList.remove("hidden");
       renderReadyProgramPreview();
+      requestAnimationFrame(() => card?.scrollIntoView({ behavior: "smooth", block: "start" }));
     }
 
     function hideReadyProgramPreview() {
@@ -9989,8 +9991,10 @@
 
     function showReadyProgramSchedule(programId) {
       readyProgramScheduleId = programId;
-      document.getElementById("readyProgramScheduleCard")?.classList.remove("hidden");
+      const card = document.getElementById("readyProgramScheduleCard");
+      card?.classList.remove("hidden");
       renderReadyProgramSchedule();
+      requestAnimationFrame(() => card?.scrollIntoView({ behavior: "smooth", block: "start" }));
     }
 
     function hideReadyProgramSchedule() {
