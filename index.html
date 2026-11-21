@@ -2860,7 +2860,70 @@
       ]
     };
 
+    const INTRO_FULL_BODY_DAYS = [
+      {
+        title: "A — ноги, грудь, спина",
+        exercises: [
+          { exercise: "Жим ногами", targetSets: 2, targetReps: "8–12", targetRir: 3, restSeconds: 120, loadType: "machine", metric: "reps" },
+          { exercise: "Сгибание ног сидя", targetSets: 2, targetReps: "10–15", targetRir: 3, restSeconds: 90, loadType: "machine", metric: "reps" },
+          { exercise: "Жим гантелей на наклонной скамье 30°", targetSets: 2, targetReps: "8–12", targetRir: 3, restSeconds: 120, loadType: "dumbbell_two", metric: "reps" },
+          { exercise: "Тяга верхнего блока широким или средним хватом", targetSets: 2, targetReps: "8–12", targetRir: 3, restSeconds: 120, loadType: "cable", metric: "reps" },
+          { exercise: "Планка", targetSets: 2, targetReps: "30–45 сек", restSeconds: 60, loadType: "bodyweight", metric: "time" }
+        ]
+      },
+      {
+        title: "B — одна нога, спина, плечи",
+        exercises: [
+          { exercise: "Болгарские выпады с гантелями", targetSets: 2, targetReps: "8–10 на каждую ногу", targetRir: 3, restSeconds: 120, loadType: "bodyweight", metric: "reps" },
+          { exercise: "Тяга горизонтального блока", targetSets: 2, targetReps: "8–12", targetRir: 3, restSeconds: 120, loadType: "cable", metric: "reps" },
+          { exercise: "Жим гантелей сидя", targetSets: 2, targetReps: "8–12", targetRir: 3, restSeconds: 120, loadType: "dumbbell_two", metric: "reps" },
+          { exercise: "Подъем на носки", targetSets: 2, targetReps: "12–15", targetRir: 3, restSeconds: 75, loadType: "machine", metric: "reps" },
+          { exercise: "Планка", targetSets: 2, targetReps: "30–45 сек", restSeconds: 60, loadType: "bodyweight", metric: "time" },
+          { exercise: "Стойка на одной ноге", targetSets: 2, targetReps: "20–30 сек на каждую ногу", restSeconds: 45, loadType: "bodyweight", metric: "time" }
+        ]
+      },
+      {
+        title: "C — ноги, грудь, осанка",
+        exercises: [
+          { exercise: "Жим ногами", targetSets: 2, targetReps: "10–15", targetRir: 3, restSeconds: 120, loadType: "machine", metric: "reps" },
+          { exercise: "Сгибание ног сидя", targetSets: 2, targetReps: "10–15", targetRir: 3, restSeconds: 90, loadType: "machine", metric: "reps" },
+          { exercise: "Жим гантелей на горизонтальной скамье", targetSets: 2, targetReps: "8–12", targetRir: 3, restSeconds: 120, loadType: "dumbbell_two", metric: "reps" },
+          { exercise: "Face Pull", targetSets: 2, targetReps: "12–15", targetRir: 3, restSeconds: 75, loadType: "cable", metric: "reps" },
+          { exercise: "Планка", targetSets: 2, targetReps: "30–45 сек", restSeconds: 60, loadType: "bodyweight", metric: "time" }
+        ]
+      }
+    ];
+
+    const INTRO_TWO_WEEK_PROGRAM = {
+      id: "intro-full-body-two-weeks-2026",
+      title: "Возвращение в зал — 2 недели",
+      description: "Шесть силовых тренировок A → B → C → A → B → C. Дата только ориентир: пропущенная тренировка остается следующей. Между силовыми можно спокойно ходить на дорожке: 20–25 минут в первую неделю и 25–30 минут во вторую.",
+      warning: "В первую неделю оставляй запас 3–4 повтора и не работай до отказа. Болгарские выпады начни без гантелей. При боли прекращай упражнение.",
+      warmup: "5–10 минут спокойной ходьбы и разминочные подходы перед первым упражнением",
+      tags: ["2 недели", "6 силовых", "дорожка между тренировками", "гибкие даты"],
+      sequence: true,
+      defaultStartDate: "2026-11-22",
+      days: [
+        ...INTRO_FULL_BODY_DAYS.map((day, index) => ({
+          dayIndex: index + 1,
+          title: `Неделя 1 · ${day.title}`,
+          split: "Full Body",
+          exercises: day.exercises.map(item => ({ ...item }))
+        })),
+        ...INTRO_FULL_BODY_DAYS.map((day, index) => ({
+          dayIndex: index + 4,
+          title: `Неделя 2 · ${day.title}`,
+          split: "Full Body",
+          exercises: day.exercises.map((item, exerciseIndex) => ({
+            ...item,
+            targetSets: exerciseIndex < 2 ? 3 : item.targetSets
+          }))
+        }))
+      ]
+    };
+
     const READY_PROGRAMS = [
+      INTRO_TWO_WEEK_PROGRAM,
       {
         id: "v-shape-3-days",
         title: "V-форма 3 дня",
@@ -8099,7 +8162,7 @@
         div.innerHTML = `
           <div class="list-top">
             <div>
-              <strong>${plan.date}</strong>
+              <strong>${getReadyProgram(plan.sourceProgramId)?.sequence ? `Ориентир: ${escapeHtml(plan.date)} · можно позже` : escapeHtml(plan.date)}</strong>
               <div style="margin-top:4px;">${escapeHtml(plan.title || plan.split)}</div>
               <div style="margin-top:6px;"><span class="badge">${plan.split}</span></div>
               ${plan.sourceProgramTitle ? `<div class="muted" style="margin-top:6px;">${escapeHtml(plan.sourceProgramTitle)} · ${escapeHtml(plan.programDayTitle || "")}</div>` : ""}
@@ -8122,7 +8185,7 @@
       const plan = scheduledWorkouts.find(item => item.id === planId);
       if (!plan) return;
 
-      currentSession.date = plan.date;
+      currentSession.date = getReadyProgram(plan.sourceProgramId)?.sequence ? getTodayKey() : plan.date;
       currentSession.split = plan.split;
       currentSession.workoutMode = "regular";
       currentSession.workoutType = "strength";
@@ -9410,6 +9473,9 @@
       if (currentSession.fromScheduledWorkoutId) {
         const scheduled = scheduledWorkouts.find(item => item.id === currentSession.fromScheduledWorkoutId);
         if (scheduled) {
+          if (getReadyProgram(scheduled.sourceProgramId)?.sequence) {
+            scheduled.date = historyItem.date;
+          }
           scheduled.status = "completed";
           scheduled.completedWorkoutId = historyItem.id;
           scheduled.completedAt = new Date().toISOString();
@@ -9809,6 +9875,16 @@
 
     function scheduleNextReadyProgramWorkoutAfterCompletion(completedPlan) {
       const program = getReadyProgram(completedPlan?.sourceProgramId);
+      if (program?.sequence) {
+        const nextDay = program.days.find(day => Number(day.dayIndex) === Number(completedPlan.programDayIndex) + 1);
+        if (!nextDay) return null;
+        if (scheduledWorkouts.some(item => item.status === "scheduled" && item.sourceProgramId === program.id)) return null;
+
+        const nextDate = addDaysToDateValue(completedPlan.date || getTodayKey(), 2);
+        const nextPlan = createScheduledWorkoutFromReadyProgramDay(program, nextDay, nextDate, 1000);
+        scheduledWorkouts.unshift(nextPlan);
+        return nextPlan;
+      }
       if (!program?.cycle) return null;
 
       const nextDay = getNextReadyProgramDay(program, completedPlan.programDayIndex);
@@ -9934,6 +10010,23 @@
         return;
       }
 
+      if (program.sequence) {
+        box.innerHTML = `
+          <div class="muted">Выбери ориентировочную дату первой силовой. В план добавится только тренировка A. После ее выполнения появится B, затем C. Если день пропущен, начни ту же тренировку позже: она не исчезнет, а запись получит фактическую дату.</div>
+          <div class="form-grid" style="margin-top:12px;">
+            <label>
+              <span>Первая силовая</span>
+              <input id="readyProgramStartDate" type="date" value="${program.defaultStartDate || getTodayKey()}" />
+            </label>
+          </div>
+          <div class="muted">Дорожка между силовыми: первая неделя 20–25 минут, вторая 25–30 минут. Ходьба записывается отдельно в дневник активности.</div>
+          <div class="actions" style="margin-top:12px;">
+            <button class="btn-success" onclick="addReadyProgramToCalendar('${program.id}')">Начать программу</button>
+          </div>
+        `;
+        return;
+      }
+
       if (program.cycle) {
         box.innerHTML = `
           <div class="muted">Выбери дату первой тренировки. Приложение добавит весь цикл из ${program.days.length} тренировок подряд, а дальше после завершения последней тренировки будет подставлять следующий день цикла.</div>
@@ -9979,6 +10072,24 @@
 
       const program = getReadyProgram(programId);
       if (!program) return;
+
+      if (program.sequence) {
+        if (scheduledWorkouts.some(item => item.status === "scheduled" && item.sourceProgramId === program.id)) {
+          showToast("Следующая тренировка этой программы уже есть в плане");
+          return;
+        }
+        const startDate = document.getElementById("readyProgramStartDate")?.value || program.defaultStartDate || getTodayKey();
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate)) {
+          alert("Укажи дату старта в формате ГГГГ-ММ-ДД");
+          return;
+        }
+        scheduledWorkouts.unshift(createScheduledWorkoutFromReadyProgramDay(program, program.days[0], startDate));
+        saveData();
+        hideReadyProgramSchedule();
+        renderPlansScreen();
+        showToast("Вводная программа добавлена: начни тренировку A в удобный день");
+        return;
+      }
 
       if (program.cycle) {
         const startDate = document.getElementById("readyProgramStartDate")?.value || program.defaultStartDate || getTodayKey();
@@ -10193,7 +10304,7 @@
         div.innerHTML = `
           <div class="list-top">
             <div>
-              <strong>${plan.date}</strong>
+              <strong>${getReadyProgram(plan.sourceProgramId)?.sequence && plan.status === "scheduled" ? `Ориентир: ${escapeHtml(plan.date)} · можно позже` : escapeHtml(plan.date)}</strong>
               <div style="margin-top:4px;">${escapeHtml(plan.title || plan.split)}</div>
               <div style="margin-top:6px;"><span class="badge">${plan.split}</span></div>
               <div style="margin-top:6px;"><span class="badge ${badgeClass}">${plan.status === "completed" ? "Выполнена" : plan.status === "skipped" ? "Пропущена" : "Запланирована"}</span></div>
@@ -10205,8 +10316,8 @@
             </div>
             <div class="inline-actions">
               ${plan.status === "scheduled" ? `<button class="btn-primary" onclick="startScheduledWorkout(${plan.id}); switchScreen('training')">Начать</button>` : ""}
-              ${plan.status === "scheduled" ? `<button class="btn-secondary" onclick="reschedulePlannedWorkout(${plan.id})">Перенести</button>` : ""}
-              ${plan.status === "scheduled" ? `<button class="btn-warning" onclick="markScheduledWorkoutSkipped(${plan.id})">Пропустить</button>` : ""}
+              ${plan.status === "scheduled" && !getReadyProgram(plan.sourceProgramId)?.sequence ? `<button class="btn-secondary" onclick="reschedulePlannedWorkout(${plan.id})">Перенести</button>` : ""}
+              ${plan.status === "scheduled" && !getReadyProgram(plan.sourceProgramId)?.sequence ? `<button class="btn-warning" onclick="markScheduledWorkoutSkipped(${plan.id})">Пропустить</button>` : ""}
               <button class="btn-danger" onclick="deleteScheduledWorkout(${plan.id})">Удалить</button>
             </div>
           </div>
@@ -11541,7 +11652,7 @@
         Последняя тренировка: ${lastWorkout ? (isCardioWorkoutRecord(lastWorkout)
           ? `${lastWorkout.date} · ${escapeHtml(getCardioTypeLabel(lastWorkout.cardio?.cardioType))} · ${escapeHtml(getCardioSummaryLine(lastWorkout.cardio))}`
           : `${lastWorkout.date} · ${escapeHtml(lastWorkout.split)} · ${lastWorkout.sets.length} подходов`) : "пока нет тренировок"}<br>
-        Ближайший план: ${nextPlan ? `${nextPlan.date} · ${escapeHtml(nextPlan.title || nextPlan.split)}` : "пока ничего не запланировано"}<br>
+        Ближайший план: ${nextPlan ? `${getReadyProgram(nextPlan.sourceProgramId)?.sequence ? "по готовности" : escapeHtml(nextPlan.date)} · ${escapeHtml(nextPlan.title || nextPlan.split)}` : "пока ничего не запланировано"}<br>
         Пользовательских упражнений: ${getCustomExerciseCount()}
       `;
 
