@@ -8167,7 +8167,7 @@
 
       const upcoming = scheduledWorkouts
         .filter(item => item.status === "scheduled")
-        .sort((a, b) => a.date.localeCompare(b.date));
+        .sort(comparePlannedWorkouts);
 
       if (!upcoming.length) {
         box.innerHTML = '<p class="empty">Запланированных тренировок пока нет</p>';
@@ -9795,6 +9795,18 @@
       renderTemplateToPlanList();
     }
 
+    function comparePlannedWorkouts(a, b) {
+      const activeA = a.status === "scheduled" ? 0 : 1;
+      const activeB = b.status === "scheduled" ? 0 : 1;
+      if (activeA !== activeB) return activeA - activeB;
+      if (activeA === 0) {
+        const sequenceA = getReadyProgram(a.sourceProgramId)?.sequence ? 0 : 1;
+        const sequenceB = getReadyProgram(b.sourceProgramId)?.sequence ? 0 : 1;
+        if (sequenceA !== sequenceB) return sequenceA - sequenceB;
+      }
+      return String(a.date || "").localeCompare(String(b.date || ""));
+    }
+
     function getReadyProgram(programId) {
       return READY_PROGRAMS.find(program => program.id === programId) || null;
     }
@@ -10358,7 +10370,7 @@
       box.innerHTML = "";
 
       const items = [...scheduledWorkouts]
-        .sort((a, b) => a.date.localeCompare(b.date))
+        .sort(comparePlannedWorkouts)
         .slice(0, 20);
 
       if (!items.length) {
@@ -11702,7 +11714,7 @@
       const today = getTodayEntry();
       const nextPlan = [...scheduledWorkouts]
         .filter(item => item.status === "scheduled")
-        .sort((a, b) => String(a.date).localeCompare(String(b.date)))[0];
+        .sort(comparePlannedWorkouts)[0];
       const lastWorkout = workoutHistory[0];
 
       header.innerHTML = `
