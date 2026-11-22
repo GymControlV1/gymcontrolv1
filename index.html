@@ -3734,7 +3734,7 @@
       return {
         customExercisesBySplit: mergedCustomExercises,
         customExerciseCatalog: mergedCatalog,
-        scheduledWorkouts: Array.isArray(local.scheduledWorkouts) && local.scheduledWorkouts.length ? local.scheduledWorkouts : (Array.isArray(remote.scheduledWorkouts) ? remote.scheduledWorkouts : []),
+        scheduledWorkouts: mergeScheduledWorkouts(local.scheduledWorkouts, remote.scheduledWorkouts),
         templates: Array.isArray(local.templates) && local.templates.length ? local.templates : (Array.isArray(remote.templates) ? remote.templates : []),
         feedbackEntries: Array.isArray(local.feedbackEntries) && local.feedbackEntries.length ? local.feedbackEntries : (Array.isArray(remote.feedbackEntries) ? remote.feedbackEntries : []),
         dailyMetricsByDate: mergeDailyMetricsMaps(local.dailyMetricsByDate, remote.dailyMetricsByDate),
@@ -3747,6 +3747,20 @@
           ...(local.workoutSettings || {})
         }
       };
+    }
+
+    function mergeScheduledWorkouts(localItems, remoteItems) {
+      const plans = new Map();
+      [...(Array.isArray(remoteItems) ? remoteItems : []), ...(Array.isArray(localItems) ? localItems : [])].forEach(plan => {
+        if (!plan || plan.id == null) return;
+        const key = String(plan.id);
+        const previous = plans.get(key);
+        if (!previous || String(plan.updatedAt || plan.completedAt || plan.createdAt || "") >=
+          String(previous.updatedAt || previous.completedAt || previous.createdAt || "")) {
+          plans.set(key, plan);
+        }
+      });
+      return [...plans.values()];
     }
 
     function migrateLegacyTotalsToMeals(entry) {
@@ -4807,6 +4821,7 @@
 
       if (target && willShow) {
         target.classList.remove("hidden");
+        requestAnimationFrame(() => target.scrollIntoView({ behavior: "smooth", block: "start" }));
       }
     }
 
@@ -7127,6 +7142,9 @@
 
     function switchScreen(name) {
       if (name === "more") name = "profile";
+      if (name === "training" && currentSession.state === "summary") {
+        resetTrainingSessionState();
+      }
       ["training", "balance", "plans", "stats", "profile"].forEach(screen => {
         document.getElementById("screen-" + screen).classList.toggle("active", screen === name);
         const navBtn = document.getElementById("nav-" + screen);
@@ -9483,6 +9501,8 @@
         }
       }
 
+      recoverIntroProgramProgress();
+
       currentSession.pendingSummary = {
         date: currentSession.date,
         split: currentSession.split,
@@ -9854,6 +9874,55 @@
       return getStrengthWorkoutHistory()
         .filter(workout => workout.sourceProgramId === programId)
         .sort((a, b) => String(b.createdAt || b.date || "").localeCompare(String(a.createdAt || a.date || "")));
+    }
+
+    function getProgramWorkoutDate(workout) {
+      const raw = String(workout?.date || "");
+      if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+      if (raw.includes("T")) {
+        const date = new Date(raw);
+        if (!Number.isNaN(date.getTime())) {
+          return new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Moscow" }).format(date);
+        }
+      }
+      return "";
+    }
+
+    function recoverIntroProgramProgress() {
+      const program = INTRO_TWO_WEEK_PROGRAM;
+      const workout = getStrengthWorkoutHistory().find(item =>
+        getProgramWorkoutDate(item) >= program.defaultStartDate
+      );
+      if (!workout) return false;
+
+      let dayIndex = workout.sourceProgramId === program.id ? Number(workout.programDayIndex) : 0;
+      if (!dayIndex && !scheduledWorkouts.some(item => item.sourceProgramId === program.id && item.status === "completed")) {
+        const actualExercises = new Set((workout.sets || []).map(set => normalizeExerciseName(set.exercise)));
+        const firstDayExercises = program.days[0].exercises.map(item => normalizeExerciseName(item.exercise));
+        if (workout.split === "Full Body" && actualExercises.size === firstDayExercises.length &&
+          firstDayExercises.every(name => actualExercises.has(name))) {
+          dayIndex = 1;
+        }
+      }
+      if (!dayIndex || dayIndex >= program.days.length) return false;
+
+      const nextDay = program.days.find(day => day.dayIndex === dayIndex + 1);
+      if (!nextDay || scheduledWorkouts.some(item => item.sourceProgramId === program.id &&
+        item.status === "scheduled" && Number(item.programDayIndex) >= nextDay.dayIndex)) return false;
+
+      const workoutDate = getProgramWorkoutDate(workout);
+      let completedPlan = scheduledWorkouts.find(item => item.sourceProgramId === program.id &&
+        Number(item.programDayIndex) === dayIndex);
+      if (!completedPlan) {
+        completedPlan = createScheduledWorkoutFromReadyProgramDay(program, program.days[dayIndex - 1], workoutDate);
+        scheduledWorkouts.unshift(completedPlan);
+      }
+      completedPlan.date = workoutDate;
+      completedPlan.status = "completed";
+      completedPlan.completedWorkoutId = workout.id;
+      completedPlan.completedAt = workout.createdAt || new Date().toISOString();
+      scheduleNextReadyProgramWorkoutAfterCompletion(completedPlan);
+      return true;
     }
 
     function getReadyProgramCycleStatus(program) {
@@ -12450,9 +12519,15 @@
       document.body.addEventListener("touchstart", unlockAudio, { once: true });
 
       if (cloudConfig.autoSync && isCloudConfigured()) {
-        syncPendingWorkouts(false);
-        refreshWorkoutHistoryFromCloud(false);
-        refreshCloudProfileData(false);
+        (async () => {
+          await syncPendingWorkouts(false);
+          const historyLoaded = await refreshWorkoutHistoryFromCloud(false);
+          const profileLoaded = await refreshCloudProfileData(false);
+          if (historyLoaded && profileLoaded && recoverIntroProgramProgress()) {
+            saveData();
+            renderAll();
+          }
+        })();
       }
     }
 
